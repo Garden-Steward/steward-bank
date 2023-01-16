@@ -4,23 +4,24 @@
   "info": {
     "singularName": "volunteer-day",
     "pluralName": "volunteer-days",
-    "displayName": "Volunteer Day"
+    "displayName": "Volunteer Day",
+    "description": ""
   },
   "options": {
     "draftAndPublish": true
   },
   "pluginOptions": {},
   "attributes": {
-    "Title": {
+    "title": {
       "type": "string"
     },
-    "Date": {
+    "date": {
       "type": "date"
     },
-    "Start": {
+    "startTime": {
       "type": "time"
     },
-    "Blurb": {
+    "blurb": {
       "type": "text"
     },
     "garden": {
@@ -28,7 +29,7 @@
       "relation": "oneToOne",
       "target": "api::garden.garden"
     },
-    "Journal": {
+    "daysJournal": {
       "type": "richtext"
     }
   }

@@ -4,14 +4,15 @@
   "info": {
     "singularName": "garden-task",
     "pluralName": "garden-tasks",
-    "displayName": "Garden Task"
+    "displayName": "Garden Task",
+    "description": ""
   },
   "options": {
     "draftAndPublish": true
   },
   "pluginOptions": {},
   "attributes": {
-    "Title": {
+    "title": {
       "type": "string"
     },
     "status": {
@@ -47,19 +48,30 @@
       "target": "api::garden.garden"
     },
     "userPhotos": {
+      "type": "media",
+      "multiple": true,
+      "required": false,
       "allowedTypes": [
         "images",
         "files",
         "videos",
         "audios"
-      ],
-      "type": "media",
-      "multiple": true
+      ]
     },
     "volunteers": {
       "type": "relation",
       "relation": "oneToMany",
       "target": "plugin::users-permissions.user"
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "General",
+        "Water",
+        "Weeding",
+        "Planting",
+        "Harvest"
+      ]
     }
   }
 }
