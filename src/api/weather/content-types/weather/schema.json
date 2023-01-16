@@ -1,0 +1,45 @@
+{
+  "kind": "collectionType",
+  "collectionName": "weathers",
+  "info": {
+    "singularName": "weather",
+    "pluralName": "weathers",
+    "displayName": "Weather"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "weather_title": {
+      "type": "enumeration",
+      "enum": [
+        "Mist",
+        "Rain",
+        "Clear",
+        "Clouds"
+      ]
+    },
+    "description": {
+      "type": "text"
+    },
+    "temp_min": {
+      "type": "decimal"
+    },
+    "temp_max": {
+      "type": "decimal"
+    },
+    "json": {
+      "type": "json"
+    },
+    "date": {
+      "type": "datetime"
+    },
+    "dt": {
+      "type": "integer"
+    },
+    "openweather_id": {
+      "type": "integer"
+    }
+  }
+}

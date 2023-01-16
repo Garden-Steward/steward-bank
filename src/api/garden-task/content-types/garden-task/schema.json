@@ -1,0 +1,65 @@
+{
+  "kind": "collectionType",
+  "collectionName": "garden_tasks",
+  "info": {
+    "singularName": "garden-task",
+    "pluralName": "garden-tasks",
+    "displayName": "Garden Task"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "Title": {
+      "type": "string"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "INITIALIZED",
+        "INTERESTED",
+        "STARTED",
+        "FINISHED",
+        "ABANDONED",
+        "ISSUE",
+        "SKIPPED",
+        "RESOLVED"
+      ]
+    },
+    "overview": {
+      "type": "text"
+    },
+    "started_at": {
+      "type": "datetime"
+    },
+    "completed_at": {
+      "type": "datetime"
+    },
+    "recurring_task": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::recurring-task.recurring-task"
+    },
+    "garden": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::garden.garden"
+    },
+    "userPhotos": {
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ],
+      "type": "media",
+      "multiple": true
+    },
+    "volunteers": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

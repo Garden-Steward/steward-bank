@@ -1,0 +1,42 @@
+{
+  "kind": "collectionType",
+  "collectionName": "schedulers",
+  "info": {
+    "singularName": "scheduler",
+    "pluralName": "schedulers",
+    "displayName": "Scheduler"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "day": {
+      "type": "enumeration",
+      "enum": [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday"
+      ]
+    },
+    "volunteer": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "backup_volunteers": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "plugin::users-permissions.user"
+    },
+    "recurring_task": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::recurring-task.recurring-task"
+    }
+  }
+}

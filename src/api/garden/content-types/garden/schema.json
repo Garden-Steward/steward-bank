@@ -1,0 +1,30 @@
+{
+  "kind": "collectionType",
+  "collectionName": "gardens",
+  "info": {
+    "singularName": "garden",
+    "pluralName": "gardens",
+    "displayName": "garden"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "slug": {
+      "type": "string"
+    },
+    "blurb": {
+      "type": "text"
+    },
+    "longitude": {
+      "type": "float"
+    },
+    "latitude": {
+      "type": "float"
+    },
+    "title": {
+      "type": "string"
+    }
+  }
+}

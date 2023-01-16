@@ -1,0 +1,29 @@
+{
+  "kind": "collectionType",
+  "collectionName": "recurring_tasks",
+  "info": {
+    "singularName": "recurring-task",
+    "pluralName": "recurring-tasks",
+    "displayName": "Recurring Task"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "Title": {
+      "type": "string"
+    },
+    "overview": {
+      "type": "text"
+    },
+    "garden": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::garden.garden"
+    },
+    "complete_once": {
+      "type": "boolean"
+    }
+  }
+}
