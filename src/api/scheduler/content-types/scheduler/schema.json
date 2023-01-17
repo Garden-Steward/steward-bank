@@ -4,7 +4,8 @@
   "info": {
     "singularName": "scheduler",
     "pluralName": "schedulers",
-    "displayName": "Scheduler"
+    "displayName": "Scheduler",
+    "description": ""
   },
   "options": {
     "draftAndPublish": true
@@ -35,8 +36,9 @@
     },
     "recurring_task": {
       "type": "relation",
-      "relation": "oneToOne",
-      "target": "api::recurring-task.recurring-task"
+      "relation": "manyToOne",
+      "target": "api::recurring-task.recurring-task",
+      "inversedBy": "schedulers"
     }
   }
 }

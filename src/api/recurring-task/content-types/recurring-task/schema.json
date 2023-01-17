@@ -35,6 +35,12 @@
         "Planting",
         "Harvest"
       ]
+    },
+    "schedulers": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::scheduler.scheduler",
+      "mappedBy": "recurring_task"
     }
   }
 }
