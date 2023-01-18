@@ -17,8 +17,8 @@ module.exports = {
   },
 
   /** Create Tasks from Recurring Tasks - add Scheduler Volunteers if any */
-  // '0 7 * * */1': async () => {
-  '1/1 * * * *': async () => {
+  '0 7 * * */1': async () => {
+  // '1/1 * * * *': async () => {
     const recurringTasks = await strapi.db.query('api::recurring-task.recurring-task')
       .findMany({
         where: {},
@@ -62,7 +62,7 @@ module.exports = {
       if (process.env.ENVIRONMENT == 'test') {
         // We are proper with Pacific Time -- Also let's get our crons.
       } else {
-        if (hour > 9 && hour < 8) {
+        if (hour > 9 && hour < 20) {
           return;
         }
       }
@@ -76,8 +76,8 @@ module.exports = {
   
     },
     options: {
-       rule: '1/1 * * * *',
-      //  rule: '2 1/2 * * *',
+      //  rule: '1/1 * * * *',
+       rule: '2 1/2 * * *',
        tz: 'America/Los_Angeles',
     },
   },
