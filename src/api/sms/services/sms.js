@@ -15,21 +15,25 @@ let sendSms = function(toNum,body){
     .then(message => console.log('SMS sid: ', message.sid));
 };
 
-let handleSms = function(task,body,type){
+let handleSms = function(task,body,type, previous){
+  console.log("sms out: ", body);
     
   try {
-    strapi.services.messages.create({
-      user:task.user,
-      type: type,
-      garden: task.garden,
-      body: body,
-      gardentask: task
+    strapi.db.query('api::message.message').create({
+      data: {
+        user:task.volunteers[0],
+        type,
+        garden: task.garden,
+        body,
+        garden_task: task,
+        previous
+      }
     });
   } catch(err) {
     console.error('Problem logging message. ', err);
   }
 
-  sendSms(task.user.phoneNumber, body);
+  sendSms(task.volunteers[0].phoneNumber, body);
 };
 
 const handleVoice = function(){

@@ -5,15 +5,19 @@ const Weather = {};
 Weather.runWeatherCron = async() => {
   const fivehours = (5 * 60) * 60; 
   const unixTime = Math.floor(new Date().getTime() / 1000);
-  const gardens = await strapi.services.foragespot.find();
+  const gardens = await strapi.db.query('api::garden.garden').findMany({});
+  
   for (let garden of gardens) {
     console.log('cron garden: ', garden.title);
-    if (!garden.openweather_id) { continue; }
+    if (!garden.openweather_id || !garden.latitude || !garden.latitude) { continue; }
     try {
-      const weather = await strapi.services.weather.findOne({
-        openweather_id: garden.openweather_id,
-        _sort: 'dt:desc'
+      const weather = await strapi.db.query('api::weather.weather').findOne({
+        where: {openweather_id: garden.openweather_id},
+        orderBy: {dt: 'DESC'}
       });
+      if (!weather) {
+        console.log("NO WEATHER WITH OPENWEATHER ID: ", garden.openweather_id)
+      }
       if (!weather || unixTime - weather.dt > fivehours) {
         console.log('Adding new weather');
         await Weather.retrieveLatestOW(garden, weather);
@@ -34,10 +38,12 @@ Weather.getGardenWeather = async(garden) => {
   let weather;
   let weathers = [];
   try {
-    weathers = await strapi.services.weather.find({
-      openweather_id: garden.openweather_id,
-      dt_gt: unixTime-threedays,
-      _sort: 'dt:desc'
+    weathers = await strapi.db.query('api::weather.weather').findMany({
+      where: {
+        openweather_id: garden.openweather_id,
+        dt: { $gt: unixTime-threedays }
+      },
+      orderBy: { dt: 'DESC'}
     });
     weather = weathers[0];
   } catch(err) {
@@ -68,17 +74,18 @@ Weather.retrieveLatestOW = async(garden, latestWeather) => {
     return latestWeather;
   }
 
-  console.log('got new openweather: ', openWeather.main);
-  return strapi.services.weather.create({
-    date: new Date(),
-    dt: openWeather.dt,
-    openweather_id: openWeather.id,
-    weather_title: openWeather.weather[0].main,
-    description: openWeather.weather[0].description,
-    temp_min: openWeather.main.temp_min,
-    temp_max: openWeather.main.temp_max,
-    json: openWeather,
-    gardens: [garden]
+  // console.log('got new openweather: ', openWeather.main);
+  return strapi.db.query('api::weather.weather').create({
+    data: {
+      date: new Date(),
+      dt: openWeather.dt,
+      openweather_id: openWeather.id,
+      weather_title: openWeather.weather[0].main,
+      description: openWeather.weather[0].description,
+      temp_min: openWeather.main.temp_min,
+      temp_max: openWeather.main.temp_max,
+      json: openWeather
+    }
   });
  
 };
@@ -88,7 +95,11 @@ Weather.getOpenWeather = async(garden) => {
     const {data} = await axios.get(`https://api.openweathermap.org/data/2.5/weather?lat=${garden.latitude}&lon=${garden.longitude}&units=imperial&appid=${process.env.WEATHER_API}`);
     return data;
   } catch (err) {
-    console.error(err);
+    if (err.data) {
+      console.error(data);
+    } else {
+      console.error(err);
+    }
   }
   
 };

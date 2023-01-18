@@ -26,6 +26,9 @@
     },
     "title": {
       "type": "string"
+    },
+    "openweather_id": {
+      "type": "integer"
     }
   }
 }

@@ -12,11 +12,13 @@ module.exports = {
 
   /**“At minute 0 past every 3rd hour from 1 through 23.” */
   '0 1/3 * * *': async () => {
+  // '1/1 * * * *': async () => {
     Weather.runWeatherCron();
   },
 
-  '0 7 * * */1': async () => {
-  // '1/1 * * * *': async () => {
+  /** Create Tasks from Recurring Tasks - add Scheduler Volunteers if any */
+  // '0 7 * * */1': async () => {
+  '1/1 * * * *': async () => {
     const recurringTasks = await strapi.db.query('api::recurring-task.recurring-task')
       .findMany({
         where: {},
@@ -36,56 +38,13 @@ module.exports = {
           },
           populate: { recurring_task: true, volunteers:true }
         });
-        console.log('curtask data: ', curTask, recTask.id);
 
         /** SCHEDULER */
-        let scheduledUser = null;
-        // console.log(recTask)
 
-        const schedulers = await strapi.db.query('api::scheduler.scheduler')
-        .findMany({
-          where: {recurring_task: recTask.id},
-          populate: { volunteer: true }
-        });
-  
-        // console.log(schedulers)
-        if (schedulers && schedulers.length > 0) {
-          const dayOfWeekName = new Date().toLocaleString(
-            'default', {weekday: 'long'}
-          );
-          console.log(dayOfWeekName)
-          for (let scheduledDay of schedulers) {
-            if (scheduledDay.day == dayOfWeekName) {
-              scheduledUser = scheduledDay.volunteer;
-            }
-          }
+        let scheduledUser = await Helper.getScheduledVolunteer(recTask);
 
-        }
-        // SKIP IF ALREADY INITIALIZED
-        if (curTask && curTask.recurring_task) {
-          if (scheduledUser && !curTask.volunteers.length) {
-            curTask.volunteer = scheduledUser;
-            await gardenTaskService.update({
-              data:{ volunteers: scheduledUser },
-              where: {id: curTask.id}
-            });
-            console.log("added volunteer onto: ", curTask.id);
-          }
-          continue; 
-        }
-        // Someone could have it started, how many people can work on a task at same time?
-        // console.log("setting task: ", recTask)
-        let newTask = await gardenTaskService.create({
-          data: {
-            title:recTask.title,
-            status:'INITIALIZED',
-            garden:recTask.garden,
-            overview:recTask.overview,
-            recurring_task:recTask.id,
-            volunteers: scheduledUser
-          }
-        });
-        console.log('newtask added: ',newTask.title, newTask.id);
+        await Helper.buildSchedulerTask(curTask, recTask, scheduledUser);
+
       }
     } catch (err) {
       console.error(err);
@@ -107,13 +66,18 @@ module.exports = {
           return;
         }
       }
-      await Helper.handleInitialTasks();
-  
-      await Helper.handleStartedTasks();
+      try {
+        await Helper.handleInitialTasks();
+    
+        await Helper.handleStartedTasks();
+      } catch (err) {
+        console.log("ERR taskReminders: ", err);
+      }
   
     },
     options: {
-       rule: '2 1/2 * * *',
+       rule: '1/1 * * * *',
+      //  rule: '2 1/2 * * *',
        tz: 'America/Los_Angeles',
     },
   },
