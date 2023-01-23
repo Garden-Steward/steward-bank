@@ -1,17 +1,20 @@
-# fly.toml file generated for steward-bank on 2023-01-19T16:02:22-08:00
+# fly.toml file generated for steward-bank on 2023-01-22T20:43:59-08:00
 
 app = "steward-bank"
 kill_signal = "SIGINT"
 kill_timeout = 5
+processes = []
 
 [env]
 
 [experimental]
   auto_rollback = true
+  private_network = true
 
 [[services]]
   http_checks = []
   internal_port = 8080
+  processes = ["app"]
   protocol = "tcp"
   script_checks = []
   [services.concurrency]
