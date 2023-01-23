@@ -12,10 +12,10 @@ module.exports = {
   // fetchSms: async (ctx, next) => {
   fetchSms: async ({request}) => {
 
-    request = {'body':{
-      'From': '+13038833333',
-      'Body': 'Cameron Von Bumpberbutt'
-    }};
+    // request = {'body':{
+    //   'From': '+13038833333',
+    //   'Body': 'Cameron Von Bumpberbutt'
+    // }};
     const phoneNumber = request.body.From;
     const gardenTaskService = strapi.db.query('api::garden-task.garden-task');
     const responseText = request.body.Body.toLowerCase().trim();
