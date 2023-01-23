@@ -19,7 +19,6 @@ WORKDIR /app
 # Ref: https://classic.yarnpkg.com/lang/en/docs/cli/install/#toc-yarn-install-production-true-false
 
 ENV NODE_ENV production
-ENV DATABASE_NAME steward_bank
 
 COPY . .
 
@@ -36,5 +35,3 @@ ENV NODE_ENV production
 ENV PATH /root/.volta/bin:$PATH
 
 CMD [ "yarn", "run", "start" ]
-
-RUN sleep 160
