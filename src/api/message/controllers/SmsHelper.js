@@ -1,30 +1,8 @@
 const SmsHelper = {};
 
-/**
- * 
- * @param {obj} garden 
- * @param {obj} user 
- * @returns A task object that contains a scheduler.
+/***
+ * Updates tasks like "yes" to find certain status Garden Tasks and update them.
  */
-// SmsHelper.getGardenTaskByUserAndGarden = async(garden,user) => {
-//   // find the most relevant open task. This is for recurring tasks that have schedulers
-//   const gardenTaskService = strapi.db.query('api::garden-task.garden-task');
-//   try {
-//     let opentasks = await gardenTaskService.findMany({
-//       data: {_limit: 5, garden,user,status:{$in:['INITIALIZED','STARTED']}},
-//       populate: {recurring_task: true, recurring_task.schedulers : true}
-//     });
-//     console.log(`found ${opentasks.length} tasks open for ${user.firstName}`);
-//     opentasks = opentasks.sort((a,b) => Date.parse(new Date(b.updatedAt)) - Date.parse(new Date(a.updatedAt)));
-//     for (let task of opentasks) {
-//       if (task.recurringtask) {
-//         return task;
-//       }
-//     }
-//   } catch(err) {
-//     console.log('getGardenTaskByUserAndGarden ERROR: bad user or garden: ', err);
-//   }
-// };
 SmsHelper.handleGardenTask = async(smsText, user) => {
   try {
     console.log("updating task yes start")
