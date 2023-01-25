@@ -13,49 +13,24 @@ module.exports = {
   fetchSms: async ({request}) => {
 
     // request = {'body':{
-    //   'From': '+13038833333',
-    //   'Body': 'Cameron Von Bumpberbutt'
+    //   'From': '+13038833334',
+    //   'Body': 'yeaah'
     // }};
     const phoneNumber = request.body.From;
-    const gardenTaskService = strapi.db.query('api::garden-task.garden-task');
-    const responseText = request.body.Body.toLowerCase().trim();
+    let responseText = request.body.Body.toLowerCase().trim();
 
-    console.log('Incoming from: ', phoneNumber, request);
+    console.log('Incoming from: ', phoneNumber);
     const twiml = new MessagingResponse();
-    let user = null;
-    try {
-      user = await strapi
-        .query("plugin::users-permissions.user")
-        .findOne({
-          where:{
-            phone_number: phoneNumber
-          },
-          populate: {
-            gardens: true,
-            activeGarden: true
-          }
-        });
 
-    } catch(err) {
-      console.log('err on user find by phone number: ', err);
-    }
-
-    // Acceptable non user flows:
-    // saying "Volunteer" we ask them their email and save the user.
-    // Giving us their email address we create a new user
-    // responseText turns to "signup"
     let smsBody = '';
     let smsType = 'reply';
-    let garden = null;
+    // let garden = null;
     let smsInfo = null;
-    let email = false;
-    if (user && user.email === 'test@test.com') {
-      // eslint-disable-next-line no-useless-escape
-      const emailValidation = new RegExp('[a-z0-9]+@[a-z]+\.[a-z]{2,3}');
-      if (emailValidation.test(responseText)) {
-        email = true;
-      }
-    }
+
+    const user = await SmsHelper.getUser( phoneNumber );
+    const garden = await SmsHelper.checkGarden( responseText );
+    const email = SmsHelper.checkEmail( user, responseText );
+    responseText = SmsHelper.simplifySms( responseText, garden );
 
     switch (responseText) {
 
@@ -67,40 +42,11 @@ module.exports = {
         break;
 
       case 'yes':
-      case 'yep':
-      case 'yah':
-      case 'yeah':
-        try {
-          console.log("updating task yes start")
-
-          garden = await gardenTaskService.update({
-            data: {
-              status: 'STARTED',
-              started_at: new Date(new Date().getTime())
-            },
-            where: {
-              status: 'INITIALIZED',
-              type: 'Water',
-              // volunteers: {
-              //   phone_number: {
-              //     $contains: phoneNumber
-              //   },
-              // }
-            },
-            // populate: { volunteers: true }
-          }, {
-          });
-          
-          smsBody = 'That\'s great! Let me know with FINISHED once you\'re done :)';
-        } catch (err) {
-          console.log(err);
-          smsBody = 'Couldn\'t find anything?';
-        }
-
+        smsInfo = await SmsHelper.handleGardenTask(responseText, user);
         break;
 
-      case 'volunteer':
-        smsInfo = await SmsHelper.newVolunteer(user, phoneNumber);
+      case 'garden':
+        smsInfo = await SmsHelper.joinGarden(user, phoneNumber, garden);
         break;
 
       case 'skip':
@@ -146,14 +92,6 @@ module.exports = {
     }
 
     twiml.message(smsBody);
-    
-    if (user && garden == null) {
-      if (user.activeGarden == null) {
-        garden = user.gardens[0];
-      } else {
-        garden = user.activeGarden;
-      }
-    }
 
     await SmsHelper.saveMessage(user,smsType, garden, smsBody, null, request.body.Body);
 

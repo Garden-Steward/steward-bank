@@ -29,6 +29,11 @@
     },
     "openweather_id": {
       "type": "integer"
+    },
+    "sms_slug": {
+      "type": "string",
+      "unique": true,
+      "required": true
     }
   }
 }

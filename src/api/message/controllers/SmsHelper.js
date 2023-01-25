@@ -25,18 +25,127 @@ const SmsHelper = {};
 //     console.log('getGardenTaskByUserAndGarden ERROR: bad user or garden: ', err);
 //   }
 // };
+SmsHelper.handleGardenTask = async(smsText, user) => {
+  try {
+    console.log("updating task yes start")
+    let data = {};
+    let origStatus = '';
+    if (!user) {
+      return {body: "Sorry you have to be a registered volunteer to use this service", type: "reply"}
+    }
+    if (smsText == 'yes') {
+      data = {
+        status: 'STARTED',
+        started_at: new Date(new Date().getTime())
+      }
+      origStatus = 'INITIALIZED'
+    }  
 
-SmsHelper.newVolunteer = async(user, phoneNumber) => {
+    const gardenTask = await strapi.db.query('api::garden-task.garden-task').findOne({
+      where: {
+        status: origStatus
+      },
+      populate: {
+        volunters : {
+          where: {
+            email: user.email
+          }
+        }
+      }
+    });
+
+    // The user has a task ready to be updated!
+    if (gardenTask) {
+      await strapi.db.query('api::garden-task.garden-task').update({
+        data,
+        where: {
+          id: gardenTask.id
+        }
+      });
+      return {body: 'That\'s great! Let me know with FINISHED once you\'re done :)', type:'reply'}
+    } else {
+      return {body: 'No open tasks for you at the moment, but loving the enthusiasm!!', type:'reply'}
+    }
+    
+  } catch (err) {
+    console.log(err);
+    // smsBody = ;
+    return {body: 'Couldn\'t find anything?', type:'reply'}
+  }
+
+}
+
+SmsHelper.checkGarden = async( smsText ) => {
+  let gardenSmsSlug = null
+  smsText = (smsText.startsWith('elder')) ? (gardenSmsSlug = 'elder') : smsText;
+  smsText = (smsText.startsWith('volunt')) ? (gardenSmsSlug = 'grav') : smsText;
+  smsText = (smsText.startsWith('grav')) ? (gardenSmsSlug = 'grav') : smsText;
+  if (gardenSmsSlug) {
+    return strapi.db.query("api::garden.garden").findOne({where:{sms_slug: gardenSmsSlug}});
+  } else {
+    return false;
+  }
+
+}
+
+SmsHelper.simplifySms = ( smsText, garden ) => {
+  if (garden) {
+    return 'garden'
+  }
+  smsText = (smsText.startsWith('ye')) ? 'yes' : smsText
+  return smsText;
+}
+SmsHelper.checkEmail = ( user, smsText ) => {
+  let email = false;
+  if (user && user.email === 'test@test.com') {
+    // eslint-disable-next-line no-useless-escape
+    const emailValidation = new RegExp('[a-z0-9]+@[a-z]+\.[a-z]{2,3}');
+    if (emailValidation.test(smsText)) {
+      email = true;
+    }
+  }
+  return email;
+}
+
+SmsHelper.getUser = async(phoneNumber)  => {
+  let user = null;
+  try {
+    return strapi
+      .query("plugin::users-permissions.user")
+      .findOne({
+        where:{
+          phone_number: phoneNumber
+        },
+        populate: {
+          gardens: true,
+          activeGarden: true
+        }
+      });
+
+  } catch(err) {
+    console.log('err on user find by phone number: ', err);
+  }
+}
+
+SmsHelper.joinGarden = async(user, phoneNumber, garden) => {
   console.log('new volunteer: ', phoneNumber);
   if (!user) {//.query("plugin::users-permissions.user")
+    console.log('no user garden', garden);
     await strapi.db.query("plugin::users-permissions.user").create({ 
-      data: {phoneNumber, username: phoneNumber, email: 'test@test.com'}
+      data: {phoneNumber, username: phoneNumber, email: 'test@test.com', activeGarden: garden, gardens: garden}
     });
-    return {body: 'So glad to hear you\'re interested in volunteering for the Gravity Garden. To start could we have your email?',type:'question'};
+    return {body: `So glad to hear you\'re interested in volunteering for ${garden.title}. To start could we have your email?`,type:'question'};
   } else if (user.email == 'test@test.com') {
     return {body: 'Looks like we still need an email, what email would you like to be informed about volunteering?',type:'question'};
+  } else {
+    if (garden) {
+      user.activeGarden = garden.id;
+      user.gardens.push(garden.id);
+      await strapi.db.query("plugin::users-permissions.user").update({where:{id: user.id}, data: user});
+    }
   }
-  
+  // We should show them upcoming volunteer events!
+  // @TODO!!
   return {body: 'Looks like you\'re already a volunteer! You\'ll get the next volunteer day notification.',type:'reply'};
 };
 
