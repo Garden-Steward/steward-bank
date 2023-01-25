@@ -25,6 +25,8 @@ Helper.handleInitialTasks = async() => {
     populate: { garden: true, volunteers: true }
   });
 
+  console.log("init tasks: ", initTasks.length);
+
   for (let initTask of initTasks) {
     if (initTask.title.indexOf('Water') > -1) {
       Helper.sendWaterSms(initTask);
@@ -64,7 +66,7 @@ Helper.buildSchedulerTask = async(curTask, recTask, scheduledUser) => {
     if (curTask && curTask.recurring_task) {
       if (scheduledUser && !curTask.volunteers.length) {
         curTask.volunteer = scheduledUser;
-        await gardenTaskService.update({
+        await strapi.db.query('api::garden-task.garden-task').update({
           data:{ volunteers: scheduledUser },
           where: {id: curTask.id}
         });
