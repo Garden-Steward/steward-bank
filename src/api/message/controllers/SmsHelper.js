@@ -107,19 +107,29 @@ SmsHelper.getUser = async(phoneNumber)  => {
 
 SmsHelper.joinGarden = async(user, phoneNumber, garden) => {
   console.log('new volunteer: ', phoneNumber);
+
   if (!user) {//.query("plugin::users-permissions.user")
-    console.log('no user garden', garden);
+    console.log('no user garden', garden.title);
     await strapi.db.query("plugin::users-permissions.user").create({ 
       data: {phoneNumber, username: phoneNumber, email: 'test@test.com', activeGarden: garden, gardens: garden}
     });
     return {body: `So glad to hear you\'re interested in volunteering for ${garden.title}. To start could we have your email?`,type:'question'};
+
   } else if (user.email == 'test@test.com') {
     return {body: 'Looks like we still need an email, what email would you like to be informed about volunteering?',type:'question'};
+
   } else {
     if (garden) {
       user.activeGarden = garden.id;
-      user.gardens.push(garden.id);
+      let existingGarden = user.gardens.find(g=> g.id == garden.id);
+      if (!existingGarden) {
+        user.gardens.push(garden.id);
+        await strapi.db.query("plugin::users-permissions.user").update({where:{id: user.id}, data: user});
+        return {body: `Thanks for signing up for ${garden.title}. You\'ll start to receive notification about volunteer days.`,type:'complete'};
+      }
       await strapi.db.query("plugin::users-permissions.user").update({where:{id: user.id}, data: user});
+      return {body: `You\'ve successfully changed your active garden to ${garden.title}.`,type:'complete'};
+
     }
   }
   // We should show them upcoming volunteer events!
