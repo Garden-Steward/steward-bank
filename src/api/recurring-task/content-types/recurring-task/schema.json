@@ -20,8 +20,9 @@
     },
     "garden": {
       "type": "relation",
-      "relation": "oneToOne",
-      "target": "api::garden.garden"
+      "relation": "manyToOne",
+      "target": "api::garden.garden",
+      "inversedBy": "recurring_tasks"
     },
     "complete_once": {
       "type": "boolean"

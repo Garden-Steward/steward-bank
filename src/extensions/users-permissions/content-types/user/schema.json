@@ -76,14 +76,15 @@
       "type": "string"
     },
     "profilePhoto": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
       "allowedTypes": [
         "images",
         "files",
         "videos",
         "audios"
-      ],
-      "type": "media",
-      "multiple": false
+      ]
     },
     "firstName": {
       "type": "string"
@@ -96,8 +97,9 @@
     },
     "gardens": {
       "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::garden.garden"
+      "relation": "manyToMany",
+      "target": "api::garden.garden",
+      "inversedBy": "volunteers"
     },
     "activeGarden": {
       "type": "relation",
