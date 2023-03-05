@@ -5,9 +5,26 @@
  */
 
 const { createCoreController } = require('@strapi/strapi').factories;
-const { format } = require('date-fns');
+const VdayHelper = require('./VdayHelper');
+
 
 module.exports = createCoreController('api::volunteer-day.volunteer-day', ({strapi}) => ({
+
+    testSms: async ctx => {
+      try {
+        const vDay = await strapi.db.query('api::volunteer-day.volunteer-day').findOne({
+          where: {id: ctx.params.id},
+          populate: ['garden', 'garden.volunteers']
+        });
+        const copy = VdayHelper.buildDayCopy(vDay);
+        console.log("copy: ", copy);
+        return {copy: copy}
+
+      } catch (err) {
+        console.log(err);
+        return {error:"Failed to load this Volunteer Day."}
+      }
+    },
 
     groupSms: async ctx => {
       const accountSid = process.env.TWILIO_ACCOUNT_SID ;
@@ -24,10 +41,10 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
       let sentInfo = [];
       for (const volunteer of vDay.garden.volunteers) {
         let user = await strapi.db.query("plugin::users-permissions.user").findOne({id:volunteer});
-        let startTime = format(new Date(`${vDay.date} ${vDay.startTime}`),'H:mma');
+        const copy = VdayHelper.buildDayCopy(vDay);
         await client.messages
           .create({
-            body: `${vDay.garden.title} Upcoming Volunteer Day: ${vDay.title}. ${vDay.blurb}. ${vDay.date}, ${startTime} to about noon. Hope to see you there!`,
+            body: copy,
             from: twilioNum,
             to: user.phoneNumber
           });
