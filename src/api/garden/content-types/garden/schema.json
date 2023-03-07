@@ -39,7 +39,7 @@
       "type": "relation",
       "relation": "manyToMany",
       "target": "plugin::users-permissions.user",
-      "inversedBy": "gardens"
+      "mappedBy": "gardens"
     },
     "recurring_tasks": {
       "type": "relation",
