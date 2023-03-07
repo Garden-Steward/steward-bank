@@ -25,7 +25,8 @@
       "type": "float"
     },
     "title": {
-      "type": "string"
+      "type": "string",
+      "required": true
     },
     "openweather_id": {
       "type": "integer"
