@@ -39,16 +39,15 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
       });
 
       let sentInfo = [];
+      const copy = VdayHelper.buildDayCopy(vDay);
       for (const volunteer of vDay.garden.volunteers) {
-        let user = await strapi.db.query("plugin::users-permissions.user").findOne({id:volunteer});
-        const copy = VdayHelper.buildDayCopy(vDay);
         await client.messages
           .create({
             body: copy,
             from: twilioNum,
-            to: user.phoneNumber
+            to: volunteer.phoneNumber
           });
-        sentInfo.push(user.phoneNumber);
+        sentInfo.push(volunteer.phoneNumber);
       }
     
       return  sentInfo;
