@@ -1,7 +1,7 @@
 'use strict';
 
 const Weather = require('./weather.js');
-
+const VdayHelper = require('../../src/api/volunteer-day/controllers/VdayHelper')
 /**
  * An asynchronous bootstrap function that runs before
  * your application gets started.
@@ -33,6 +33,21 @@ Helper.handleInitialTasks = async() => {
     }
   }
 };
+
+Helper.handleVolunteerReminders = async() => {
+  const vDays = await VdayHelper.getUpcomingVdays();
+  for (let vDay of vDays) {
+    console.log("3 days: ", vDay.startDatetime);
+    let copy = VdayHelper.buildUpcomingDayCopy(vDay);
+    VdayHelper.sendMessage(vDay, copy);
+  }
+  const todDays = await VdayHelper.getTodayVdays();
+  for (let tDay of todDays) {
+    console.log("today: ", tDay.startDatetime);
+    let copy = VdayHelper.buildTodayCopy(tDay);
+    VdayHelper.sendMessage(tDay, copy);
+  }
+}
 
 Helper.sendWaterSms = async(waterTask) => {
   // const weather = await Helper.getWeather(waterTask.garden);

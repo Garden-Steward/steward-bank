@@ -15,12 +15,6 @@
     "title": {
       "type": "string"
     },
-    "date": {
-      "type": "date"
-    },
-    "startTime": {
-      "type": "time"
-    },
     "blurb": {
       "type": "text"
     },
@@ -31,6 +25,17 @@
     },
     "daysJournal": {
       "type": "richtext"
+    },
+    "startDatetime": {
+      "type": "datetime"
+    },
+    "endText": {
+      "type": "string"
+    },
+    "disabled": {
+      "type": "boolean",
+      "default": false,
+      "required": true
     }
   }
 }

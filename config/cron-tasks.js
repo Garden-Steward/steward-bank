@@ -53,7 +53,7 @@ module.exports = {
  
   taskReminders: {
     task: async({ strapi }) => {
-      strapi.log.info('triggering SMS notification');
+      strapi.log.info('triggering taskReminders cron');
       const d = new Date();
       d.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' });
       let hour = d.getHours();
@@ -78,6 +78,23 @@ module.exports = {
     options: {
       //  rule: '1/1 * * * *',
        rule: '2 1/2 * * *',
+       tz: 'America/Los_Angeles',
+    },
+  },
+
+  sendVolunteerReminder: {
+    task: async({ strapi }) => {
+      strapi.log.info('triggering sendVolunteerReminder cron');
+      try {
+        await Helper.handleVolunteerReminders();
+          } catch (err) {
+        console.log("ERR sendVolunteerReminder: ", err);
+      }
+  
+    },
+    options: {
+      //  rule: '1/1 * * * *',
+       rule: '5 8 * * *',
        tz: 'America/Los_Angeles',
     },
   },

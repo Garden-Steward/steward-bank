@@ -16,7 +16,7 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
           where: {id: ctx.params.id},
           populate: ['garden', 'garden.volunteers']
         });
-        const copy = VdayHelper.buildDayCopy(vDay);
+        const copy = VdayHelper.buildUpcomingDayCopy(vDay);
         console.log("copy: ", copy);
         return {copy: copy}
 
@@ -39,7 +39,7 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
       });
 
       let sentInfo = [];
-      const copy = VdayHelper.buildDayCopy(vDay);
+      const copy = VdayHelper.buildUpcomingDayCopy(vDay);
       for (const volunteer of vDay.garden.volunteers) {
         await client.messages
           .create({
