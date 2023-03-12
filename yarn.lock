@@ -1644,6 +1644,29 @@
     colors "~1.2.1"
     string-argv "~0.3.1"
 
+"@sendgrid/client@^7.7.0":
+  version "7.7.0"
+  resolved "https://registry.yarnpkg.com/@sendgrid/client/-/client-7.7.0.tgz#f8f67abd604205a0d0b1af091b61517ef465fdbf"
+  integrity sha512-SxH+y8jeAQSnDavrTD0uGDXYIIkFylCo+eDofVmZLQ0f862nnqbC3Vd1ej6b7Le7lboyzQF6F7Fodv02rYspuA==
+  dependencies:
+    "@sendgrid/helpers" "^7.7.0"
+    axios "^0.26.0"
+
+"@sendgrid/helpers@^7.7.0":
+  version "7.7.0"
+  resolved "https://registry.yarnpkg.com/@sendgrid/helpers/-/helpers-7.7.0.tgz#93fb4b6e2f0dc65080440d6a784cc93e8e148757"
+  integrity sha512-3AsAxfN3GDBcXoZ/y1mzAAbKzTtUZ5+ZrHOmWQ279AuaFXUNCh9bPnRpN504bgveTqoW+11IzPg3I0WVgDINpw==
+  dependencies:
+    deepmerge "^4.2.2"
+
+"@sendgrid/mail@7.7.0":
+  version "7.7.0"
+  resolved "https://registry.yarnpkg.com/@sendgrid/mail/-/mail-7.7.0.tgz#aba09f5ce2e9d8ceee92284c3ea8b4a90b0e38fe"
+  integrity sha512-5+nApPE9wINBvHSUxwOxkkQqM/IAAaBYoP9hw7WwgDNQPxraruVqHizeTitVtKGiqWCKm2mnjh4XGN3fvFLqaw==
+  dependencies:
+    "@sendgrid/client" "^7.7.0"
+    "@sendgrid/helpers" "^7.7.0"
+
 "@sentry/core@6.19.7":
   version "6.19.7"
   resolved "https://registry.yarnpkg.com/@sentry/core/-/core-6.19.7.tgz#156aaa56dd7fad8c89c145be6ad7a4f7209f9785"
@@ -2066,6 +2089,14 @@
   resolved "https://registry.yarnpkg.com/@strapi/provider-audit-logs-local/-/provider-audit-logs-local-4.6.1.tgz#62f3634a85d20f972502ead2be83ceb182f02a5c"
   integrity sha512-BkjxW+Nt1zBTUZ6XSI/2R3+hf73g0OATU8klk8CZOM4zQcWm9vc+1vti3yvGYYEWzv3T2iJzhIJAIV5CP0BnsA==
 
+"@strapi/provider-email-sendgrid@^4.7.1":
+  version "4.7.1"
+  resolved "https://registry.yarnpkg.com/@strapi/provider-email-sendgrid/-/provider-email-sendgrid-4.7.1.tgz#ce03a44411763f2f394089a3cf116a842e71f779"
+  integrity sha512-SwZ3319Xlj39FrH+hMiGIJvFK2LfkadL4+ZdQQ3PIb1+KK7MK+PiMAXXJXBt9Bq18+porg/HFir09tOmfcFd2A==
+  dependencies:
+    "@sendgrid/mail" "7.7.0"
+    "@strapi/utils" "4.7.1"
+
 "@strapi/provider-email-sendmail@4.6.1":
   version "4.6.1"
   resolved "https://registry.yarnpkg.com/@strapi/provider-email-sendmail/-/provider-email-sendmail-4.6.1.tgz#4dd390557f236f26d18294668d6fa24ec3c9f18d"
@@ -2158,6 +2189,18 @@
   version "4.6.1"
   resolved "https://registry.yarnpkg.com/@strapi/utils/-/utils-4.6.1.tgz#5e2b600d230ace703d479880fd3ae65aa2f42b78"
   integrity sha512-rsECsXyRuL3Hi12cfsSVHS07JXrMR1eT+gWaTC2KxtHRiLsueELEKG08h13tlMwRfvvhzPcjqB11qNs3bI17iA==
+  dependencies:
+    "@sindresorhus/slugify" "1.1.0"
+    date-fns "2.29.3"
+    http-errors "1.8.1"
+    lodash "4.17.21"
+    p-map "4.0.0"
+    yup "0.32.9"
+
+"@strapi/utils@4.7.1":
+  version "4.7.1"
+  resolved "https://registry.yarnpkg.com/@strapi/utils/-/utils-4.7.1.tgz#d019f9f10d3856e1aff3ffe670ad7564b6005ad8"
+  integrity sha512-qlUG5//Rk1Yr+PYcE9S+Q76qjxFIQBZEkw8psk6E287bO8Fd7AKshF1HXaQJkSD+hncYnPmLt5Uhe/r22xX/PA==
   dependencies:
     "@sindresorhus/slugify" "1.1.0"
     date-fns "2.29.3"
@@ -2980,7 +3023,7 @@ axios@1.2.2, axios@^1.2.2:
     form-data "^4.0.0"
     proxy-from-env "^1.1.0"
 
-axios@^0.26.1:
+axios@^0.26.0, axios@^0.26.1:
   version "0.26.1"
   resolved "https://registry.yarnpkg.com/axios/-/axios-0.26.1.tgz#1ede41c51fcf51bbbd6fd43669caaa4f0495aaa9"
   integrity sha512-fPwcX4EvnSHuInCMItEhAGnaSEXRBjtzh9fOtsE6E1G6p7vl7edEeZe11QHf18+6+9gR5PbKV/sGKNaD8YaMeA==
