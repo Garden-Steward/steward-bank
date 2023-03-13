@@ -1,4 +1,6 @@
-const { format, addHours, addDays } = require('date-fns');
+const { addHours, addDays } = require('date-fns');
+const {format,utcToZonedTime,} = require("date-fns-tz");
+
 const VdayHelper = {};
 const accountSid = process.env.TWILIO_ACCOUNT_SID ;
 const authToken = process.env.TWILIO_AUTH_TOKEN  ;
@@ -13,8 +15,10 @@ VdayHelper.buildUpcomingDayCopy = (vDay) => {
   if (!vDay.garden) {
     return "This Volunteer Day is experiencing an issue with it's garden connection.";
   }
-  let date = format(new Date(`${vDay.startDatetime}`),'MMM d');
-  let startTime = format(new Date(`${vDay.startDatetime}`),'h:mmaaa');
+  const timeZone = 'America/Los_Angeles'; // Let's see what time it is Down Under
+  const pacificTime = utcToZonedTime(new Date(`${vDay.startDatetime}`), timeZone);
+  let date = format(pacificTime, 'MMM d');
+  let startTime = format(pacificTime, 'h:mmaaa');
   let copy = `${vDay.garden.title} has an upcoming volunteer day! Come by for "${vDay.title}". ${vDay.blurb} ${date}, ${startTime} to ${vDay.endText}.`
   return copy
 }

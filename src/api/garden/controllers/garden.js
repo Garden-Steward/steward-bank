@@ -9,7 +9,6 @@ const { createCoreController } = require('@strapi/strapi').factories;
 module.exports = createCoreController('api::garden.garden', ({ strapi }) => ({
   // Method 1: Creating an entirely custom action
   async fullSlug(ctx) {
-    console.log(ctx.params, ctx.query)
     const entity = await strapi.db.query('api::garden.garden').findOne({
       where: {slug: ctx.params.slug},
       populate: { recurring_tasks: true, volunteers:true }
@@ -26,7 +25,6 @@ module.exports = createCoreController('api::garden.garden', ({ strapi }) => ({
   
   async find(ctx) {
     if (ctx.state.user.role.type !== 'administrator') {
-      console.log(ctx.state.user)
 
       const gardens = await strapi.db.query('api::garden.garden').findMany({
         where: {

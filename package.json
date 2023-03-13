@@ -18,6 +18,7 @@
     "@strapi/strapi": "4.6.1",
     "axios": "^1.2.2",
     "better-sqlite3": "7.4.6",
+    "date-fns-tz": "^2.0.0",
     "pg": "^8.8.0",
     "twilio": "^3.84.1"
   },
