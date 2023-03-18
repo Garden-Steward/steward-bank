@@ -74,7 +74,7 @@ VdayHelper.getTodayVdays = () => {
 
 
 VdayHelper.sendMessage = (vDay, copy) => {
-  strapi.service('api::volunteer-day.volunteer-day').sendGroupMsg(vDay,copy);
+  return strapi.service('api::volunteer-day.volunteer-day').sendGroupMsg(vDay,copy);
 }
 
 module.exports = VdayHelper;

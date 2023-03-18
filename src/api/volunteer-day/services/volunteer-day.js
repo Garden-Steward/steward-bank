@@ -28,12 +28,12 @@ module.exports = createCoreService('api::volunteer-day.volunteer-day', ({ strapi
       sentInfo.push(volunteer.phoneNumber);
     }
 
-    let response = { okay: true }
+    // let response = { okay: true }
 
-    if (response.okay === false) {
-      return { response, error: true }
-    }
+    // if (response.okay === false) {
+    //   return { response, error: true }
+    // }
 
-    return response
+    return sentInfo
   },
 }));

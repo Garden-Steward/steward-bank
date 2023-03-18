@@ -36,17 +36,20 @@ Helper.handleInitialTasks = async() => {
 
 Helper.handleVolunteerReminders = async() => {
   const vDays = await VdayHelper.getUpcomingVdays();
+  let messagesSent = []
   for (let vDay of vDays) {
     console.log("3 days: ", vDay.startDatetime);
     let copy = VdayHelper.buildUpcomingDayCopy(vDay);
-    VdayHelper.sendMessage(vDay, copy);
+    messagesSent = VdayHelper.sendMessage(vDay, copy);
   }
   const todDays = await VdayHelper.getTodayVdays();
   for (let tDay of todDays) {
     console.log("today: ", tDay.startDatetime);
     let copy = VdayHelper.buildTodayCopy(tDay);
-    VdayHelper.sendMessage(tDay, copy);
+    messagesSent = VdayHelper.sendMessage(tDay, copy);
   }
+  console.log("messages sent: ", messagesSent);
+  return messagesSent
 }
 
 Helper.sendWaterSms = async(waterTask) => {
