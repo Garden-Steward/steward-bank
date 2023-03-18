@@ -27,12 +27,12 @@ module.exports = {
     const gardenTaskService = strapi.db.query('api::garden-task.garden-task');
     let curTask, recTask;
     try {
-      console.log('cronned');
+      console.log('recurringTasks cronned count: ', recurringTasks.lenth);
       for (recTask of recurringTasks) {
         // If at least one of this type of recurring task is Initialized, skip
         curTask = await gardenTaskService.findOne({
           where: {
-            status:{$ne:'FINISHED'}, //$notIn: ['Hello', 'Hola', 'Bonjour']
+            status:{$notIn: ['FINISHED', 'SKIPPED', 'ABANDONED']}, //$notIn: ['Hello', 'Hola', 'Bonjour']
             recurring_task: recTask.id, 
             garden:recTask.garden
           },
