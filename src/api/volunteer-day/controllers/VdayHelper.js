@@ -32,7 +32,7 @@ VdayHelper.buildTodayCopy = (vDay) => {
   const pacificTime = utcToZonedTime(new Date(`${vDay.startDatetime}`), timeZone);
   let date = format(pacificTime, 'MMM d');
   let startTime = format(pacificTime, 'h:mmaaa');
-  let copy = `${vDay.garden.title} has an upcoming volunteer day! Come by for "${vDay.title}". ${vDay.blurb} ${date}, ${startTime} to ${vDay.endText}.`
+  let copy = `Today's the day for ${vDay.garden.title}'s volunteer day! Come by for "${vDay.title}". ${vDay.blurb} ${date}, ${startTime} to ${vDay.endText}.`
   return copy
 }
 /**
