@@ -2,10 +2,6 @@ const { addHours, addDays } = require('date-fns');
 const {format,utcToZonedTime,} = require("date-fns-tz");
 
 const VdayHelper = {};
-const accountSid = process.env.TWILIO_ACCOUNT_SID ;
-const authToken = process.env.TWILIO_AUTH_TOKEN  ;
-const twilioNum =process.env.TWILIONUM;
-const client = require('twilio')(accountSid, authToken);
 
 /***
  * SMS COPY FOR VOLUNTEER DAY CRON EMAILS
