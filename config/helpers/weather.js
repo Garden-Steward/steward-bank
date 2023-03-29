@@ -45,6 +45,7 @@ Weather.getGardenWeather = async(garden) => {
       },
       orderBy: { dt: 'DESC'}
     });
+    console.log(`getGardenWeather found ${weathers.length} weathers`);
     weather = weathers[0];
   } catch(err) {
     console.log('error finding weather', err);

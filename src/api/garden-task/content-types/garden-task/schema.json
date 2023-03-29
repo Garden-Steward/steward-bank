@@ -72,6 +72,12 @@
         "Planting",
         "Harvest"
       ]
+    },
+    "volunteer_day": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::volunteer-day.volunteer-day",
+      "inversedBy": "garden_tasks"
     }
   }
 }

@@ -28,8 +28,10 @@ Helper.handleInitialTasks = async() => {
   console.log("init tasks: ", initTasks.length);
 
   for (let initTask of initTasks) {
-    if (initTask.title.indexOf('Water') > -1) {
+    if (initTask.type == 'Water') {
       Helper.sendWaterSms(initTask);
+    } else {
+      console.log("initTasks not Water, ", initTask.type)
     }
   }
 };
@@ -53,29 +55,30 @@ Helper.handleVolunteerReminders = async() => {
 }
 
 Helper.sendWaterSms = async(waterTask) => {
-  // const weather = await Helper.getWeather(waterTask.garden);
-  const weather = await Weather.getGardenWeather(waterTask.garden);
-  if (waterTask.volunteers[0].phoneNumber) {
-    if (weather.water) {
-      strapi.service('api::sms.sms').handleSms(
-        waterTask, 
-        `Hi ${waterTask.volunteers[0].firstName}, it's your watering day! Are you able to water today? You have some OPTIONS.`, 
-        'question'
-      );
-    } else {
-      try {
-        await Helper.updateTask(waterTask,'SKIPPED');
-      } catch (err) { console.log(err); }
-
-      const lastRain = weather.lastRain.toDateString();
-      strapi.service('api::sms.sms').handleSms(
-        waterTask, 
-        `Hi ${waterTask.volunteers[0].firstName}, don't worry about watering today! Reason: ${weather.rainDescription} on ${lastRain}`, 
-        'notification'
-      );
-    }
-  } else {
+  if (!waterTask.volunteers[0].phoneNumber) {
     console.log('Missing phone number for ',waterTask.volunteers[0].username);
+    return;
+  }
+
+  const weather = await Weather.getGardenWeather(waterTask.garden);
+
+  if (weather.water) {
+    strapi.service('api::sms.sms').handleSms(
+      waterTask, 
+      `Hi ${waterTask.volunteers[0].firstName}, it's your watering day! Are you able to water today? You have some OPTIONS.`, 
+      'question'
+    );
+  } else {
+    try {
+      await Helper.updateTask(waterTask,'SKIPPED');
+    } catch (err) { console.log(err); }
+
+    const lastRain = weather.lastRain.toDateString();
+    strapi.service('api::sms.sms').handleSms(
+      waterTask, 
+      `Hi ${waterTask.volunteers[0].firstName}, don't worry about watering today! Reason: ${weather.rainDescription} on ${lastRain}`, 
+      'notification'
+    );
   }
 };
 

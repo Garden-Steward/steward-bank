@@ -4,7 +4,8 @@
   "info": {
     "singularName": "sms-campaign",
     "pluralName": "sms-campaigns",
-    "displayName": "SMS Campaign"
+    "displayName": "SMS Campaign",
+    "description": ""
   },
   "options": {
     "draftAndPublish": true
@@ -30,7 +31,7 @@
     "denied": {
       "type": "relation",
       "relation": "oneToMany",
-      "target": "api::garden.garden"
+      "target": "plugin::users-permissions.user"
     },
     "body": {
       "type": "text"

@@ -68,7 +68,7 @@ module.exports = {
         break;
   
       default: 
-        smsBody = 'I don\'t understand. Please respond with YES or NO, or if you already said yes let me know when you\'re FINISHED';
+        smsBody = 'I don\'t understand. You can always try OPTIONS to find out more things to do with our service.';
         break;
     }
     console.log("email: ", email)

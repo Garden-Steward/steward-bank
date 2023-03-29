@@ -42,6 +42,19 @@
       "relation": "manyToOne",
       "target": "api::sms-campaign.sms-campaign",
       "inversedBy": "volunteer_days"
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "standard",
+        "meeting"
+      ]
+    },
+    "garden_tasks": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::garden-task.garden-task",
+      "mappedBy": "volunteer_day"
     }
   }
 }

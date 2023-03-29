@@ -225,13 +225,17 @@ SmsHelper.saveMessage = async(user, type, garden, body, garden_task, previous) =
 
 SmsHelper.getHelp = async(user) => {
   const gardenTaskService = strapi.db.query('api::garden-task.garden-task');
-  let tasks = await gardenTaskService.findMany({
-    where: {
-      volunteers: user,
-      status:{$in:['INITIALIZED']}
-    }
-  });
-  return `Hi ${user.firstName}, you have ${tasks.length} open tasks. YES if you can do the task. NO if want to transfer. SKIP if it isn't needed. `;
+  try {
+    let tasks = await gardenTaskService.findMany({
+      where: {
+        volunteers: user,
+        status:{$in:['INITIALIZED']}
+      }
+    });
+    return `Hi ${user.firstName}, you have ${tasks.length} open tasks. YES if you can do the task. NO if want to transfer. SKIP if it isn't needed. `;
+  } catch (err) {
+    return `Hi ${user.firstName}! You can ask to receive a task, and you can join new SMS Groups by texting us their name. More coming!`;
+  }
 };
 
 SmsHelper.finishTask = async(user) => {

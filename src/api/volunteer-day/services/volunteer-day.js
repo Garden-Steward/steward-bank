@@ -17,6 +17,8 @@ module.exports = createCoreService('api::volunteer-day.volunteer-day', ({ strapi
 
     console.log("sendGroupMsg", copy);
     let sentInfo = [];
+    // @TODO: Have there been any SMS campaigns for this volunteer day?
+    // Check deny list of SMS Campaigns before sending
 
     for (const volunteer of vDay.garden.volunteers) {
       await client.messages
@@ -27,6 +29,7 @@ module.exports = createCoreService('api::volunteer-day.volunteer-day', ({ strapi
         });
       sentInfo.push(volunteer.phoneNumber);
     }
+    // @TODO: Check add each "volunteer" onto a new SMS Campaign sent list
 
     // let response = { okay: true }
 
