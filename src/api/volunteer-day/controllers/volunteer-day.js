@@ -10,6 +10,28 @@ const VdayHelper = require('./VdayHelper');
 
 module.exports = createCoreController('api::volunteer-day.volunteer-day', ({strapi}) => ({
 
+    getByGarden: async ctx => {
+      
+      console.log("params: ", ctx.params);
+
+      const entries = await strapi.entityService.findMany('api::volunteer-day.volunteer-day', {
+        filters: {
+          garden: {
+            slug: ctx.params.slug,
+          }
+        },
+        populate: ['garden_tasks']
+      });
+      // return 
+      try {
+        ctx.body = entries;
+      } catch (err) {
+        ctx.body = err;
+      }
+
+
+    },
+
     testSms: async ctx => {
       try {
         const vDay = await strapi.db.query('api::volunteer-day.volunteer-day').findOne({

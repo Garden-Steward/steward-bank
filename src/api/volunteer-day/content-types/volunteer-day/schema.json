@@ -55,6 +55,10 @@
       "relation": "oneToMany",
       "target": "api::garden-task.garden-task",
       "mappedBy": "volunteer_day"
+    },
+    "interest": {
+      "type": "string",
+      "default": "Everyone"
     }
   }
 }

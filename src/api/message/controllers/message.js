@@ -58,6 +58,10 @@ module.exports = {
         smsBody = await SmsHelper.findBackupUsers(user);
         break;
       
+      case 'smiles':
+        smsBody = "You\'re cute, but I'm just a bot ;)"
+        break;
+      
       case 'finished':
       case 'done':
         smsInfo = await SmsHelper.finishTask(user);

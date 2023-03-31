@@ -10,6 +10,12 @@ module.exports = {
       method: 'POST',
       path: '/volunteer-days/sms/:id', 
       handler: 'volunteer-day.groupSms',
-    }
+    },
+    { // Path defined with an URL parameter
+      method: 'GET',
+      path: '/volunteer-days/garden/:slug', 
+      handler: 'volunteer-day.getByGarden',
+    },
+
   ]
 }

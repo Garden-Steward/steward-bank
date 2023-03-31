@@ -73,6 +73,7 @@ SmsHelper.simplifySms = ( smsText, garden ) => {
     return 'garden'
   }
   smsText = (smsText.startsWith('ye')) ? 'yes' : smsText
+  smsText = (smsText.startsWith(':')) ? 'smiles' : smsText
   return smsText;
 }
 SmsHelper.checkEmail = ( user, smsText ) => {

@@ -13,9 +13,14 @@ module.exports = createCoreController('api::garden.garden', ({ strapi }) => ({
       where: {slug: ctx.params.slug},
       populate: { recurring_tasks: true, volunteers:true }
     });
-    // const sanitizedEntity = await this.sanitizeOutput(entity, ctx);
+    
+    const interests = await strapi.db.query('api::interest.interest').findMany({
+      columns:['tag'],
+      where: {gardens: entity.id}
+    });
+    
+    entity.interests = interests;
 
-    // return 
     try {
       ctx.body = this.transformResponse(entity);
     } catch (err) {
