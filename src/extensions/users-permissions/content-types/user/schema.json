@@ -105,6 +105,12 @@
       "type": "relation",
       "relation": "oneToOne",
       "target": "api::garden.garden"
+    },
+    "u_g_interests": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::user-garden-interest.user-garden-interest",
+      "mappedBy": "user"
     }
   }
 }

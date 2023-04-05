@@ -11,7 +11,7 @@ module.exports = createCoreController('api::garden.garden', ({ strapi }) => ({
   async fullSlug(ctx) {
     const entity = await strapi.db.query('api::garden.garden').findOne({
       where: {slug: ctx.params.slug},
-      populate: { recurring_tasks: true, volunteers:true }
+      populate: ["recurring_tasks", "volunteers", "volunteers.u_g_interests", "volunteers.u_g_interests.interest"]
     });
     
     const interests = await strapi.db.query('api::interest.interest').findMany({

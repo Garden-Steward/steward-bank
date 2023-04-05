@@ -1,0 +1,32 @@
+{
+  "kind": "collectionType",
+  "collectionName": "user_garden_interests",
+  "info": {
+    "singularName": "user-garden-interest",
+    "pluralName": "user-garden-interests",
+    "displayName": "User Garden Interest",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "u_g_interests"
+    },
+    "interest": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::interest.interest"
+    },
+    "garden": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::garden.garden"
+    }
+  }
+}
