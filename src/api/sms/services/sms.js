@@ -16,7 +16,8 @@ let sendSms = function(toNum,body){
 };
 
 let handleSms = function(task,body,type, previous){
-  console.log("sms out: ", body);
+  console.log("sms out: ", body, process.env.ENVIRONMENT);
+  if (process.env.ENVIRONMENT == 'test') { return }
     
   try {
     strapi.db.query('api::message.message').create({

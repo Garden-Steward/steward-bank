@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { addDays } = require('date-fns');
 
 const Weather = {};
 
@@ -33,15 +34,19 @@ Weather.runWeatherCron = async() => {
 Weather.getGardenWeather = async(garden) => {
   //
   const fivehours = (5 * 60) * 60; 
-  const threedays = (72 * 60) * 60; 
-  const unixTime = Math.floor(new Date().getTime() / 1000);
+  const unixTime = Math.floor(new Date().getTime() /1000);
+  const threeDaysAgo = addDays(new Date(),-3)
   let weather;
   let weathers = [];
+  let threeDaysAgoUnix = Math.floor(threeDaysAgo.getTime()/1000)
+  
   try {
     weathers = await strapi.db.query('api::weather.weather').findMany({
       where: {
         openweather_id: garden.openweather_id,
-        dt: { $gt: unixTime-threedays }
+        dt: {
+          $gt: threeDaysAgoUnix
+        }
       },
       orderBy: { dt: 'DESC'}
     });
@@ -50,7 +55,6 @@ Weather.getGardenWeather = async(garden) => {
   } catch(err) {
     console.log('error finding weather', err);
   }
-  // console.log(unixTime, weather.dt, fivehours);
   if (!weather || unixTime - weather.dt > fivehours) {
     weather = await Weather.retrieveLatestOW(garden, weather);
     weathers.push(weather);
@@ -60,10 +64,17 @@ Weather.getGardenWeather = async(garden) => {
 };
 
 Weather.needWatering = (allWeathers) => {
+  let waterEvents = []
   for (let weatherObj of allWeathers) {
     if (weatherObj.weather_title == 'Rain' || weatherObj.weather_title == 'Mist') {
-      return {water: false, lastRain: weatherObj.date, rainDescription: weatherObj.description};
+      const recentRain = new Date(weatherObj.date);
+      waterEvents.push({water: false, recentRain: recentRain, rainDescription: weatherObj.description});
     }
+  }
+  if (waterEvents.length == 1) {
+    return {water: false, reason: `${waterEvents[0].rainDescription} on ${waterEvents[0].recentRain.toDateString()}`};
+  } else if (waterEvents.length > 1) {
+    return {water: false, reason: `Multiple rain events starting on ${waterEvents[0].recentRain.toDateString()}`}
   }
   return {water: true};
 };

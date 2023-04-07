@@ -55,17 +55,23 @@ Helper.handleVolunteerReminders = async() => {
   return messagesSent
 }
 
+Helper.sendingWindow = (task) => {
+  const pacificTime = utcToZonedTime(new Date(), 'America/Los_Angeles');
+  let hour = pacificTime.getHours();
+  if (hour < 8 || hour > 18) {
+    console.log("outside of hours, ", hour)
+    return false
+  }
+  return true
+}
+
 Helper.sendWaterSms = async(waterTask) => {
   if (!waterTask.volunteers[0].phoneNumber) {
     console.log('Missing phone number for ',waterTask.volunteers[0].username);
     return;
   }
-  const pacificTime = utcToZonedTime(new Date(), 'America/Los_Angeles');
-  let hour = pacificTime.getHours();
-  if (hour < 8 || hour > 18) {
-    console.log("outside of hours, ", hour)
-    return
-  }
+
+  if (!Helper.sendingWindow(waterTask)) { return }
 
   const weather = await Weather.getGardenWeather(waterTask.garden);
 
@@ -80,10 +86,10 @@ Helper.sendWaterSms = async(waterTask) => {
       await Helper.updateTask(waterTask,'SKIPPED');
     } catch (err) { console.log(err); }
 
-    const lastRain = weather.lastRain.toDateString();
+    
     strapi.service('api::sms.sms').handleSms(
       waterTask, 
-      `Hi ${waterTask.volunteers[0].firstName}, don't worry about watering today! Reason: ${weather.rainDescription} on ${lastRain}`, 
+      `Hi ${waterTask.volunteers[0].firstName}, don't worry about watering today! Reason: ${weather.reason}`, 
       'notification'
     );
   }
