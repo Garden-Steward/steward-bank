@@ -2,6 +2,7 @@
 
 const Weather = require('./weather.js');
 const VdayHelper = require('../../src/api/volunteer-day/controllers/VdayHelper')
+const {utcToZonedTime,} = require("date-fns-tz");
 /**
  * An asynchronous bootstrap function that runs before
  * your application gets started.
@@ -58,6 +59,12 @@ Helper.sendWaterSms = async(waterTask) => {
   if (!waterTask.volunteers[0].phoneNumber) {
     console.log('Missing phone number for ',waterTask.volunteers[0].username);
     return;
+  }
+  const pacificTime = utcToZonedTime(new Date(), 'America/Los_Angeles');
+  let hour = pacificTime.getHours();
+  if (hour < 8 || hour > 18) {
+    console.log("outside of hours, ", hour)
+    return
   }
 
   const weather = await Weather.getGardenWeather(waterTask.garden);

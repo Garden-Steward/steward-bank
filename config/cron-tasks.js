@@ -54,18 +54,6 @@ module.exports = {
   taskReminders: {
     task: async({ strapi }) => {
       strapi.log.info('triggering taskReminders cron');
-      const d = new Date();
-      d.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' });
-      let hour = d.getHours();
-      console.log('taskReminders hour: ',hour);
-  
-      if (process.env.ENVIRONMENT == 'test') {
-        // We are proper with Pacific Time -- Also let's get our crons.
-      } else {
-        if (hour > 9 && hour < 20) {
-          return;
-        }
-      }
       try {
         await Helper.handleInitialTasks();
     
