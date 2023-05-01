@@ -12,11 +12,11 @@
   },
   "pluginOptions": {},
   "attributes": {
-    "volunteer_days": {
+    "volunteer_day": {
       "type": "relation",
-      "relation": "oneToMany",
+      "relation": "manyToOne",
       "target": "api::volunteer-day.volunteer-day",
-      "mappedBy": "sms_campaign"
+      "inversedBy": "sms_campaigns"
     },
     "sent": {
       "type": "relation",

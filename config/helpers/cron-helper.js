@@ -17,7 +17,7 @@ const {utcToZonedTime,} = require("date-fns-tz");
 const Helper = {};
 
 Helper.handleInitialTasks = async() => {
-  console.log("get init");
+  
   let initTasks = await strapi.db.query('api::garden-task.garden-task').findMany({
     where: {
       status: 'INITIALIZED',
@@ -43,13 +43,13 @@ Helper.handleVolunteerReminders = async() => {
   for (let vDay of vDays) {
     console.log("3 days: ", vDay.startDatetime);
     let copy = VdayHelper.buildUpcomingDayCopy(vDay);
-    messagesSent = VdayHelper.sendMessage(vDay, copy);
+    messagesSent = strapi.service('api::volunteer-day.volunteer-day').sendGroupMsg(vDay,copy);
   }
   const todDays = await VdayHelper.getTodayVdays();
   for (let tDay of todDays) {
     console.log("today: ", tDay.startDatetime);
     let copy = VdayHelper.buildTodayCopy(tDay);
-    messagesSent = VdayHelper.sendMessage(tDay, copy);
+    messagesSent = strapi.service('api::volunteer-day.volunteer-day').sendGroupMsg(tDay,copy);
   }
   console.log("messages sent: ", messagesSent);
   return messagesSent

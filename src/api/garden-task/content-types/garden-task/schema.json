@@ -47,17 +47,6 @@
       "relation": "oneToOne",
       "target": "api::garden.garden"
     },
-    "userPhotos": {
-      "type": "media",
-      "multiple": true,
-      "required": false,
-      "allowedTypes": [
-        "images",
-        "files",
-        "videos",
-        "audios"
-      ]
-    },
     "volunteers": {
       "type": "relation",
       "relation": "oneToMany",
@@ -78,6 +67,9 @@
       "relation": "manyToOne",
       "target": "api::volunteer-day.volunteer-day",
       "inversedBy": "garden_tasks"
+    },
+    "max_volunteers": {
+      "type": "integer"
     }
   }
 }

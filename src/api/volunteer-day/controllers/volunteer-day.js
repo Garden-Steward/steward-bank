@@ -12,17 +12,15 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
 
     getByGarden: async ctx => {
       
-      console.log("params: ", ctx.params);
-
       const entries = await strapi.entityService.findMany('api::volunteer-day.volunteer-day', {
+        sort: {startDatetime: 'desc'},
         filters: {
           garden: {
             slug: ctx.params.slug,
           }
         },
-        populate: ['garden_tasks']
+        populate: ['garden_tasks'],
       });
-      // return 
       try {
         ctx.body = entries;
       } catch (err) {

@@ -37,19 +37,6 @@
       "default": false,
       "required": true
     },
-    "sms_campaign": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::sms-campaign.sms-campaign",
-      "inversedBy": "volunteer_days"
-    },
-    "type": {
-      "type": "enumeration",
-      "enum": [
-        "standard",
-        "meeting"
-      ]
-    },
     "garden_tasks": {
       "type": "relation",
       "relation": "oneToMany",
@@ -59,6 +46,12 @@
     "interest": {
       "type": "string",
       "default": "Everyone"
+    },
+    "sms_campaigns": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::sms-campaign.sms-campaign",
+      "mappedBy": "volunteer_day"
     }
   }
 }

@@ -16,11 +16,33 @@ module.exports = createCoreService('api::volunteer-day.volunteer-day', ({ strapi
   async sendGroupMsg(vDay, copy) {
 
     console.log("sendGroupMsg", copy);
+
+    let volGroup = vDay.garden.volunteers
+    if (vDay.interest && vDay.interest !== "Everyone") {
+      let volInterests = await strapi.db.query('api::user-garden-interest.user-garden-interest').findMany({
+        where: {
+          garden: vDay.garden.id
+        },
+        populate: {
+          interest: {
+            where: {
+              tag: vDay.interest
+            }
+          },
+          user: true
+        },
+        garden: true
+      });
+      volInterests = volInterests.filter(vi=> vi.interest)
+      volGroup = volInterests.map(vi=> {return vi.user})
+    }
     let sentInfo = [];
-    // @TODO: Have there been any SMS campaigns for this volunteer day?
+    
+    // TODO: Have there been any SMS campaigns for this volunteer day?
     // Check deny list of SMS Campaigns before sending
 
-    for (const volunteer of vDay.garden.volunteers) {
+
+    for (const volunteer of volGroup) {
       await client.messages
         .create({
           body: copy,
@@ -29,13 +51,15 @@ module.exports = createCoreService('api::volunteer-day.volunteer-day', ({ strapi
         });
       sentInfo.push(volunteer.phoneNumber);
     }
-    // @TODO: Check add each "volunteer" onto a new SMS Campaign sent list
-
-    // let response = { okay: true }
-
-    // if (response.okay === false) {
-    //   return { response, error: true }
-    // }
+    try {
+    await strapi.db.query('api::sms-campaign.sms-campaign').create({
+      data: {
+        publishedAt: null, sent: volGroup, volunteer_day: vDay.id, body: copy
+      }
+    });
+    } catch (err) {
+      console.warn('Could not save sms campaign: ', err);
+    }
 
     return sentInfo
   },
