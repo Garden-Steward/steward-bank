@@ -36,9 +36,10 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
           where: {id: ctx.params.id},
           populate: ['garden', 'garden.volunteers']
         });
+        const vGroup = await strapi.service('api::volunteer-day.volunteer-day').getVolunteerGroup(vDay);
         const copy = VdayHelper.buildUpcomingDayCopy(vDay);
         console.log("copy: ", copy);
-        return {copy: copy}
+        return {copy: copy, numVolunteers: vGroup.length}
 
       } catch (err) {
         console.log(err);

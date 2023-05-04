@@ -13,10 +13,7 @@ const { createCoreService } = require('@strapi/strapi').factories;
 
 module.exports = createCoreService('api::volunteer-day.volunteer-day', ({ strapi }) =>  ({
 
-  async sendGroupMsg(vDay, copy) {
-
-    console.log("sendGroupMsg", copy);
-
+  async getVolunteerGroup(vDay) {
     let volGroup = vDay.garden.volunteers
     if (vDay.interest && vDay.interest !== "Everyone") {
       let volInterests = await strapi.db.query('api::user-garden-interest.user-garden-interest').findMany({
@@ -36,6 +33,15 @@ module.exports = createCoreService('api::volunteer-day.volunteer-day', ({ strapi
       volInterests = volInterests.filter(vi=> vi.interest)
       volGroup = volInterests.map(vi=> {return vi.user})
     }
+    return volGroup
+  },
+
+  async sendGroupMsg(vDay, copy) {
+
+    console.log("sendGroupMsg", copy);
+
+    let volGroup = await getVolunteerGroup(vDay);
+
     let sentInfo = [];
     
     // TODO: Have there been any SMS campaigns for this volunteer day?
