@@ -15,8 +15,23 @@ VdayHelper.buildUpcomingDayCopy = (vDay) => {
   const pacificTime = utcToZonedTime(new Date(`${vDay.startDatetime}`), timeZone);
   let date = format(pacificTime, 'MMM d');
   let startTime = format(pacificTime, 'h:mmaaa');
-  let copy = `${vDay.garden.title} has an upcoming volunteer day! Come by for "${vDay.title}". ${vDay.blurb} ${date}, ${startTime} to ${vDay.endText}.`
+  let interestCopy = VdayHelper.buildEventInterestCopy(vDay);
+  let copy = `${vDay.garden.title} has an upcoming ${interestCopy} "${vDay.title}". ${vDay.blurb} ${date}, ${startTime} to ${vDay.endText}.`
   return copy
+}
+
+VdayHelper.buildEventInterestCopy = (vDay) => {
+
+  switch (vDay.interest) {
+    case 'Meetings':
+      return 'meeting. Hope to see you for';
+    case 'Events':
+      return 'event! See you at'
+    case 'Volunteering':
+      return 'volunteer day! Come by for'
+    default:
+      return 'event! All welcome at';
+  }
 }
 
 VdayHelper.buildTodayCopy = (vDay) => {
@@ -28,7 +43,8 @@ VdayHelper.buildTodayCopy = (vDay) => {
   const pacificTime = utcToZonedTime(new Date(`${vDay.startDatetime}`), timeZone);
   let date = format(pacificTime, 'MMM d');
   let startTime = format(pacificTime, 'h:mmaaa');
-  let copy = `Today's the day for ${vDay.garden.title}'s volunteer day! Come by for "${vDay.title}". ${vDay.blurb} ${date}, ${startTime} to ${vDay.endText}.`
+  let interestCopy = VdayHelper.buildEventInterestCopy(vDay);
+  let copy = `Today's the day for ${vDay.garden.title}'s ${interestCopy} "${vDay.title}". ${vDay.blurb} ${date}, ${startTime} to ${vDay.endText}.`
   return copy
 }
 /**
