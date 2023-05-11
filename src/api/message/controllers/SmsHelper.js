@@ -3,14 +3,23 @@ const SmsHelper = {};
 /***
  * Updates tasks like "yes" to find certain status Garden Tasks and update them.
  */
+SmsHelper.handleYesResponse = async(smsText, user) => {
+  if (!user) {
+    return {body: "Sorry you have to be registered to use this service", type: "reply"}
+  }
+  let question = await strapi.service('api::message.message').validateQuestion(user);
+  if (question) {
+    return SmsHelper.handleGardenTask(smsText,user);
+  } else {
+    return strapi.service('api::sms-campaign.sms-campaign').confirmSMSCampaign(user);
+  }
+}
+
 SmsHelper.handleGardenTask = async(smsText, user) => {
   try {
     console.log("updating task yes start")
     let data = {};
     let origStatus = '';
-    if (!user) {
-      return {body: "Sorry you have to be a registered volunteer to use this service", type: "reply"}
-    }
     if (smsText == 'yes') {
       data = {
         status: 'STARTED',
@@ -194,16 +203,7 @@ SmsHelper.getSchedulerFromTask = async(task) => {
   return false;
 };
 
-SmsHelper.validateQuestion = async(user) => {
-  const messageService = strapi.api.messages.services.messages;
-  const latestMessage = await messageService.findOne({_sort: 'updatedAt:desc', user, type: {$in:['question','complete']}},['gardentask']);
-  if (latestMessage.type=='question') {
-    return latestMessage;
-  } else { // type == complete
-    // the user completed the last open question.
-    return false;
-  }
-};
+
 
 SmsHelper.saveMessage = async(user, type, garden, body, garden_task, previous) => {
   console.log("garden task: ", garden_task)
@@ -289,7 +289,7 @@ SmsHelper.skipTask = async(user) => {
 
 SmsHelper.findBackupUsers = async(user) => {
 
-  const latestQuestion = await SmsHelper.validateQuestion(user);
+  const latestQuestion = await strapi.service('api::message.message').validateQuestion(user);
   if (!latestQuestion ) {
     return 'I\'m sorry, we don\'t have an open task for you right now.';
   }
@@ -326,7 +326,7 @@ SmsHelper.sendSMS = (task, body, type) => {
 };
 
 SmsHelper.transferTask = async(user, backUpNumber) => {
-  const latestQuestion = await SmsHelper.validateQuestion(user);
+  const latestQuestion = await strapi.service('api::message.message').validateQuestion(user);
   if (!latestQuestion ) {
     return {body:'I\'m sorry, we don\'t have an open task for you right now.',type:'reply'};
   }

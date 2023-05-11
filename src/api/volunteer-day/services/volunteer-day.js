@@ -40,7 +40,7 @@ module.exports = createCoreService('api::volunteer-day.volunteer-day', ({ strapi
 
     console.log("sendGroupMsg", copy);
 
-    let volGroup = await getVolunteerGroup(vDay);
+    let volGroup = await strapi.service('api::volunteer-day.volunteer-day').getVolunteerGroup(vDay);
 
     let sentInfo = [];
     
