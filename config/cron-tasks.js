@@ -59,8 +59,8 @@ module.exports = {
   
     },
     options: {
-       rule: '1/1 * * * *',
-      //  rule: '2 1/2 * * *',
+      //  rule: '1/1 * * * *',
+       rule: '2 1/2 * * *',
        tz: 'America/Los_Angeles',
     },
   },
