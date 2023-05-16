@@ -172,7 +172,7 @@ Helper.handleStartedTasks = async() => {
   for (let task of started) {
     if (task.started_at < yesterday.toISOString().substring(0,10)) {
       try {
-        await Helper.updateTask(task,'ABANDONED');
+        await strapi.service('api::garden-task.garden-task').updateTaskStatus(task,'ABANDONED');
       } catch (err) { console.log(err); }
       continue;
     }

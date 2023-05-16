@@ -39,7 +39,7 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
   async confirmSMSCampaign(user) {
     console.log("validateSMSCampaign")
     const lastCampaign = await strapi.service('api::sms-campaign.sms-campaign').getLatestCampaign(user);
-
+ 
     if (lastCampaign.confirmed.find((c)=> c == user.id)) {
       return {body: "Already got you boo!", type: "complete"}
     } else {

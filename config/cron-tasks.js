@@ -19,18 +19,13 @@ module.exports = {
   /** Create Tasks from Recurring Tasks - add Scheduler Volunteers if any */
   '0 7 * * */1': async () => {
   // '1/1 * * * *': async () => {
-    const recurringTasks = await strapi.db.query('api::recurring-task.recurring-task')
-      .findMany({
-        where: {},
-        populate: { garden: true }
-      });
-    const gardenTaskService = strapi.db.query('api::garden-task.garden-task');
+    const recurringTasks = await strapi.service('api::recurring-task.recurring-task').getRecurringTaskGarden();
     let curTask, recTask;
     try {
-      console.log('recurringTasks cronned count: ', recurringTasks.lenth);
+      console.log('recurringTasks cronned count: ', recurringTasks.length);
       for (recTask of recurringTasks) {
         // If at least one of this type of recurring task is Initialized, skip
-        curTask = await gardenTaskService.findOne({
+        curTask = await strapi.db.query('api::garden-task.garden-task').findOne({
           where: {
             status:{$notIn: ['FINISHED', 'SKIPPED', 'ABANDONED']}, //$notIn: ['Hello', 'Hola', 'Bonjour']
             recurring_task: recTask.id, 
@@ -64,8 +59,8 @@ module.exports = {
   
     },
     options: {
-      //  rule: '1/1 * * * *',
-       rule: '2 1/2 * * *',
+       rule: '1/1 * * * *',
+      //  rule: '2 1/2 * * *',
        tz: 'America/Los_Angeles',
     },
   },
