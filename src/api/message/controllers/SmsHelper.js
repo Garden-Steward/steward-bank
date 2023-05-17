@@ -241,12 +241,14 @@ SmsHelper.getHelp = async(user) => {
 
 SmsHelper.finishTask = async(user) => {
   const gardenTaskService = strapi.db.query('api::garden-task.garden-task');
-  console.log('done');
+  console.log('finishing for ', user.email);
   try {
     await gardenTaskService.update({
       where: {
         status:{$eq:'STARTED'},
-        volunteers: user,
+        volunteers: {
+          phoneNumber: user.phoneNumber
+        },
         type: 'Water'
       }, 
       data: {
@@ -255,7 +257,7 @@ SmsHelper.finishTask = async(user) => {
       }
     });
     return {
-      body:'You rock! We\'ve marked your watering day as done :)',
+      body:`You rock ${user.firstName}! We\'ve marked your watering day as done :)`,
       type:'complete'
     };
   } catch (err) {

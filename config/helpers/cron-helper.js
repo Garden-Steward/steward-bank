@@ -166,9 +166,9 @@ Helper.handleStartedTasks = async() => {
       status:{$eq:'STARTED'},
       volunteers: {$not:null}
     },
-    populate: { garden: true }
+    populate: { garden: true, volunteers:true }
   });
-
+  console.log("Checking Started, found: ", started.length);
   for (let task of started) {
     if (task.started_at < yesterday.toISOString().substring(0,10)) {
       try {
@@ -184,9 +184,9 @@ Helper.handleStartedTasks = async() => {
       continue;
     }
     if (task.type === 'Water') {
-      console.log('started watering already', task);
+      // console.log('started watering already', task);
       if (task.volunteers[0].phoneNumber) {
-        strapi.db.query('api::sms.sms').handleSms(
+        strapi.service('api::sms.sms').handleSms(
           task, 
           `Hey there ${task.volunteers[0].firstName}, have you managed garden watered yet? Let me know when you're DONE :)`,
           'followup'
