@@ -1,4 +1,5 @@
 'use strict';
+const { addDays, addHours } = require('date-fns');
 
 const Weather = require('./weather.js');
 const VdayHelper = require('../../src/api/volunteer-day/controllers/VdayHelper')
@@ -32,7 +33,7 @@ Helper.handleInitialTasks = async() => {
     if (initTask.type == 'Water') {
       Helper.sendWaterSms(initTask);
     } else {
-      console.log("initTasks not Water, ", initTask.type)
+      console.log("initTask %s not Water: %s", initTask.id, initTask.type)
     }
   }
 };
@@ -158,7 +159,10 @@ Helper.updateTask = async(task, status) => {
 
 Helper.handleStartedTasks = async() => {
 
-  let yesterday = new Date(new Date().setDate(new Date().getDate()-1));
+  // let yesterday = new Date(new Date().setDate(new Date().getDate()-1));
+  const today = new Date();
+  const yesterday = addDays(today, -1);
+  const fourAgo = addHours(today, -4);
 
   let started = await strapi.db.query('api::garden-task.garden-task')
   .findMany({
@@ -170,17 +174,16 @@ Helper.handleStartedTasks = async() => {
   });
   console.log("Checking Started, found: ", started.length);
   for (let task of started) {
-    if (task.started_at < yesterday.toISOString().substring(0,10)) {
+    if (Date.parse(task.started_at) < Date.parse(yesterday)) {
       try {
+        // Started but never finished: ABANDONED
         await strapi.service('api::garden-task.garden-task').updateTaskStatus(task,'ABANDONED');
+        return;
       } catch (err) { console.log(err); }
       continue;
     }
-    let timeAgo = new Date().getTime();
-    const numOfHours = 4;
-    var hoursAgo = new Date(timeAgo - (60 * 60 * 1000 * numOfHours));
-    if (new Date(task.updatedAt) > hoursAgo) {
-      console.log('updated! this happened recently');
+    if (Date.parse(task.started_at) > Date.parse(fourAgo)) {
+      console.log('%s recently updated! no SMS sending for now.', task.id);
       continue;
     }
     if (task.type === 'Water') {

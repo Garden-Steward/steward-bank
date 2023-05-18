@@ -19,6 +19,32 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
     });
     return tasks;
 
+  },
+
+  async getUserTasksByStatus(user, status) {
+    const tasks = await strapi.entityService.findMany('api::garden-task.garden-task', {
+      where: {
+        user,
+        status
+      }
+    });
+    return tasks;
+
+  },
+
+  async updateGardenTask(task, status, user) {
+    
+    return strapi.db.query('api::garden-task.garden-task').update({
+      where: {
+        id: task.id
+      }, 
+      data: {
+        status,
+        volunteers: user
+      },
+      populate: ['volunteers']
+    });
   }
+
 }));
 

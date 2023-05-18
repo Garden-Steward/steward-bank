@@ -170,26 +170,17 @@ SmsHelper.saveVolunteerName = async(user, fullName) => {
   return {body: `Welcome to the team ${fullName}`, type:'complete'};
 };
 
-SmsHelper.updateGardenTask = async(task, status, user) => {
-    
-  return strapi.db.query('api::garden-task.garden-task').update({
-    where: {
-      id: task.id
-    }, 
-    data: {
-      status,
-      volunteers: user
-    }
-  });
-};
-
 SmsHelper.getSchedulerFromTask = async(task) => {
-  const schedulerService = strapi.api.scheduler.services.scheduler;
   const dayOfWeekName = new Date().toLocaleString(
     'default', {weekday: 'long'}
   );
   try {
-    const taskSchedulers = await schedulerService.find({recurringtask:task.recurringtask},['backup_users']);
+    const taskSchedulers = await await strapi.entityService.findMany('api::scheduler.scheduler', {
+      filters: {
+        recurring_task: task.recurring_task.id
+      },
+      populate: ['backup_volunteers'],
+    });
 
     for (const schedule of taskSchedulers) {
       console.log(schedule.day, dayOfWeekName);
@@ -229,7 +220,9 @@ SmsHelper.getHelp = async(user) => {
   try {
     let tasks = await gardenTaskService.findMany({
       where: {
-        volunteers: user,
+        volunteers: {
+          phoneNumber: user.phoneNumber
+        },
         status:{$in:['INITIALIZED']}
       }
     });
@@ -292,22 +285,30 @@ SmsHelper.skipTask = async(user) => {
 SmsHelper.findBackupUsers = async(user) => {
 
   const latestQuestion = await strapi.service('api::message.message').validateQuestion(user);
+  let task;
   if (!latestQuestion ) {
-    return 'I\'m sorry, we don\'t have an open task for you right now.';
+    let tasks = await strapi.service('api::garden-task.garden-task').getUserTasksByStatus(user,'INITIALIZED');
+    if (!tasks.length) {
+      return 'I\'m sorry, we don\'t have an open task for you right now.';
+    } else {
+      // return `The task "${tasks[0].title}" can\'t be transferred, sorry!`;
+      task = tasks[0]
+    }
   }
-
-  if (latestQuestion.body.indexOf('Reply YES if you\'re able to water today' > -1)) {
-    const task = latestQuestion.garden_task;
+  if (task || latestQuestion.body.indexOf('it\'s your watering day' > -1)) {
+    if (!task) {
+      task = latestQuestion.garden_task;
+    }
     if (!task) {
       return 'Looks like you don\'t have a task to manage.';
     }
     const scheduler = await SmsHelper.getSchedulerFromTask(task);
     let smsExtra = '';
-    if (scheduler && scheduler.backup_users.length) {
+    if (scheduler && scheduler.backup_volunteers.length) {
       let smsBody = 'We found some help for you. Respond with ';
-      for (const idx in scheduler.backup_users) {
+      for (const idx in scheduler.backup_volunteers) {
         let num = parseInt(idx) + 1;
-        smsExtra = `${smsExtra} ${num} for ${scheduler.backup_users[idx].firstName},`;
+        smsExtra = `${smsExtra} ${num} for ${scheduler.backup_volunteers[idx].firstName},`;
       }
       smsBody = smsBody + smsExtra.slice(0,smsExtra.length-1) + '. Once you do we will transfer the task to them.';
       return smsBody;
@@ -330,17 +331,17 @@ SmsHelper.sendSMS = (task, body, type) => {
 SmsHelper.transferTask = async(user, backUpNumber) => {
   const latestQuestion = await strapi.service('api::message.message').validateQuestion(user);
   if (!latestQuestion ) {
-    return {body:'I\'m sorry, we don\'t have an open task for you right now.',type:'reply'};
+    return {body:`I\'m sorry %{user.firstName}, we don\'t have an open task for you right now.`,type:'reply'};
   }
   const task = latestQuestion.garden_task;
   if (!task) {
     return {body:'You don\'t have a task to transfer right now',type:'reply'};
   }
   const scheduler = await SmsHelper.getSchedulerFromTask(task);
-  if (scheduler && scheduler.backup_users.length) {
-    let newUser = scheduler.backup_users[backUpNumber-1];
+  if (scheduler && scheduler.backup_volunteers.length) {
+    let newUser = scheduler.backup_volunteers[backUpNumber-1];
     try {
-      let updatedTask = await SmsHelper.updateGardenTask(task, 'INITIALIZED', newUser);
+      let updatedTask = await strapi.service('api::garden-task.garden-task').updateGardenTask(task, 'INITIALIZED', newUser);
       const smsBody = `Okay we've transferred to ${newUser.firstName}`;
       const smsNewGuy = `Hello! ${user.firstName} just assigned you the task of ${task.title}. Reply with YES or NO if you can manage this today.`;
       SmsHelper.sendSMS(updatedTask, smsNewGuy, 'question');
