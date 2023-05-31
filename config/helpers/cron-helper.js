@@ -69,6 +69,7 @@ Helper.sendingWindow = (task) => {
     console.log("outside of hours, ", hour)
     return false
   }
+  console.log("we are sending in proper hours: ", hour);
   return true
 }
 
