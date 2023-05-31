@@ -30,7 +30,10 @@ SmsHelper.handleGardenTask = async(smsText, user) => {
 
     const gardenTask = await strapi.db.query('api::garden-task.garden-task').findOne({
       where: {
-        status: origStatus
+        status: origStatus,
+        volunteers: {
+          phoneNumber: user.phoneNumber
+        },
       },
       populate: {
         volunters : {
@@ -49,7 +52,7 @@ SmsHelper.handleGardenTask = async(smsText, user) => {
           id: gardenTask.id
         }
       });
-      return {body: 'That\'s great! Let me know with FINISHED once you\'re done :)', type:'reply'}
+      return {body: 'That\'s great! Let me know with FINISHED once you\'re done :)', type:'reply', task: gardenTask}
     } else {
       return {body: 'No open tasks for you at the moment, but loving the enthusiasm!!', type:'reply'}
     }
@@ -264,8 +267,9 @@ SmsHelper.finishTask = async(user) => {
 
 SmsHelper.skipTask = async(user) => {
   const gardenTaskService = strapi.db.query('api::garden-task.garden-task');
+  let gardenTask;
   try {
-    await gardenTaskService.update({
+    gardenTask = await gardenTaskService.update({
       where: {
         status:{$in:['INITIALIZED','STARTED']},
         volunteers: user,
@@ -279,7 +283,7 @@ SmsHelper.skipTask = async(user) => {
   } catch (err) {
     console.error('skip error: ', err);
   }
-  return 'Alright then! Your task has been skipped!';
+  return {body:'Alright then! Your task has been skipped!',type: 'complete',task: gardenTask};
 };
 
 SmsHelper.findBackupUsers = async(user) => {

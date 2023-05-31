@@ -29,7 +29,13 @@ Helper.handleInitialTasks = async() => {
 
   console.log("init tasks: ", initTasks.length);
 
+
   for (let initTask of initTasks) {
+    let abandoned = await Helper.validateAbandon(initTask);
+    if (abandoned) {
+      continue;
+    }
+
     if (initTask.type == 'Water') {
       Helper.sendWaterSms(initTask);
     } else {
@@ -157,6 +163,22 @@ Helper.updateTask = async(task, status) => {
   });
 };
 
+Helper.validateAbandon = async(task) => {
+  const today = new Date();
+  const yesterday = addDays(today, -1);
+  if ((Date.parse(task.started_at) || Date.parse(task.updatedAt)) < Date.parse(yesterday)) {
+    console.log("abandoning")
+    try {
+      // Started but never finished: ABANDONED
+      await strapi.service('api::garden-task.garden-task').updateTaskStatus(task,'ABANDONED');
+    } catch (err) { console.log(err); }
+
+    return true;
+  }
+  return false;
+
+}
+
 Helper.handleStartedTasks = async() => {
 
   // let yesterday = new Date(new Date().setDate(new Date().getDate()-1));
@@ -174,29 +196,33 @@ Helper.handleStartedTasks = async() => {
   });
   console.log("Checking Started, found: ", started.length);
   for (let task of started) {
-    if (Date.parse(task.started_at) < Date.parse(yesterday)) {
-      try {
-        // Started but never finished: ABANDONED
-        await strapi.service('api::garden-task.garden-task').updateTaskStatus(task,'ABANDONED');
-        return;
-      } catch (err) { console.log(err); }
+    let abandoned = await Helper.validateAbandon(task);
+    if (abandoned) {
       continue;
     }
     if (Date.parse(task.started_at) > Date.parse(fourAgo)) {
       console.log('%s recently updated! no SMS sending for now.', task.id);
       continue;
     }
+
+    if (!Helper.sendingWindow(task)) { return }
+    if (!task.volunteers[0].phoneNumber) {
+      console.log('Missing phone number for ',task.volunteers[0].username);
+      return;
+    }
+
     if (task.type === 'Water') {
-      // console.log('started watering already', task);
-      if (task.volunteers[0].phoneNumber) {
-        strapi.service('api::sms.sms').handleSms(
-          task, 
-          `Hey there ${task.volunteers[0].firstName}, have you managed garden watered yet? Let me know when you're DONE :)`,
-          'followup'
-        );
-      } else {
-        console.log('Missing phone number for ',task.volunteers[0].username);
-      }
+      strapi.service('api::sms.sms').handleSms(
+        task, 
+        `Hey there ${task.volunteers[0].firstName}, have you managed water the garden? Let me know when you're DONE :)`,
+        'followup'
+      );
+    } else {
+      strapi.service('api::sms.sms').handleSms(
+        task, 
+        `Hey there ${task.volunteers[0].firstName}, have you managed to ${task.title}? Let me know when you're DONE :)`,
+        'followup'
+      );
     }
   }
   

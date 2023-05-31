@@ -26,6 +26,7 @@ module.exports = {
     let smsType = 'reply';
     // let garden = null;
     let smsInfo = null;
+    let smsTask = null;
 
     const user = await SmsHelper.getUser( phoneNumber );
     const garden = await SmsHelper.checkGarden( responseText );
@@ -51,8 +52,8 @@ module.exports = {
         break;
 
       case 'skip':
-        smsBody = await SmsHelper.skipTask(user);
-        smsType = 'complete';
+        smsInfo = await SmsHelper.skipTask(user);
+        
         break;
 
       case 'no':
@@ -94,11 +95,12 @@ module.exports = {
     if (smsInfo) {
       smsBody = smsInfo.body;
       smsType = smsInfo.type;
+      smsTask = smsInfo.task;
     }
 
     twiml.message(smsBody);
 
-    await SmsHelper.saveMessage(user,smsType, garden, smsBody, null, request.body.Body);
+    await SmsHelper.saveMessage(user,smsType, garden, smsBody, smsTask, request.body.Body);
 
     return twiml.toString();
   },
