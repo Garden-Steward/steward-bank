@@ -42,6 +42,16 @@
       "relation": "oneToMany",
       "target": "api::scheduler.scheduler",
       "mappedBy": "recurring_task"
+    },
+    "scheduler_type": {
+      "type": "enumeration",
+      "enum": [
+        "No Schedule",
+        "Daily Primary",
+        "Weekly Shuffle"
+      ],
+      "required": true,
+      "default": "No Schedule"
     }
   }
 }

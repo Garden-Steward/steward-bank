@@ -44,6 +44,19 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
       },
       populate: ['volunteers']
     });
+  },
+
+  async getTaskByRecurringUndone(recTask) {
+
+    return strapi.db.query('api::garden-task.garden-task').findOne({
+      where: {
+        status:{$notIn: ['FINISHED', 'SKIPPED', 'ABANDONED']}, //$notIn: ['Hello', 'Hola', 'Bonjour']
+        recurring_task: recTask.id, 
+        garden:recTask.garden
+      },
+      populate: { recurring_task: true, volunteers:true }
+    });
+
   }
 
 }));

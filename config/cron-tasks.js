@@ -3,6 +3,8 @@
 const Helper = require('./helpers/cron-helper.js');
 const Weather = require('./helpers/weather.js');
 
+//https://crontab.guru/#0_7_*_*_*/1
+
 module.exports = {
   /**
   * Cron job with timezone example.
@@ -24,18 +26,13 @@ module.exports = {
     try {
       console.log('recurringTasks cronned count: ', recurringTasks.length);
       for (recTask of recurringTasks) {
+
+        await Helper.setWeeklySchedule(recTask);
+
         // If at least one of this type of recurring task is Initialized, skip
-        curTask = await strapi.db.query('api::garden-task.garden-task').findOne({
-          where: {
-            status:{$notIn: ['FINISHED', 'SKIPPED', 'ABANDONED']}, //$notIn: ['Hello', 'Hola', 'Bonjour']
-            recurring_task: recTask.id, 
-            garden:recTask.garden
-          },
-          populate: { recurring_task: true, volunteers:true }
-        });
+        curTask = await strapi.service('api::garden-task.garden-task').getTaskByRecurringUndone(recTask);
 
         /** SCHEDULER */
-
         let scheduledUser = await Helper.getScheduledVolunteer(recTask);
 
         await Helper.buildSchedulerTask(curTask, recTask, scheduledUser);

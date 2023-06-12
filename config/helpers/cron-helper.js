@@ -103,8 +103,31 @@ Helper.sendWaterSms = async(waterTask) => {
   }
 };
 
+/**
+ * setWeeklySchedule
+ * 
+ * On scheduleSetDate we will create a weekly schedule and send an email to all the users on the schedule
+ * @param {*} recTask 
+ * @returns Weekly Message return
+ */
+Helper.setWeeklySchedule = async(recTask) => {
+  const scheduleSetDate = 'Sunday'
+  console.log("Setting weekly schedule")
+  const dayOfWeekName = new Date().toLocaleString(
+    'default', {weekday: 'long'}
+  );
+  if (recTask.scheduler_type !== 'Weekly Shuffle' || dayOfWeekName !== scheduleSetDate) {
+    return
+  }
+  let weeklySchedule = await strapi.service('api::weekly-schedule.weekly-schedule').createWeeklySchedule(recTask);
+
+  // Text all the people on the weekly list
+  return strapi.service('api::weekly-schedule.weekly-schedule').sendWeeklyMsg(weeklySchedule.assignees);
+  
+}
+
 Helper.buildSchedulerTask = async(curTask, recTask, scheduledUser) => {
-    // SKIP IF ALREADY INITIALIZED
+    // ASSIGN && SKIP IF ALREADY INITIALIZED
     if (curTask && curTask.recurring_task) {
       if (scheduledUser && !curTask.volunteers.length) {
         curTask.volunteer = scheduledUser;
@@ -135,25 +158,39 @@ Helper.buildSchedulerTask = async(curTask, recTask, scheduledUser) => {
 
 Helper.getScheduledVolunteer = async(recTask) => {
   let scheduledUser;
-  const schedulers = await strapi.db.query('api::scheduler.scheduler')
-  .findMany({
-    where: {recurring_task: recTask.id},
-    populate: { volunteer: true }
-  });
+  const dayOfWeekName = new Date().toLocaleString(
+    'default', {weekday: 'long'}
+  );
+  console.log("Getting %s Schedule", dayOfWeekName);
 
-  // console.log(schedulers)
-  if (schedulers && schedulers.length > 0) {
-    const dayOfWeekName = new Date().toLocaleString(
-      'default', {weekday: 'long'}
-    );
-    console.log(dayOfWeekName)
-    for (let scheduledDay of schedulers) {
-      if (scheduledDay.day == dayOfWeekName) {
-        scheduledUser = scheduledDay.volunteer;
-      }
-    }
+  if (recTask.scheduler_type == 'Weekly Shuffle') {
+    const weeklySchedule = await strapi.db.query('api::weekly-schedule.weekly-schedule')
+    .findOne({
+      where: {recurring_task: recTask.id},
+      orderBy: { createdAt: 'DESC' },
+      populate: ["assignees", "assignees.assignee"]
+    });
+    scheduledUser = weeklySchedule.assignees.find(a=> a.day == dayOfWeekName)?.assignee
+    console.log("weekly schedule latest: ", weeklySchedule)
     
+  } else if (recTask.scheduler_type == 'Daily Primary') {
+
+    const schedulers = await strapi.db.query('api::scheduler.scheduler')
+    .findMany({
+      where: {recurring_task: recTask.id},
+      populate: { volunteer: true }
+    });
+  
+    if (schedulers && schedulers.length > 0) {
+      for (let scheduledDay of schedulers) {
+        if (scheduledDay.day == dayOfWeekName) {
+          scheduledUser = scheduledDay.volunteer;
+        }
+      }
+      
+    }
   }
+
   return scheduledUser;
 }
 

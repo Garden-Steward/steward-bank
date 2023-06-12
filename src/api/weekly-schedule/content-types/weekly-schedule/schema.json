@@ -1,0 +1,29 @@
+{
+  "kind": "collectionType",
+  "collectionName": "weekly_schedules",
+  "info": {
+    "singularName": "weekly-schedule",
+    "pluralName": "weekly-schedules",
+    "displayName": "Weekly Schedule",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "Week": {
+      "type": "string"
+    },
+    "assignees": {
+      "type": "component",
+      "repeatable": true,
+      "component": "scheduling.schedule-assignee"
+    },
+    "recurring_task": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::recurring-task.recurring-task"
+    }
+  }
+}
