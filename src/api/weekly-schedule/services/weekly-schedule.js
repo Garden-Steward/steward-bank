@@ -55,16 +55,14 @@ module.exports = createCoreService('api::weekly-schedule.weekly-schedule', ({ st
     }
   },
 
-  async sendWeeklyMsg(assignees) {
+  async sendWeeklyMsg(recTask, assignees) {
 
     let sentInfo = [];
 
     const daysCopy = assignees.map((a)=> {return `${a.day}: ${a.assignee.firstName} ${a.assignee.lastName.charAt(0)}`}).join(', ');
     const volGroup = assignees.map((a)=> {return a.assignee.id});
     
-    // TODO: Have there been any SMS campaigns for this volunteer day?
-    // Check deny list of SMS Campaigns before sending
-    const copy = `You're on the watering list this week! ${daysCopy}. Feel free to swap out on your watering day if needed.`
+    const copy = `You've been selected to '${recTask.title}' this week! ${daysCopy}. You'll receive a reminder morning of where you can transfer if necessary.`
 
     for (const volunteer of assignees) {
       if (['test','stg'].indexOf(process.env.ENVIRONMENT)>-1) {continue;}

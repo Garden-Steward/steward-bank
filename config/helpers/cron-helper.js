@@ -63,6 +63,8 @@ Helper.handleVolunteerReminders = async() => {
 }
 
 Helper.sendingWindow = (task) => {
+  // We always send in testing and staging (Cameron codes at night)
+  if (['test','stg'].indexOf(process.env.ENVIRONMENT)>-1) { return true }
   const pacificTime = utcToZonedTime(new Date(), 'America/Los_Angeles');
   let hour = pacificTime.getHours();
   if (hour < 8 || hour > 18) {
@@ -111,7 +113,7 @@ Helper.sendWaterSms = async(waterTask) => {
  * @returns Weekly Message return
  */
 Helper.setWeeklySchedule = async(recTask) => {
-  const scheduleSetDate = 'Sunday'
+  const scheduleSetDate = 'Tuesday'
   console.log("Setting weekly schedule")
   const dayOfWeekName = new Date().toLocaleString(
     'default', {weekday: 'long'}
@@ -122,7 +124,7 @@ Helper.setWeeklySchedule = async(recTask) => {
   let weeklySchedule = await strapi.service('api::weekly-schedule.weekly-schedule').createWeeklySchedule(recTask);
 
   // Text all the people on the weekly list
-  return strapi.service('api::weekly-schedule.weekly-schedule').sendWeeklyMsg(weeklySchedule.assignees);
+  return strapi.service('api::weekly-schedule.weekly-schedule').sendWeeklyMsg(recTask, weeklySchedule.assignees);
   
 }
 
@@ -170,8 +172,10 @@ Helper.getScheduledVolunteer = async(recTask) => {
       orderBy: { createdAt: 'DESC' },
       populate: ["assignees", "assignees.assignee"]
     });
-    scheduledUser = weeklySchedule.assignees.find(a=> a.day == dayOfWeekName)?.assignee
-    console.log("weekly schedule latest: ", weeklySchedule)
+    if (weeklySchedule) {
+      scheduledUser = weeklySchedule.assignees.find(a=> a.day == dayOfWeekName)?.assignee
+      console.log("weekly schedule latest: ", weeklySchedule)
+    }
     
   } else if (recTask.scheduler_type == 'Daily Primary') {
 

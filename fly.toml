@@ -1,4 +1,7 @@
-# fly.toml file generated for steward-bank on 2023-01-22T20:43:59-08:00
+# fly.toml app configuration file generated for steward-bank on 2023-06-13T03:45:57Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
 app = "steward-bank"
 kill_signal = "SIGINT"
@@ -9,6 +12,9 @@ processes = []
 
 [experimental]
   auto_rollback = true
+  cmd = []
+  entrypoint = []
+  exec = []
   private_network = true
 
 [[services]]
