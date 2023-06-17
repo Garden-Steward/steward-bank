@@ -113,7 +113,7 @@ Helper.sendWaterSms = async(waterTask) => {
  * @returns Weekly Message return
  */
 Helper.setWeeklySchedule = async(recTask) => {
-  const scheduleSetDate = 'Tuesday'
+  const scheduleSetDate = 'Sunday'
   console.log("Setting weekly schedule")
   const dayOfWeekName = new Date().toLocaleString(
     'default', {weekday: 'long'}

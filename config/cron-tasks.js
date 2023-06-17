@@ -19,7 +19,8 @@ module.exports = {
   },
 
   /** Create Tasks from Recurring Tasks - add Scheduler Volunteers if any */
-  '0 7 * * */1': async () => {
+  /** 7 was midnight 14 should be 7am */
+  '0 14 * * */1': async () => {
     // '1/1 * * * *': async () => {
     const recurringTasks = await strapi.service('api::recurring-task.recurring-task').getRecurringTaskGarden();
     let curTask, recTask;
