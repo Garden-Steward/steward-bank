@@ -52,10 +52,10 @@ Helper.handleVolunteerReminders = async() => {
     let copy = VdayHelper.buildUpcomingDayCopy(vDay);
     messagesSent = await strapi.service('api::volunteer-day.volunteer-day').sendGroupMsg(vDay,copy);
   }
-  const todDays = await VdayHelper.getTodayVdays();
+  const todDays = await VdayHelper.getTomorrowVdays();
   for (let tDay of todDays) {
     console.log("today: ", tDay.startDatetime);
-    let copy = VdayHelper.buildTodayCopy(tDay);
+    let copy = VdayHelper.buildTomorrowCopy(tDay);
     messagesSent = await strapi.service('api::volunteer-day.volunteer-day').sendGroupMsg(tDay,copy);
   }
   console.log("messages sent: ", messagesSent);

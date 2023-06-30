@@ -24,8 +24,8 @@ module.exports = createCoreService('api::recurring-task.recurring-task', ({ stra
   async getTypeRecurringTask(garden, type, limit) {
     return strapi.entityService.findMany('api::recurring-task.recurring-task', {
       where: {
-        garden,
-        type
+        garden: garden.id,
+        type: type
       },
       limit,
       sort: {
