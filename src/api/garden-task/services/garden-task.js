@@ -57,6 +57,21 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
       populate: { recurring_task: true, volunteers:true }
     });
 
+  },
+
+  getTypeTasks(garden, type, limit) {
+    return strapi.entityService.findMany('api::garden-task.garden-task', {
+      where: {
+        garden,
+        type
+      },
+      limit,
+      sort: {
+        updatedAt: 'desc'
+      },
+      populate: ['volunteers']
+    });
+
   }
 
 }));

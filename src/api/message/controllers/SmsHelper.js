@@ -197,8 +197,6 @@ SmsHelper.getSchedulerFromTask = async(task) => {
   return false;
 };
 
-
-
 SmsHelper.saveMessage = async(user, type, garden, body, garden_task, previous) => {
   console.log("garden task: ", garden_task)
   try {
@@ -233,6 +231,24 @@ SmsHelper.getHelp = async(user) => {
   } catch (err) {
     return `Hi ${user.firstName}! You can ask to receive a task, and you can join new SMS Groups by texting us their name. More coming!`;
   }
+};
+
+SmsHelper.waterSchedule = async(user) => {
+  const tasks = await strapi.service('api::garden-task.garden-task').getTypeTasks(user.activeGarden, 'Water', 3);
+
+  let resp = "Recent watering updates: \n"
+  for (task of tasks) {
+    const nameCopy = task.volunteers.map((v)=> {return `${v.firstName} ${v.lastName.charAt(0)}`}).join('& ');
+    const dateReady = new Date(task.updatedAt)
+    resp += `${dateReady.toDateString().slice(0,10)} by ${nameCopy}: ${task.status}\n`
+  }
+  const recTask = await strapi.service('api::recurring-task.recurring-task').getTypeRecurringTask(user.activeGarden, 'Water', 1);
+  const weeklySchedule = await strapi.service('api::weekly-schedule.weekly-schedule').getWeeklySchedule(recTask[0]);
+  const scheduleUsers = await strapi.service('api::weekly-schedule.weekly-schedule').getScheduleAssignees(weeklySchedule.assignees);
+
+  console.log("Running waterSchedule request: ",weeklySchedule.Week)
+  resp += `\nSchedule ${weeklySchedule.Week}: ${scheduleUsers}`
+  return {body: resp,type: 'reply'}
 };
 
 SmsHelper.finishTask = async(user) => {

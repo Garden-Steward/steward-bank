@@ -51,6 +51,10 @@ module.exports = {
         smsInfo = await SmsHelper.joinGarden(user, phoneNumber, garden);
         break;
 
+      case 'water schedule':
+        smsInfo = await SmsHelper.waterSchedule(user);
+        break;
+
       case 'skip':
         smsInfo = await SmsHelper.skipTask(user);
         

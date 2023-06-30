@@ -55,11 +55,29 @@ module.exports = createCoreService('api::weekly-schedule.weekly-schedule', ({ st
     }
   },
 
+  async getWeeklySchedule(recTask) {
+    return strapi.db.query('api::weekly-schedule.weekly-schedule').findOne({
+      where: { recurring_task: recTask.id },
+      populate: ['assignees', 'assignees.assignee'],
+      orderBy: {
+        id: 'desc'
+      },
+    });
+    // strapi.entityService.findOne('api::weekly-schedule.weekly-schedule',null, {
+      
+  },
+
+  async getScheduleAssignees(assignees) {
+    return assignees.map((a)=> {
+      return `${a.day}: ${a.assignee.firstName} ${a.assignee.lastName.charAt(0)}`
+    }).join('\n');
+  },
+
   async sendWeeklyMsg(recTask, assignees) {
 
     let sentInfo = [];
 
-    const daysCopy = assignees.map((a)=> {return `${a.day}: ${a.assignee.firstName} ${a.assignee.lastName.charAt(0)}`}).join(', ');
+    const daysCopy = assignees.map((a)=> {return `${a.day}: ${a.assignee.firstName} ${a.assignee.lastName.charAt(0)}`}).join('\n');
     const volGroup = assignees.map((a)=> {return a.assignee.id});
     
     const copy = `You've been selected to '${recTask.title}' this week! ${daysCopy}. You'll receive a reminder morning of where you can transfer if necessary.`

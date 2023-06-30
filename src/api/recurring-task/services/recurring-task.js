@@ -19,6 +19,21 @@ module.exports = createCoreService('api::recurring-task.recurring-task', ({ stra
       populate: ["garden", "schedulers", "schedulers.volunteer", "schedulers.backup_volunteers"],
     });
     return tasks;
+  },
 
+  async getTypeRecurringTask(garden, type, limit) {
+    return strapi.entityService.findMany('api::recurring-task.recurring-task', {
+      where: {
+        garden,
+        type
+      },
+      limit,
+      sort: {
+        updatedAt: 'desc'
+      },
+      populate: ['schedulers']
+
+    })
   }
+
 }));
