@@ -99,7 +99,7 @@ VdayHelper.getTodayVdays = () => {
 VdayHelper.getTomorrowVdays = () => {
   const today = new Date();
   const tmrw = addHours(today, 14);
-  const nextDay = addHours(tmrw, 38);
+  const nextDay = addHours(tmrw, 30);  //38, aka 24 hours after 14 hours: Sent an email two days before volunteer day AND day before
   return strapi.db.query('api::volunteer-day.volunteer-day').findMany({
     where: {
       startDatetime: {
