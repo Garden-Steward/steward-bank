@@ -57,13 +57,16 @@ module.exports = {
 
       case 'skip':
         smsInfo = await SmsHelper.skipTask(user);
-        
         break;
-
+      
       case 'no':
         smsBody = await SmsHelper.findBackupUsers(user);
         break;
-      
+          
+      case 'bot':
+        smsBody = "I appreciate your enthusiasm in chat, but I'm just a bot..."
+        break;
+
       case 'smiles':
         smsBody = "You\'re cute, but I'm just a bot ;)"
         break;
@@ -91,8 +94,12 @@ module.exports = {
         console.log(err);
       }
     } else if (user && user.phoneNumber == user.username) {
-      const fullName = responseText.replace(/\b\w/g, s => s.toUpperCase());
-      smsInfo = await SmsHelper.saveVolunteerName(user, fullName);
+      if (responseText == 'bot' || responseText == 'smiles') {
+        smsBody = "I'm a bot btw! Can you tell me your name?";
+      } else {
+        const fullName = responseText.replace(/\b\w/g, s => s.toUpperCase());
+        smsInfo = await SmsHelper.saveVolunteerName(user, fullName);
+      }
     }
     // ** END Volunteer Sign Up Flow ** /
 
