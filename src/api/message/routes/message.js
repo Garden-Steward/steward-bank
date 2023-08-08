@@ -11,6 +11,15 @@
 module.exports = {
   routes: [
     {
+      method: 'POST',
+      path: '/sms/requestEmail/:id',
+      handler: 'message.requestEmail',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+     },
+     {
      method: 'POST',
      path: '/sms',
      handler: 'message.fetchSms',

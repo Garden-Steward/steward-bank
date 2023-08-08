@@ -21,21 +21,33 @@ module.exports = createCoreService('api::weekly-schedule.weekly-schedule', ({ st
   async createWeeklySchedule({id, schedulers}) {
     
     console.log("creating weekly")
-    function chooseVolunteer(volunteers, chosenArr) {
-      // @TODO: make sure selected isn't in chosenArr
-      const filtered = volunteers.filter(v=> {
-        if (!chosenArr.includes(v.id)) {
-          return v
-        }
-      })
+
+    // Logic for picking a volunteer out of a batch of volunteers.
+    function chooseVolunteer(volunteers, chosenArr, schedulers) {
+
+      //Filter out previously chosen weekly schedulers.
+      let filtered = volunteers.filter(v=> !chosenArr.includes(v.id));
+      filtered = filtered.map(f=>{return f.id})
+
+      // If any of the volunteers have a single length of schedulers add them once more
+      let addExtras = filtered.filter((v)=> schedulers.filter(x => x==v).length == 1)
+      filtered = filtered.concat(addExtras)
+
+      // TODO: Get prior week recurring task
       const randomIndex = Math.floor(Math.random() * filtered.length);
       return filtered[randomIndex];
     }
-    let chosenArr = []
+
+    let chosenArr = [] // track already chosen volunteers so we don't give them multiple days.
+
+    let simpleSchedulers = schedulers.map((v)=> {
+      return v.backup_volunteers.map((bv) => {return bv.id})
+    }).flat(1)
+
     let assignees = schedulers.map(s=> {
-      let chosen = chooseVolunteer(s.backup_volunteers, chosenArr)
-      chosenArr.push(chosen.id)
-      return {day: s.day, assignee: chosen.id}
+      let chosenIdx = chooseVolunteer(s.backup_volunteers, chosenArr, simpleSchedulers)
+      chosenArr.push(chosenIdx)
+      return {day: s.day, assignee: chosenIdx}
     })
     const weekTitle = format(new Date(), 'PPP')
 

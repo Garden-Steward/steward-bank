@@ -106,18 +106,20 @@ Helper.sendWaterSms = async(waterTask) => {
 };
 
 /**
- * setWeeklySchedule
+ * For 'Weekly Shuffle' Scheduled types on a recurring Task
+ * Step 1: Initiate the creation ofschedule for the week.
  * 
- * On scheduleSetDate we will create a weekly schedule and send an email to all the users on the schedule
- * @param {*} recTask 
+ * Step 2: On scheduleSetDate send an email to all the users on the schedule
+ * 
+ * @param {obj} recTask 
  * @returns Weekly Message return
  */
 Helper.setWeeklySchedule = async(recTask) => {
   const scheduleSetDate = 'Sunday'
-  console.log("Setting weekly schedule")
   const dayOfWeekName = new Date().toLocaleString(
     'default', {weekday: 'long'}
-  );
+    );
+  console.log("Setting weekly schedule for %s of type ", dayOfWeekName, recTask.scheduler_type)
   if (recTask.scheduler_type !== 'Weekly Shuffle' || dayOfWeekName !== scheduleSetDate) {
     return
   }
@@ -158,6 +160,15 @@ Helper.buildSchedulerTask = async(curTask, recTask, scheduledUser) => {
 
 }
 
+/**
+ * Handle both the schedule types on a Recurring Task
+ * 'Weekly Shuffle' and 'Daily Primary'.
+ * Weekly schedules will have already been assigned so 
+ * we are just getting the right user for today if any
+ * 
+ * @param {obj} recTask: Full Recurring Task Obj
+ * @returns 
+ */
 Helper.getScheduledVolunteer = async(recTask) => {
   let scheduledUser;
   const dayOfWeekName = new Date().toLocaleString(

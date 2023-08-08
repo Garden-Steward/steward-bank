@@ -102,7 +102,7 @@ SmsHelper.checkEmail = ( user, smsText ) => {
 }
 
 SmsHelper.getUser = async(phoneNumber)  => {
-  let user = null;
+
   try {
     return strapi
       .query("plugin::users-permissions.user")

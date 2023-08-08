@@ -10,6 +10,30 @@ const activeStatuses = ['STARTED', 'ISSUE', 'INTERESTED'];
 
 module.exports = {
   // fetchSms: async (ctx, next) => {
+
+  // If a user still has test@test.com we should request their email again, let them finish the registration flow.
+  requestEmail: async (ctx, next) => {
+    console.log(ctx.params.id);
+    // const user = await strapi.service('plugin::users-permissions.user').findOne(ctx.params);
+    const user = await strapi.entityService.findOne('plugin::users-permissions.user',ctx.params.id,
+    { populate: ['activeGarden'] });
+    
+    let smsBody = null
+    if (user.email == "test@test.com") {
+      smsBody = `Hi! It's the Garden Steward bot :D you signed up for ${user.activeGarden.title} but haven't finished registering. Could you kindly respond with your email? Thank you!`
+    }
+    strapi.service('api::sms.sms').handleSms(
+      null, 
+      smsBody,
+      'followup',
+      null,
+      user
+    );
+
+    return {message: smsBody, status: 'success'}
+
+  },
+
   fetchSms: async ({request}) => {
 
     // request = {'body':{
