@@ -23,29 +23,36 @@ module.exports = createCoreService('api::weekly-schedule.weekly-schedule', ({ st
     console.log("creating weekly")
 
     // Logic for picking a volunteer out of a batch of volunteers.
-    function chooseVolunteer(volunteers, chosenArr, schedulers) {
+    function chooseVolunteer(volunteers, {chosenArr, flatSchedulerList, lastWeekSchedulers}) {
 
       //Filter out previously chosen weekly schedulers.
-      let filtered = volunteers.filter(v=> !chosenArr.includes(v.id));
-      filtered = filtered.map(f=>{return f.id})
+      let weekPool = volunteers.filter(v=> !chosenArr.includes(v.id));
+      weekPool = weekPool.map(f=>{return f.id})
 
-      // If any of the volunteers have a single length of schedulers add them once more
-      let addExtras = filtered.filter((v)=> schedulers.filter(x => x==v).length == 1)
-      filtered = filtered.concat(addExtras)
+      // If any of the volunteers have only this day of schedulers add them once more
+      const extraSolo = weekPool.filter((v)=> flatSchedulerList.filter(x => x==v).length == 1);
 
-      // TODO: Get prior week recurring task
-      const randomIndex = Math.floor(Math.random() * filtered.length);
-      return filtered[randomIndex];
+      // If any volunteer is NOT in last week add them once more
+      const extraBenched = weekPool.filter(v=> lastWeekSchedulers.indexOf(v) == -1);
+      
+      weekPool = weekPool.concat(extraSolo,extraBenched)
+      // console.log(extraBenched, lastWeekSchedulers, "weekPool: ", weekPool, "chosen: ", chosenArr)
+
+      const randomIndex = Math.floor(Math.random() * weekPool.length);
+      return weekPool[randomIndex];
     }
 
     let chosenArr = [] // track already chosen volunteers so we don't give them multiple days.
 
-    let simpleSchedulers = schedulers.map((v)=> {
+    let flatSchedulerList = schedulers.map((v)=> {
       return v.backup_volunteers.map((bv) => {return bv.id})
     }).flat(1)
 
+    const weeklySchedule = await strapi.service('api::weekly-schedule.weekly-schedule').getWeeklySchedule(id);
+    let lastWeekSchedulers = weeklySchedule.assignees.map(a=> {return a.assignee.id})
+
     let assignees = schedulers.map(s=> {
-      let chosenIdx = chooseVolunteer(s.backup_volunteers, chosenArr, simpleSchedulers)
+      let chosenIdx = chooseVolunteer(s.backup_volunteers, {chosenArr, flatSchedulerList, lastWeekSchedulers})
       chosenArr.push(chosenIdx)
       return {day: s.day, assignee: chosenIdx}
     })
@@ -67,9 +74,9 @@ module.exports = createCoreService('api::weekly-schedule.weekly-schedule', ({ st
     }
   },
 
-  async getWeeklySchedule(recTask) {
+  async getWeeklySchedule(recTaskId) {
     return strapi.db.query('api::weekly-schedule.weekly-schedule').findOne({
-      where: { recurring_task: recTask.id },
+      where: { recurring_task: recTaskId },
       populate: ['assignees', 'assignees.assignee'],
       orderBy: {
         id: 'desc'

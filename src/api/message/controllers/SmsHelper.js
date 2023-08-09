@@ -244,7 +244,7 @@ SmsHelper.waterSchedule = async(user) => {
     resp += `${dateReady.toDateString().slice(0,10)} by ${nameCopy}: ${task.status}\n`
   }
   const recTask = await strapi.service('api::recurring-task.recurring-task').getTypeRecurringTask(user.activeGarden, 'Water', 1);
-  const weeklySchedule = await strapi.service('api::weekly-schedule.weekly-schedule').getWeeklySchedule(recTask[0]);
+  const weeklySchedule = await strapi.service('api::weekly-schedule.weekly-schedule').getWeeklySchedule(recTask[0].id);
   const scheduleUsers = await strapi.service('api::weekly-schedule.weekly-schedule').getScheduleAssignees(weeklySchedule.assignees);
 
   console.log("Running waterSchedule request: ",weeklySchedule.Week)
