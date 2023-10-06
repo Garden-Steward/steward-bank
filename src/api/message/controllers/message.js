@@ -132,7 +132,7 @@ module.exports = {
       smsType = smsInfo.type;
       smsTask = smsInfo.task;
     }
-
+    console.log("sending: ", smsBody);
     twiml.message(smsBody);
 
     await SmsHelper.saveMessage(user,smsType, garden, smsBody, smsTask, request.body.Body);

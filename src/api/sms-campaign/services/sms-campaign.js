@@ -25,7 +25,10 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
       populate: {confirmed: true, volunteer_day: true},
       limit: 3
     });
-    
+    if (!lastCampaigns[0].volunteer_day) {
+      console.warn("missing volunteer day on campaign");
+      return false;
+    }
     if (new Date(lastCampaigns[0].volunteer_day.startDatetime).getTime() < recent.getTime()) {
       // Campaign was old. Volunter Day has passed
       return false;

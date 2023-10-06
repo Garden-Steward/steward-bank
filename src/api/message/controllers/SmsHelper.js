@@ -1,4 +1,6 @@
 const SmsHelper = {};
+const { addDays } = require('date-fns');
+const {utcToZonedTime,} = require("date-fns-tz");
 
 /***
  * Updates tasks like "yes" to find certain status Garden Tasks and update them.
@@ -25,7 +27,8 @@ SmsHelper.handleGardenTask = async(smsText, user) => {
         status: 'STARTED',
         started_at: new Date(new Date().getTime())
       }
-      origStatus = 'INITIALIZED'
+      // origStatus = 'INITIALIZED'
+      origStatus = {$in:['INITIALIZED','STARTED']};
     }  
 
     const gardenTask = await strapi.db.query('api::garden-task.garden-task').findOne({
@@ -46,13 +49,17 @@ SmsHelper.handleGardenTask = async(smsText, user) => {
 
     // The user has a task ready to be updated!
     if (gardenTask) {
-      await strapi.db.query('api::garden-task.garden-task').update({
-        data,
-        where: {
-          id: gardenTask.id
-        }
-      });
-      return {body: 'That\'s great! Let me know with FINISHED once you\'re done :)', type:'reply', task: gardenTask}
+      if (gardenTask.status == 'INITIALIZED') {
+        await strapi.db.query('api::garden-task.garden-task').update({
+          data,
+          where: {
+            id: gardenTask.id
+          }
+        });
+        return {body: 'That\'s great! Let me know with FINISHED once you\'re done :)', type:'reply', task: gardenTask}
+      } else {
+        return {body: 'Looks like you\'ve already started! Let me know with FINISHED once you\'re done :)', type:'reply', task: gardenTask}
+      }
     } else {
       return {body: 'No open tasks for you at the moment, but loving the enthusiasm!!', type:'reply'}
     }
@@ -240,7 +247,7 @@ SmsHelper.waterSchedule = async(user) => {
   let resp = "Recent watering updates: \n"
   for (task of tasks) {
     const nameCopy = task.volunteers.map((v)=> {return `${v.firstName} ${v.lastName.charAt(0)}`}).join('& ');
-    const dateReady = new Date(task.updatedAt)
+    const dateReady = utcToZonedTime(new Date(task.updatedAt), 'America/Los_Angeles');
     resp += `${dateReady.toDateString().slice(0,10)} by ${nameCopy}: ${task.status}\n`
   }
   const recTask = await strapi.service('api::recurring-task.recurring-task').getTypeRecurringTask(user.activeGarden, 'Water', 1);
@@ -255,10 +262,13 @@ SmsHelper.waterSchedule = async(user) => {
 SmsHelper.finishTask = async(user) => {
   const gardenTaskService = strapi.db.query('api::garden-task.garden-task');
   console.log('finishing for ', user.email);
+  const weekAgo = addDays(new Date(),-7)
+
   try {
-    await gardenTaskService.update({
+    const task = await gardenTaskService.update({
       where: {
         status:{$eq:'STARTED'},
+        started_at: {$gte: weekAgo},
         volunteers: {
           phoneNumber: user.phoneNumber
         },
@@ -323,6 +333,10 @@ SmsHelper.findBackupUsers = async(user) => {
     if (!task) {
       return 'Looks like you don\'t have a task to manage.';
     }
+    if (!task.recurring_task) {
+      return 'Sorry this isn\'t a task that can be transferred. Only Recurring Tasks can transfer.';
+    }
+  
     const scheduler = await SmsHelper.getSchedulerFromTask(task);
     let smsExtra = '';
     if (scheduler && scheduler.backup_volunteers.length) {
@@ -357,6 +371,9 @@ SmsHelper.transferTask = async(user, backUpNumber) => {
   const task = latestQuestion.garden_task;
   if (!task) {
     return {body:'You don\'t have a task to transfer right now',type:'reply'};
+  }
+  if (!task.recurring_task) {
+    return {body:'Sorry this isn\'t a task that can be transferred. Only Recurring Tasks can transfer.',type:'reply'};
   }
   const scheduler = await SmsHelper.getSchedulerFromTask(task);
   if (scheduler && scheduler.backup_volunteers.length) {
