@@ -309,6 +309,7 @@ SmsHelper.skipTask = async(user) => {
     });
   } catch (err) {
     console.error('skip error: ', err);
+    return {body:'Problem updating the task!',type: 'complete',task: gardenTask};
   }
   return {body:'Alright then! Your task has been skipped!',type: 'complete',task: gardenTask};
 };

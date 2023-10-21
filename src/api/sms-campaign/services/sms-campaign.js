@@ -1,4 +1,9 @@
 'use strict';
+const accountSid = process.env.TWILIO_ACCOUNT_SID ;
+const authToken = process.env.TWILIO_AUTH_TOKEN  ;
+const twilioNum =process.env.TWILIONUM;
+const client = require('twilio')(accountSid, authToken);
+
 const { addHours } = require('date-fns');
 
 /**
@@ -71,5 +76,64 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
 
       return {body: "Thanks for RSVPing! We've got you confirmed", type: "complete"}
     }
-  }
+  },
+
+  sendGroupMsg: async (volGroup, copy, gardenObj) => {
+
+    console.log("sendGroupMsg", copy);
+  
+    let sentInfo = [];
+  
+    for (const volunteer of volGroup) {
+      await client.messages
+        .create({
+          body: copy,
+          from: twilioNum,
+          to: volunteer.phoneNumber
+        });
+      sentInfo.push(volunteer.phoneNumber);
+    }
+    try {
+    await strapi.db.query('api::sms-campaign.sms-campaign').create({
+      data: {
+        publishedAt: null, sent: volGroup, body: copy, garden: gardenObj.id
+      }
+    });
+    } catch (err) {
+      console.warn('Could not save sms campaign: ', err);
+    }
+  
+    return sentInfo
+  },
+
+  // async sendGardenInterestMsg(garden, copy, interest) {
+
+  //   console.log("sendGroupMsg", copy);
+
+  //   let volGroup = await strapi.service('api::user-garden-interest.user-garden-interest').getUsersOfInterest(garden, interest);
+
+  //   let sentInfo = [];
+    
+  //   for (const volunteer of volGroup) {
+  //     await client.messages
+  //       .create({
+  //         body: copy,
+  //         from: twilioNum,
+  //         to: volunteer.phoneNumber
+  //       });
+  //     sentInfo.push(volunteer.phoneNumber);
+  //   }
+  //   try {
+  //   await strapi.db.query('api::sms-campaign.sms-campaign').create({
+  //     data: {
+  //       publishedAt: null, sent: volGroup, volunteer_day: vDay.id, body: copy, garden: vDay.garden.id
+  //     }
+  //   });
+  //   } catch (err) {
+  //     console.warn('Could not save sms campaign: ', err);
+  //   }
+
+  //   return sentInfo
+  // },
+
 }));

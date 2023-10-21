@@ -35,6 +35,11 @@
     },
     "body": {
       "type": "text"
+    },
+    "garden": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::garden.garden"
     }
   }
 }

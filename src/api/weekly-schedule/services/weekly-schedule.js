@@ -115,7 +115,7 @@ module.exports = createCoreService('api::weekly-schedule.weekly-schedule', ({ st
     try {
     await strapi.db.query('api::sms-campaign.sms-campaign').create({
       data: {
-        publishedAt: null, sent: volGroup, body: copy
+        publishedAt: null, sent: volGroup, body: copy, garden: recTask.garden.id
       }
     });
     } catch (err) {

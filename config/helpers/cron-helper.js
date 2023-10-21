@@ -259,6 +259,7 @@ Helper.handleStartedTasks = async() => {
     }
 
     if (!Helper.sendingWindow(task)) { return }
+
     if (!task.volunteers[0].phoneNumber) {
       console.log('Missing phone number for ',task.volunteers[0].username);
       return;
@@ -267,7 +268,7 @@ Helper.handleStartedTasks = async() => {
     if (task.type === 'Water') {
       strapi.service('api::sms.sms').handleSms(
         task, 
-        `Hey there ${task.volunteers[0].firstName}, have you managed water the garden? Let me know when you're DONE :)`,
+        `Hey there ${task.volunteers[0].firstName}, once you're DONE with the watering let me know you're FINISHED :)`,
         'followup'
       );
     } else {

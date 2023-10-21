@@ -60,7 +60,7 @@ module.exports = createCoreService('api::volunteer-day.volunteer-day', ({ strapi
     try {
     await strapi.db.query('api::sms-campaign.sms-campaign').create({
       data: {
-        publishedAt: null, sent: volGroup, volunteer_day: vDay.id, body: copy
+        publishedAt: null, sent: volGroup, volunteer_day: vDay.id, body: copy, garden: vDay.garden.id
       }
     });
     } catch (err) {
