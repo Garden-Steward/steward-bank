@@ -299,7 +299,7 @@ SmsHelper.skipTask = async(user) => {
     gardenTask = await gardenTaskService.update({
       where: {
         status:{$in:['INITIALIZED','STARTED']},
-        volunteers: user,
+        volunteers: user.id,
         type: 'Water'
       }, 
       data: {
