@@ -47,6 +47,9 @@
       "relation": "oneToMany",
       "target": "api::recurring-task.recurring-task",
       "mappedBy": "garden"
+    },
+    "welcome_text": {
+      "type": "text"
     }
   }
 }

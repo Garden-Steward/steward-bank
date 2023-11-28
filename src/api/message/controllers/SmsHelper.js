@@ -146,12 +146,17 @@ SmsHelper.joinGarden = async(user, phoneNumber, garden) => {
       user.activeGarden = garden.id;
       let existingGarden = user.gardens.find(g=> g.id == garden.id);
       if (!existingGarden) {
+        // User is joining this garden for the first time
         user.gardens.push(garden.id);
         await strapi.db.query("plugin::users-permissions.user").update({where:{id: user.id}, data: user});
-        return {body: `Thanks for signing up for ${garden.title}. You\'ll start to receive notification about volunteer days.`,type:'complete'};
+        if (garden.welcome_text) {
+          return {body: `${garden.welcome_text} You can STOP messages any time.`,type:'complete'};
+        } else {
+          return {body: `Thanks for signing up for ${garden.title}. You\'ll start to receive notification about volunteer days. You can STOP messages any time.`,type:'complete'};
+        }
       }
       await strapi.db.query("plugin::users-permissions.user").update({where:{id: user.id}, data: user});
-      return {body: `You\'ve successfully changed your active garden to ${garden.title}.`,type:'complete'};
+      return {body: `You\'ve successfully changed your active SMS project to ${garden.title}.`,type:'complete'};
 
     }
   }
