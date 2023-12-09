@@ -39,6 +39,11 @@
       "relation": "manyToOne",
       "target": "api::recurring-task.recurring-task",
       "inversedBy": "schedulers"
+    },
+    "garden": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::garden.garden"
     }
   }
 }

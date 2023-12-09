@@ -167,6 +167,7 @@ SmsHelper.joinGarden = async(user, phoneNumber, garden) => {
 
 SmsHelper.saveVolunteerEmail = async(user, email) => {
   await strapi.db.query("plugin::users-permissions.user").update({where:{id: user.id}, data: {email}});
+  // TODO - add email to mailchimp
   return {body: 'Thank you! Only one more step before you\'re offical. Just respond with your full name.',type:'reply'};
 };
 

@@ -9,8 +9,7 @@
     "displayName": "User"
   },
   "options": {
-    "draftAndPublish": false,
-    "timestamps": true
+    "draftAndPublish": false
   },
   "attributes": {
     "username": {
@@ -111,6 +110,22 @@
       "relation": "oneToMany",
       "target": "api::user-garden-interest.user-garden-interest",
       "mappedBy": "user"
+    },
+    "color": {
+      "type": "enumeration",
+      "enum": [
+        "yellow",
+        "orange",
+        "green",
+        "emerald",
+        "lime",
+        "blue",
+        "indigo",
+        "violet",
+        "fuchsia",
+        "purple",
+        "slate"
+      ]
     }
   }
 }
