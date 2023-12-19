@@ -4,6 +4,19 @@ module.exports = ({ env }) => ({
       jwtSecret: env('JWT_SECRET'),
     }
   },
+  upload: {
+    config: {
+      provider: '@strapi-community/strapi-provider-upload-google-cloud-storage',
+      providerOptions: {
+          bucketName: 'steward_upload',
+          publicFiles: true,
+          uniform: false,
+          basePath: 'uploads',
+          serviceAccount: env('GOOGLE_CLOUD_CREDENTIALS'),
+          baseUrl: 'https://storage.googleapis.com/steward_upload',
+      },
+    },
+  },
   email: {
     config: {
       provider: 'sendgrid',

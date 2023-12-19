@@ -52,6 +52,11 @@
       ],
       "required": true,
       "default": "No Schedule"
+    },
+    "instruction": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::instruction.instruction"
     }
   }
 }

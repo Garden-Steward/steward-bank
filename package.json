@@ -12,6 +12,7 @@
   },
   "devDependencies": {},
   "dependencies": {
+    "@strapi-community/strapi-provider-upload-google-cloud-storage": "^4.10.5",
     "@strapi/plugin-i18n": "4.11.3",
     "@strapi/plugin-users-permissions": "4.11.3",
     "@strapi/provider-email-sendgrid": "^4.11.3",
