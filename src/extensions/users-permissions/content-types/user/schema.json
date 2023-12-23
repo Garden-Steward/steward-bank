@@ -126,6 +126,11 @@
         "purple",
         "slate"
       ]
+    },
+    "instructions": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::instruction.instruction"
     }
   }
 }
