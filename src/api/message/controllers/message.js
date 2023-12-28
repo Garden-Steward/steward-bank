@@ -35,11 +35,13 @@ module.exports = {
   },
 
   fetchSms: async ({request}) => {
-
-    // request = {'body':{
-    //   'From': '+13038833330',
-    //   'Body': 'gravity'
-    // }};
+    const test = true;
+    if (test) {
+      request = {'body':{
+        'From': '+13038833330',
+        'Body': 'yes'
+      }};
+    }
     const phoneNumber = request.body.From;
     let responseText = request.body.Body.toLowerCase().trim();
 

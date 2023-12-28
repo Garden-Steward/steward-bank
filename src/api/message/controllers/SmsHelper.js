@@ -10,6 +10,7 @@ SmsHelper.handleYesResponse = async(smsText, user) => {
     return {body: "Sorry you have to be registered to use this service", type: "reply"}
   }
   let question = await strapi.service('api::message.message').validateQuestion(user);
+  console.log("q: ", question);
   if (question) {
     return SmsHelper.handleGardenTask(smsText,user);
   } else {
