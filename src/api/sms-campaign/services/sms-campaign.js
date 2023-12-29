@@ -46,7 +46,7 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
       return {body: "Glad you're down, but I don't have anything to update for you...", type: "complete"}
     }
  
-    if (lastCampaign.confirmed.find((c)=> c == user.id)) {
+    if (lastCampaign.confirmed.find((c)=> c.id == user.id)) {
       return {body: "Already got you boo!", type: "complete"}
     } else {
       lastCampaign.confirmed.push(user.id)
