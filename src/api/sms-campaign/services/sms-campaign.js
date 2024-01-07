@@ -71,6 +71,7 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
     let sentInfo = [];
   
     for (const volunteer of volGroup) {
+      if (!volunteer.phoneNumber) { continue; }
       await client.messages
         .create({
           body: copy,
