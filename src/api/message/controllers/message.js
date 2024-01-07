@@ -35,7 +35,7 @@ module.exports = {
   },
 
   fetchSms: async ({request}) => {
-    const test = true;
+    const test = false;
     if (test) {
       request = {'body':{
         'From': '+13038833330',
@@ -58,6 +58,8 @@ module.exports = {
     const garden = await SmsHelper.checkGarden( responseText );
     const email = SmsHelper.checkEmail( user, responseText );
     responseText = SmsHelper.simplifySms( responseText, garden );
+
+    console.log("responseText: ", responseText);
 
     switch (responseText) {
 

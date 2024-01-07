@@ -41,7 +41,7 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
   async confirmSMSCampaign(user) {
     console.log("validateSMSCampaign")
     const lastCampaign = await strapi.service('api::sms-campaign.sms-campaign').getLatestCampaign(user);
-    console.log("lastCampaign: ", lastCampaign)
+    console.log("lastCampaign: ", lastCampaign.body)
     if (!lastCampaign) {
       return {body: "Glad you're down, but I don't have anything to update for you...", type: "complete"}
     }
