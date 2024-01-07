@@ -72,13 +72,18 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
   
     for (const volunteer of volGroup) {
       if (!volunteer.phoneNumber) { continue; }
-      await client.messages
-        .create({
-          body: copy,
-          from: twilioNum,
-          to: volunteer.phoneNumber
-        });
-      sentInfo.push(volunteer.phoneNumber);
+      try {
+        await client.messages
+          .create({
+            body: copy,
+            from: twilioNum,
+            to: volunteer.phoneNumber
+          });
+        sentInfo.push(volunteer.phoneNumber);
+      } catch (err) {
+        console.log(err);
+        continue;
+      }
     }
     try {
     await strapi.db.query('api::sms-campaign.sms-campaign').create({
