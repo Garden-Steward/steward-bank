@@ -50,6 +50,12 @@
     },
     "welcome_text": {
       "type": "text"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization",
+      "inversedBy": "gardens"
     }
   }
 }

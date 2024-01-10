@@ -4,7 +4,8 @@
   "info": {
     "singularName": "instruction",
     "pluralName": "instructions",
-    "displayName": "Instruction"
+    "displayName": "Instruction",
+    "description": ""
   },
   "options": {
     "draftAndPublish": true
@@ -27,6 +28,16 @@
       "type": "relation",
       "relation": "oneToOne",
       "target": "api::garden.garden"
+    },
+    "affirm_button_title": {
+      "type": "string",
+      "required": true,
+      "default": "Accept"
+    },
+    "affirm_explain": {
+      "type": "text",
+      "default": "I understand this task's requirements and I am capable. I accept this task.",
+      "required": true
     }
   }
 }
