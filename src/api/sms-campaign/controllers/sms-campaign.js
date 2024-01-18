@@ -52,7 +52,7 @@ module.exports = createCoreController('api::sms-campaign.sms-campaign', ({strapi
 
   groupSms: async ctx => {
     console.log("Endpoint triggered group SMS");
-    const {body, interest, garden} = ctx.request.body;
+    const {body, interest, garden, type, sender, alert} = ctx.request.body;
     
     const gardenObj = await strapi.db.query('api::garden.garden').findOne({
       where: {id: garden},
@@ -60,7 +60,7 @@ module.exports = createCoreController('api::sms-campaign.sms-campaign', ({strapi
     });
 
     const vGroup = await strapi.service('api::user-garden-interest.user-garden-interest').getUsersOfInterest(gardenObj,interest);
-    const sentInfo = await strapi.service('api::sms-campaign.sms-campaign').sendGroupMsg(vGroup,body, gardenObj);
+    const sentInfo = await strapi.service('api::sms-campaign.sms-campaign').sendGroupMsg(vGroup,body, gardenObj, {type: type, sender: sender, alert: alert});
   
     return  sentInfo;
 }

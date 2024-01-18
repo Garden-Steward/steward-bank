@@ -40,6 +40,24 @@
       "type": "relation",
       "relation": "oneToOne",
       "target": "api::garden.garden"
+    },
+    "sender": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "basic",
+        "rsvp",
+        "survey",
+        "volunteer-day",
+        "recurring-task"
+      ]
+    },
+    "alert": {
+      "type": "boolean"
     }
   }
 }

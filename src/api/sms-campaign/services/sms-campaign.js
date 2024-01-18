@@ -64,7 +64,7 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
     }
   },
 
-  sendGroupMsg: async (volGroup, copy, gardenObj) => {
+  sendGroupMsg: async (volGroup, copy, gardenObj, params) => {
 
     console.log("sendGroupMsg on SMS Campaign: \n", copy);
   
@@ -86,11 +86,17 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
       }
     }
     try {
-    await strapi.db.query('api::sms-campaign.sms-campaign').create({
-      data: {
-        publishedAt: null, sent: volGroup, body: copy, garden: gardenObj.id
-      }
-    });
+      await strapi.db.query('api::sms-campaign.sms-campaign').create({
+        data: {
+          publishedAt: null, 
+          sent: volGroup, 
+          body: copy, 
+          garden: gardenObj.id, 
+          type: params.type, 
+          sender: params.sender, 
+          alert: params.alert
+        }
+      });
     } catch (err) {
       console.warn('Could not save sms campaign: ', err);
     }
