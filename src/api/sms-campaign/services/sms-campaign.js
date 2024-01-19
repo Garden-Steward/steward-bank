@@ -81,10 +81,12 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
           });
         sentInfo.push(volunteer.phoneNumber);
       } catch (err) {
-        console.log(err);
+        await strapi.service('api::garden.garden').unsubscribeUser(volunteer);
+        console.log("send error:", err);
         continue;
       }
     }
+    console.log('done sending');
     try {
       await strapi.db.query('api::sms-campaign.sms-campaign').create({
         data: {

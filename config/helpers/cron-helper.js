@@ -48,7 +48,7 @@ Helper.handleVolunteerReminders = async() => {
   const vDays = await VdayHelper.getUpcomingVdays();
   let messagesSent = []
   for (let vDay of vDays) {
-    console.log("3 days: ", vDay.startDatetime);
+    console.log("7 days: ", vDay.startDatetime);
     let copy = VdayHelper.buildUpcomingDayCopy(vDay);
     messagesSent = await strapi.service('api::volunteer-day.volunteer-day').sendGroupMsg(vDay,copy);
   }
