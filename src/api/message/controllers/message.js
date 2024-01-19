@@ -97,6 +97,15 @@ module.exports = {
         smsBody = await SmsHelper.findBackupUsers(user);
         break;
           
+      case 'stop':
+        await strapi.service('api::garden.garden').unsubscribeUser(user);
+        smsBody = null;
+        break;
+
+        case 'start':
+          smsBody = "Welcome back! You have been removed from all you gardens so please message their names to rejoin."
+        break;
+          
       case 'bot':
         smsBody = "I appreciate your enthusiasm in chat, but I'm just a bot..."
         break;
@@ -143,9 +152,11 @@ module.exports = {
       smsTask = smsInfo.task;
     }
     console.log("sending: ", smsBody);
-    twiml.message(smsBody);
-
-    await SmsHelper.saveMessage(user,smsType, garden, smsBody, smsTask, request.body.Body);
+    if (smsBody) {
+      twiml.message(smsBody);
+  
+      await SmsHelper.saveMessage(user,smsType, garden, smsBody, smsTask, request.body.Body);
+    }
 
     return twiml.toString();
   },
