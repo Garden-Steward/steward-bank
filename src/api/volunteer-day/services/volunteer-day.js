@@ -49,13 +49,19 @@ module.exports = createCoreService('api::volunteer-day.volunteer-day', ({ strapi
 
 
     for (const volunteer of volGroup) {
-      await client.messages
-        .create({
-          body: copy,
-          from: twilioNum,
-          to: volunteer.phoneNumber
-        });
-      sentInfo.push(volunteer.phoneNumber);
+      try {
+        await client.messages
+          .create({
+            body: copy,
+            from: twilioNum,
+            to: volunteer.phoneNumber
+          });
+        sentInfo.push(volunteer.phoneNumber);
+      } catch (err) {
+        await strapi.service('api::garden.garden').unsubscribeUser(volunteer);
+        console.log("vday send error:", err);
+        continue;
+      }
     }
     try {
     await strapi.db.query('api::sms-campaign.sms-campaign').create({

@@ -35,8 +35,8 @@ module.exports = {
   },
 
   fetchSms: async ({request}) => {
-    const test = false;
-    if (test) {
+    
+    if (process.env.ENVIRONMENT == 'test') {
       request = {'body':{
         'From': '+13038833330',
         'Body': 'yes'

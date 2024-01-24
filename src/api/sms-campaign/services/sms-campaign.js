@@ -19,17 +19,19 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
    * @param {obj} user 
    * @returns obj - latest SMS Campaign with confirmations concatenated
    */
-  async getLatestCampaign(user) {
+  async getLatestCampaign(user, type) {
 
-    const lastCampaigns = await strapi.entityService.findMany('api::sms-campaign.sms-campaign', {
-      sort: {'id': 'desc'},
-      filters: {
-        sent: user.id
+    const lastCampaigns = await strapi.db.query('api::sms-campaign.sms-campaign').findMany({
+      where : {
+        $and: [
+          {type: type},
+          {sent: user.id },
+        ]
       },
-      populate: {sent: true, confirmed: true, volunteer_day: true},
-      limit: 3
+      limit: 1,
+      orderBy: {createdAt: 'desc'},
+      populate: {sent: true, confirmed: true, volunteer_day: true, sender: true},
     });
-
     return lastCampaigns[0];
 
   },
@@ -40,8 +42,8 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
 
   async confirmSMSCampaign(user) {
     console.log("validateSMSCampaign")
-    const lastCampaign = await strapi.service('api::sms-campaign.sms-campaign').getLatestCampaign(user);
-    console.log("lastCampaign: ", lastCampaign.body)
+    const lastCampaign = await strapi.service('api::sms-campaign.sms-campaign').getLatestCampaign(user, 'rsvp');
+    
     if (!lastCampaign) {
       return {body: "Glad you're down, but I don't have anything to update for you...", type: "complete"}
     }
@@ -56,6 +58,9 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
             confirmed: lastCampaign.confirmed
           }
         });
+        // Let the Sender know about the RSVP if Alert requested.
+        await strapi.service('api::sms-campaign.sms-campaign').sendRSVPAlert(user, lastCampaign);
+        
       } catch (err) {
         console.error(err);
       }
@@ -104,6 +109,24 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
     }
   
     return sentInfo
+  },
+
+  async sendRSVPAlert(user, campaign) {
+
+    if (!campaign.alert) {
+      return;
+    }
+
+    if (!campaign.sender) {
+      console.error('no sender on sendRSVPAlert');
+      return
+    }
+    strapi.service('api::sms.sms').sendSms(
+      campaign.sender.phoneNumber, 
+      `We just received an RSVP from ${user.firstName} ${user.lastName}! RSVP count: ${campaign.confirmed.length}.`
+    );
+
+
   },
 
   // async sendGardenInterestMsg(garden, copy, interest) {

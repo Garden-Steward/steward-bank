@@ -1,5 +1,5 @@
 const SmsHelper = {};
-const { addDays } = require('date-fns');
+const { addDays, differenceInDays } = require('date-fns');
 const {utcToZonedTime,} = require("date-fns-tz");
 
 /***
@@ -13,9 +13,15 @@ SmsHelper.handleYesResponse = async(smsText, user) => {
   console.log("q: ", question);
   if (question) {
     return SmsHelper.handleGardenTask(smsText,user);
-  } else {
+  } 
+  const lastCampaign = await strapi.service('api::sms-campaign.sms-campaign').getLatestCampaign(user, 'rsvp');
+  const currentDate = new Date();
+  const createdAtDate = new Date(lastCampaign?.createdAt);
+  const daysDifference = differenceInDays(currentDate, createdAtDate);
+  if (lastCampaign && daysDifference < 7) {
     return strapi.service('api::sms-campaign.sms-campaign').confirmSMSCampaign(user);
   }
+  return {body: "Can't find anything for you to say yes to!? Sorry!", type: "reply"}
 }
 
 SmsHelper.handleGardenTask = async(smsText, user) => {

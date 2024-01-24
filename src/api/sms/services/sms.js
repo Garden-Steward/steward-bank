@@ -6,6 +6,10 @@ let sendSms = function(toNum,body){
   const twilioNum =process.env.TWILIONUM;
   const client = require('twilio')(accountSid, authToken);
   console.log('sending sms to: ', toNum);
+  if (process.env.ENVIRONMENT == 'test') { 
+    console.log("Sending: ", body, `to ${toNum}`);
+    return 
+  }
   client.messages
     .create({
       body: body,
