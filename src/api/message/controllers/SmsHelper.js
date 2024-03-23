@@ -141,7 +141,14 @@ SmsHelper.joinGarden = async(user, phoneNumber, garden) => {
   if (!user) {//.query("plugin::users-permissions.user")
     console.log('no user garden', garden.title);
     await strapi.db.query("plugin::users-permissions.user").create({ 
-      data: {phoneNumber, username: phoneNumber, email: 'test@test.com', activeGarden: garden.id, gardens: garden.id}
+      data: {
+        phoneNumber, 
+        username: phoneNumber, 
+        email: 'test@test.com', 
+        activeGarden: garden.id, 
+        gardens: garden.id,
+        provider: 'local'
+      }
     });
     return {body: `So glad to hear you\'re interested in volunteering for ${garden.title}. To start could we have your email?`,type:'question'};
 

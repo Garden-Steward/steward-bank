@@ -56,6 +56,11 @@
       "relation": "manyToOne",
       "target": "api::organization.organization",
       "inversedBy": "gardens"
+    },
+    "managers": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "plugin::users-permissions.user"
     }
   }
 }
