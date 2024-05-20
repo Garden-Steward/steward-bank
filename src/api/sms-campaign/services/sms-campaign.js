@@ -121,11 +121,13 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
       console.error('no sender on sendRSVPAlert');
       return
     }
-    strapi.service('api::sms.sms').sendSms(
-      campaign.sender.phoneNumber, 
-      `We just received an RSVP from ${user.firstName} ${user.lastName}! RSVP count: ${campaign.confirmed.length}.`
+    strapi.service('api::sms.sms').handleSms(
+      null, 
+      `We just received an RSVP from ${user.firstName} ${user.lastName}! RSVP count: ${campaign.confirmed.length}.`,
+      'followup',
+      null,
+      campaign.sender
     );
-
 
   },
 

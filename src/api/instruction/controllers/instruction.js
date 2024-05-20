@@ -25,11 +25,13 @@ module.exports = createCoreController('api::instruction.instruction', ({ strapi 
       });
 
       // TODO: Send an SMS to the user that they have accepted the instruction, title
-      strapi.service('api::sms.sms').sendSms(
-        user.phoneNumber, 
-        `You're now qualified to handle ${instruction.title}! Thanks for being involved!`
-      );
-    
+      strapi.service('api::sms.sms').handleSms(
+        null, 
+        `You're now qualified to handle ${instruction.title}! Thanks for being involved!`,
+        'followup',
+        null,
+        user
+      );    
 
     } catch (err) { 
       console.warn(err);
