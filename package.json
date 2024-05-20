@@ -8,19 +8,28 @@
     "start": "strapi start",
     "build": "strapi build",
     "strapi": "strapi",
-    "deploy": "flyctl deploy --remote-only"
+    "deploy": "flyctl deploy --remote-only",
+    "test": "jest --forceExit --detectOpenHandles"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "sqlite3": "^5.1.7",
+    "supertest": "^7.0.0"
+  },
   "dependencies": {
     "@strapi-community/strapi-provider-upload-google-cloud-storage": "^4.10.5",
-    "@strapi/plugin-i18n": "4.11.3",
-    "@strapi/plugin-users-permissions": "4.11.3",
-    "@strapi/provider-email-sendgrid": "^4.11.3",
-    "@strapi/strapi": "4.11.3",
+    "@strapi/plugin-i18n": "4.15.5",
+    "@strapi/plugin-users-permissions": "4.15.5",
+    "@strapi/provider-email-sendgrid": "^4.15.5",
+    "@strapi/strapi": "4.15.5",
     "axios": "^1.2.2",
-    "better-sqlite3": "7.4.6",
+    "better-sqlite3": "^7.4.6",
     "date-fns-tz": "^2.0.0",
     "pg": "^8.8.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-router-dom": "5.3.4",
+    "styled-components": "5.3.3",
     "twilio": "^3.84.1"
   },
   "author": {
@@ -32,6 +41,14 @@
   "engines": {
     "node": ">=14.19.1 <=18.x.x",
     "npm": ">=6.0.0"
+  },
+  "jest": {
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      ".tmp",
+      ".cache"
+    ],
+    "testEnvironment": "node"
   },
   "license": "MIT"
 }

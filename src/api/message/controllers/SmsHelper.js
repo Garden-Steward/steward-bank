@@ -385,6 +385,8 @@ SmsHelper.sendSMS = (task, body, type) => {
 };
 
 SmsHelper.transferTask = async(user, backUpNumber) => {
+
+  // TODO - sending this sms should be tracked as a question.
   const latestQuestion = await strapi.service('api::message.message').validateQuestion(user);
   if (!latestQuestion ) {
     return {body:`I\'m sorry %{user.firstName}, we don\'t have an open task for you right now.`,type:'reply'};
