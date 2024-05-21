@@ -391,6 +391,7 @@ SmsHelper.transferTask = async(user, backUpNumber) => {
   if (!latestQuestion ) {
     return {body:`I\'m sorry %{user.firstName}, we don\'t have an open task for you right now.`,type:'reply'};
   }
+  // console.log('latestQuestion: ', latestQuestion)
   const task = latestQuestion.garden_task;
   if (!task) {
     return {body:'You don\'t have a task to transfer right now',type:'reply'};
@@ -401,6 +402,7 @@ SmsHelper.transferTask = async(user, backUpNumber) => {
   const scheduler = await SmsHelper.getSchedulerFromTask(task);
   if (scheduler && scheduler.backup_volunteers.length) {
     let newUser = scheduler.backup_volunteers[backUpNumber-1];
+    console.log(scheduler, newUser, backUpNumber);
     try {
       let updatedTask = await strapi.service('api::garden-task.garden-task').updateGardenTask(task, 'INITIALIZED', newUser);
       const smsBody = `Okay we've transferred to ${newUser.firstName}`;

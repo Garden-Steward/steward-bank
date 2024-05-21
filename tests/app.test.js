@@ -1,9 +1,10 @@
 const fs = require('fs');
-const { setupStrapi, cleanupStrapi } = require("./helpers/strapi");
+const { setupStrapi, cleanupStrapi, grantPrivileges } = require("./helpers/strapi");
 
 jest.setTimeout(15000)
 beforeAll(async () => {
   await setupStrapi();
+  await grantPrivileges(2, ["permissions.application.controllers.hello.index"]);  // Gives Public access to endpoint
 });
 
 afterAll(async () => {
@@ -13,3 +14,6 @@ afterAll(async () => {
 it("strapi is defined", () => {
   expect(strapi).toBeDefined();
 });
+
+require('./user');
+require('./message/transfer');

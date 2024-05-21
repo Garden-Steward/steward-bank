@@ -6,30 +6,72 @@ let instance;
 async function setupStrapi() {
   if (!instance) {
     /** the following code in copied from `./node_modules/strapi/lib/Strapi.js` */
-    await Strapi().load();
+    await Strapi().load(); 
     instance = strapi; // strapi is global now
-    console.log('strapi loaded', strapi.router)
     await instance.server.mount();
   }
   return instance;
 }
 
 async function cleanupStrapi() {
+
   const dbSettings = strapi.config.get("database.connection");
-
   //close server to release the db-file
-  await strapi.server.httpServer.close();
+  await instance.destroy();
+  await instance.server.destroy();
 
-  // close the connection to the database before deletion
-  await strapi.db.connection.destroy();
-
-  //delete test database after all tests have completed
+  //delete test database after all tests
   if (dbSettings && dbSettings.connection && dbSettings.connection.filename) {
-    const tmpDbFile = dbSettings.connection.filename;
-    if (fs.existsSync(tmpDbFile)) {
-      fs.unlinkSync(tmpDbFile);
+    if (fs.existsSync(dbSettings.connection.filename)) {
+      fs.unlinkSync(dbSettings.connection.filename);
     }
   }
 }
 
-module.exports = { setupStrapi, cleanupStrapi };
+/**
+ * Grants database `permissions` table that role can access an endpoint/controllers
+ *
+ * @param {int} roleID, 1 Authenticated, 2 Public, etc
+ * @param {string} modelUID e.g. api::restaurant.restaurant
+ * @param {string} route, route which should be granted access to if enabled is true
+ * @param {boolean} enabled, default true
+ * @param {string} policy, default ''
+ */
+const grantPrivilege = async (
+  roleID,
+  modelUID,
+  route,
+  enabled = true,
+  policy = ""
+) => {
+  const service = strapi.plugin("users-permissions").service("role");
+
+  const role = await service.findOne(roleID);
+
+  const [modelID, modelName] = modelUID.split(".")
+
+  _.set(role.permissions[modelID].controllers[modelName], route, { enabled, policy })
+
+  return service.updateRole(roleID, role);
+};
+
+/** Updates database `permissions` that role can access an endpoint
+ * @see grantPrivilege
+ */
+
+const grantPrivileges = async (roleID = 1, modelUID, routes = []) => {
+  await Promise.all(routes.map((route) => grantPrivilege(roleID, modelUID, route)));
+};
+
+/* Usage:
+
+  await grantPrivileges(user.role.id,
+    "api::restaurant.restaurant",
+    [
+      'create'
+    ]
+  )
+*/
+
+module.exports = { setupStrapi, cleanupStrapi, grantPrivileges };
+
