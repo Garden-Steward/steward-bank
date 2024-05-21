@@ -402,7 +402,6 @@ SmsHelper.transferTask = async(user, backUpNumber) => {
   const scheduler = await SmsHelper.getSchedulerFromTask(task);
   if (scheduler && scheduler.backup_volunteers.length) {
     let newUser = scheduler.backup_volunteers[backUpNumber-1];
-    console.log(scheduler, newUser, backUpNumber);
     try {
       let updatedTask = await strapi.service('api::garden-task.garden-task').updateGardenTask(task, 'INITIALIZED', newUser);
       const smsBody = `Okay we've transferred to ${newUser.firstName}`;
