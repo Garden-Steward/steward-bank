@@ -94,7 +94,7 @@ module.exports = {
         break;
       
       case 'no':
-        smsBody = await SmsHelper.findBackupUsers(user);
+        smsInfo = await SmsHelper.findBackupUsers(user);
         break;
           
       case 'stop':

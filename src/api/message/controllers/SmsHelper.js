@@ -29,7 +29,7 @@ SmsHelper.handleGardenTask = async(smsText, user) => {
     console.log("updating task yes start")
     let data = {};
     let origStatus = '';
-    if (smsText == 'yes') {
+    if (smsText === 'yes') {
       data = {
         status: 'STARTED',
         started_at: new Date(new Date().getTime())
@@ -347,17 +347,18 @@ SmsHelper.findBackupUsers = async(user) => {
       task = tasks[0]
     }
   }
+  // There are multiple watering day transfer texts to be aware of only one here:
   if (task || latestQuestion.body.indexOf('it\'s your watering day' > -1)) {
     if (!task) {
       task = latestQuestion.garden_task;
     }
     if (!task) {
-      return 'Looks like you don\'t have a task to manage.';
+      return 'Looks like you don\'t have a task to manage. Tell Cameron if it\s unexpected.';
     }
     if (!task.recurring_task) {
-      return 'Sorry this isn\'t a task that can be transferred. Only Recurring Tasks can transfer.';
+      return 'Sorry this isn\'t a task that can be transferred. Only Scheduled Tasks can transfer.';
     }
-  
+
     const scheduler = await SmsHelper.getSchedulerFromTask(task);
     let smsExtra = '';
     if (scheduler && scheduler.backup_volunteers.length) {
@@ -367,7 +368,7 @@ SmsHelper.findBackupUsers = async(user) => {
         smsExtra = `${smsExtra} ${num} for ${scheduler.backup_volunteers[idx].firstName},`;
       }
       smsBody = smsBody + smsExtra.slice(0,smsExtra.length-1) + '. Once you do we will transfer the task to them.';
-      return smsBody;
+      return {body: smsBody, task, type: 'followup'};
     } else if (!scheduler) {
       return `There is no schedule today for ${task.title}`;
     } else {
@@ -376,17 +377,8 @@ SmsHelper.findBackupUsers = async(user) => {
   }
 };
 
-SmsHelper.sendSMS = (task, body, type) => {
-  return strapi.service('api::sms.sms').handleSms(
-    task, 
-    body, 
-    type
-  );
-};
-
 SmsHelper.transferTask = async(user, backUpNumber) => {
 
-  // TODO - sending this sms should be tracked as a question.
   const latestQuestion = await strapi.service('api::message.message').validateQuestion(user);
   if (!latestQuestion ) {
     return {body:`I\'m sorry %{user.firstName}, we don\'t have an open task for you right now.`,type:'reply'};
@@ -404,19 +396,32 @@ SmsHelper.transferTask = async(user, backUpNumber) => {
     let newUser = scheduler.backup_volunteers[backUpNumber-1];
     try {
       let updatedTask = await strapi.service('api::garden-task.garden-task').updateGardenTask(task, 'INITIALIZED', newUser);
-      const smsBody = `Okay we've transferred to ${newUser.firstName}`;
+      
+      
+      // TODO - sending this sms should be tracked as a question.
       const smsNewGuy = `Hello! ${user.firstName} just assigned you the task of ${task.title}. Reply with YES or NO if you can manage this today.`;
-      SmsHelper.sendSMS(updatedTask, smsNewGuy, 'question');
-      return {body:smsBody,type:'complete'};
+
+      await strapi.service('api::sms.sms').handleSms({
+        task: updatedTask, 
+        body: smsNewGuy, 
+        type: 'question',
+        previous: latestQuestion.body,
+        user: user
+      });
+      
+      // return message to the initiater of transfer.
+      const smsBody = `Okay we've transferred to ${newUser.firstName}`;
+      return {body:smsBody,type:'complete', task: updatedTask};
+      
     } catch(err) {
       console.log('Task not transferred: ', err);
       return {body:'There was an issue in transferring.',type:'reply'};
     }
 
   } else if (scheduler) {
-    return {body:`Your open task, ${task.title} has no backup volunteers`,type:'reply'};    
+    return {body:`Your open task, ${task.title} has no backup volunteers`,type:'reply', task: task};    
   } else {
-    return {body:'Something went wrong. Sorry!',type:'reply'};
+    return {body:'Something went wrong. Sorry!',type:'reply', task: task};
   }
 
 
