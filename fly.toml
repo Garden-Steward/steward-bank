@@ -7,6 +7,9 @@ app = "steward-bank"
 kill_signal = "SIGINT"
 kill_timeout = 5
 processes = []
+primary_region = "sjc"
+swap_size_mb = 512
+
 
 [env]
 
