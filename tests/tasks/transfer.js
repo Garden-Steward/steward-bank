@@ -13,6 +13,7 @@ const userMock = {
   lastName: 'Smith',
   phone: '1234567890',
   email: 'cameron@smith.com',
+  paused: false,
   role: 'volunteer',
   activeGarden: 1,
   gardens: [1, 2, 3]

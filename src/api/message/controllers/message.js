@@ -122,7 +122,12 @@ module.exports = {
       case 'options':
         smsBody = await SmsHelper.getHelp(user);
         break;
-  
+
+      case 'vacation':
+      case 'back':
+        smsInfo = await SmsHelper.applyVacation(user);
+        break;
+
       default: 
         smsBody = 'I don\'t understand. You can always try OPTIONS to find out more things to do with our service.';
         break;

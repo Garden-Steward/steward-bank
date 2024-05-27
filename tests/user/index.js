@@ -1,15 +1,17 @@
 const request = require('supertest');
+const SmsHelper = require('../../src/api/message/controllers/SmsHelper');
 
 // user mock data
 const mockUserData = {
   username: "tester3",
-  firstName: "Cameron",
+  firstName: "Henry",
   lastName: "Davis",
   email: "tester3@strapi.com",
   provider: "local",
   password: "1234abc",
   confirmed: true,
   blocked: null,
+  paused: false,
   phoneNumber: '+13038833330'
 };
 
@@ -66,3 +68,13 @@ it('should return users data for authenticated user', async () => {
       expect(data.body.email).toBe(user.email);
     });
 });
+
+describe('User SMS tests', () => {
+  it('should pause user account', async () => {
+    strapi.db.query("plugin::users-permissions.user").update = jest.fn().mockResolvedValue({firstName: "Henry", paused: true});
+    SmsHelper.applyVacation({...mockUserData}).then(data => {
+      expect(data.body).toContain("Hi Henry, your account is now paused. Enjoy your vacation!");
+    });
+  });
+});
+

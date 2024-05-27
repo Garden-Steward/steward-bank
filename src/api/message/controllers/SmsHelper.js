@@ -377,6 +377,25 @@ SmsHelper.findBackupUsers = async(user) => {
   }
 };
 
+SmsHelper.applyVacation = async(user) => {
+  try {
+    const currentState = user.paused; // Assuming 'paused' is a boolean attribute of user
+    await strapi.db.query("plugin::users-permissions.user").update({
+      where: { id: user.id },
+      data: { paused: !currentState } // Toggle the paused state
+    });
+
+    if (currentState) {
+      return { body: `Welcome back ${user.firstName}! Your account is now active again.`, type: 'reply' };
+    } else {
+      return { body: `Hi ${user.firstName}, your account is now paused. Enjoy your vacation!\n\nJust let us know when you're BACK from VACATION (either will activate you again to tasks)`, type: 'reply' };
+    }
+  } catch (err) {
+    console.error('Error updating user account: ', err);
+    return { body: 'Sorry, there was an issue updating your account.', type: 'reply' };
+  }
+};
+
 SmsHelper.transferTask = async(user, backUpNumber) => {
 
   const latestQuestion = await strapi.service('api::message.message').validateQuestion(user);
