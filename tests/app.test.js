@@ -17,3 +17,4 @@ it("strapi is defined", () => {
 
 require('./user');
 require('./tasks/transfer');
+require('./tasks/schedule');

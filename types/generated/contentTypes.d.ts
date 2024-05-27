@@ -608,6 +608,9 @@ export interface PluginUsersPermissionsUser extends Schema.CollectionType {
       }>;
     resetPasswordToken: Attribute.String & Attribute.Private;
     confirmationToken: Attribute.String & Attribute.Private;
+    paused: Attribute.Boolean &
+      Attribute.Configurable &
+      Attribute.DefaultTo<false>;
     confirmed: Attribute.Boolean & Attribute.DefaultTo<false>;
     blocked: Attribute.Boolean & Attribute.DefaultTo<false>;
     role: Attribute.Relation<

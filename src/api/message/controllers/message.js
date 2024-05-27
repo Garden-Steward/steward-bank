@@ -107,7 +107,7 @@ module.exports = {
         break;
           
       case 'bot':
-        smsBody = "I appreciate your enthusiasm in chat, but I'm just a bot..."
+        smsBody = "I appreciate your enthusiasm in chat, but I'm just the Garden Steward bot..."
         break;
 
       case 'smiles':
