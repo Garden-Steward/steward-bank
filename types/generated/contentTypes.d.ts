@@ -757,6 +757,31 @@ export interface ApiApplicationApplication extends Schema.CollectionType {
   };
 }
 
+export interface ApiBlogBlog extends Schema.CollectionType {
+  collectionName: 'blogs';
+  info: {
+    singularName: 'blog';
+    pluralName: 'blogs';
+    displayName: 'Blog';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    Title: Attribute.String;
+    Excerpt: Attribute.Text;
+    Hero: Attribute.Media;
+    Content: Attribute.Blocks;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    publishedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<'api::blog.blog', 'oneToOne', 'admin::user'> &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<'api::blog.blog', 'oneToOne', 'admin::user'> &
+      Attribute.Private;
+  };
+}
+
 export interface ApiGardenGarden extends Schema.CollectionType {
   collectionName: 'gardens';
   info: {
@@ -1428,6 +1453,7 @@ declare module '@strapi/types' {
       'plugin::users-permissions.user': PluginUsersPermissionsUser;
       'plugin::i18n.locale': PluginI18NLocale;
       'api::application.application': ApiApplicationApplication;
+      'api::blog.blog': ApiBlogBlog;
       'api::garden.garden': ApiGardenGarden;
       'api::garden-task.garden-task': ApiGardenTaskGardenTask;
       'api::instruction.instruction': ApiInstructionInstruction;
