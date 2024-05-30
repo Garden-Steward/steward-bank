@@ -72,6 +72,7 @@ module.exports = {
       case '7':
       case '8':
       case '9':
+      case '10':
         // eslint-disable-next-line no-case-declarations
         smsInfo = await SmsHelper.transferTask(user, responseText);
         break;
@@ -132,10 +133,10 @@ module.exports = {
         smsBody = 'I don\'t understand. You can always try OPTIONS to find out more things to do with our service.';
         break;
     }
-    console.log("email: ", email)
-
+    
     // ** Volunteer Sign Up Flow ** /
     if (email) {
+      console.log("email: ", email)
       try {
         smsInfo = await SmsHelper.saveVolunteerEmail(user, responseText);
       } catch (err) {
@@ -149,13 +150,15 @@ module.exports = {
         smsInfo = await SmsHelper.saveVolunteerName(user, fullName);
       }
     }
-    // ** END Volunteer Sign Up Flow ** /
-
     if (smsInfo) {
       smsBody = smsInfo.body;
       smsType = smsInfo.type;
       smsTask = smsInfo.task;
     }
+    if (!user && smsType == 'registration') {
+      SmsHelper.sendContactCard(phoneNumber);
+    }
+    // ** END Volunteer Sign Up Flow ** /
     console.log("sending: ", smsBody);
     if (smsBody) {
       twiml.message(smsBody);

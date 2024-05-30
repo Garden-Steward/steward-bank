@@ -150,10 +150,10 @@ SmsHelper.joinGarden = async(user, phoneNumber, garden) => {
         provider: 'local'
       }
     });
-    return {body: `So glad to hear you\'re interested in volunteering for ${garden.title}. To start could we have your email?`,type:'question'};
+    return {body: `Welcome to Garden Steward SMS App! So glad to hear you\'re interested in volunteering for ${garden.title}. To start could we have your email?`,type:'registration'};
 
   } else if (user.email == 'test@test.com') {
-    return {body: 'Looks like we still need an email, what email would you like to be informed about volunteering?',type:'question'};
+    return {body: 'Looks like we still need an email, what email would you like to be informed about volunteering?',type:'registration'};
 
   } else {
     if (garden) {
@@ -184,6 +184,11 @@ SmsHelper.saveVolunteerEmail = async(user, email) => {
   // TODO - add email to mailchimp
   return {body: 'Thank you! Only one more step before you\'re offical. Just respond with your full name.',type:'reply'};
 };
+
+SmsHelper.sendContactCard = async(phoneNumber) => {
+  const resp = await strapi.service('api::sms.sms').sendContactCard(phoneNumber);
+  return resp;
+}
 
 SmsHelper.saveVolunteerName = async(user, fullName) => {
   const nameArr = fullName.split(' ');

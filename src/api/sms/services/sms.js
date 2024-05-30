@@ -1,9 +1,20 @@
 const VoiceResponse = require('twilio').twiml.VoiceResponse;
+const accountSid = process.env.TWILIO_ACCOUNT_SID ;
+const authToken = process.env.TWILIO_AUTH_TOKEN  ;
+const twilioNum =process.env.TWILIONUM;
 
+let sendContactCard = function(toNum){
+  const client = require('twilio')(accountSid, authToken);
+  console.log('sending contact card to ', toNum);
+  return client.messages
+    .create({
+      body: '',
+      from: twilioNum,
+      to: toNum,
+      mediaUrl: `https://steward.garden/contactcard.vcf`
+    });
+}
 let sendSms = function(toNum,body){
-  const accountSid = process.env.TWILIO_ACCOUNT_SID ;
-  const authToken = process.env.TWILIO_AUTH_TOKEN  ;
-  const twilioNum =process.env.TWILIONUM;
   const client = require('twilio')(accountSid, authToken);
   console.log('sending sms to: ', toNum);
   if (process.env.ENVIRONMENT == 'test') { 
@@ -13,8 +24,8 @@ let sendSms = function(toNum,body){
   client.messages
     .create({
       body: body,
-      from: twilioNum, //the phone number provided by Twillio
-      to: toNum // your own phone number
+      from: twilioNum,
+      to: toNum
     })
     .then(message => console.log('SMS sid: ', message.sid));
 };
@@ -52,9 +63,9 @@ const handleVoice = function(){
   return response.toString();
 };
   
-
 module.exports = {
   sendSms,
   handleSms,
-  handleVoice
+  handleVoice,
+  sendContactCard
 };

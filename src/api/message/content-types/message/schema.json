@@ -22,7 +22,8 @@
         "followup",
         "reply",
         "notification",
-        "complete"
+        "complete",
+        "registration"
       ]
     },
     "user": {
