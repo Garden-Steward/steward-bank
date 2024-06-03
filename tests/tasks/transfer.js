@@ -79,7 +79,7 @@ describe('transferTask', function() {
 
 
   
-    await SmsHelper.transferTask({id:1}, 1)
+    await SmsHelper.transferTask({firstName:"Cameron", lastName:"Smith", id:1}, 1)
       .then((data) => {
         // console.log('trasnfer: ', data)
         expect(data.body).toEqual("You don't have a task to transfer right now");
@@ -97,9 +97,8 @@ describe('transferTask', function() {
     });
     console.log(entry)
     
-    await SmsHelper.transferTask({id:1}, 2)
+    await SmsHelper.transferTask({firstName:"Cameron", lastName:"Smith", id:1}, 2)
       .then((data) => {
-        console.log('transfer tester: ', data)
         expect(data.body).toEqual("Okay we've transferred to John");
       });
   });

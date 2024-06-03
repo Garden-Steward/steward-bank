@@ -366,11 +366,12 @@ SmsHelper.findBackupUsers = async(user) => {
 
     const scheduler = await SmsHelper.getSchedulerFromTask(task);
     let smsExtra = '';
-    if (scheduler && scheduler.backup_volunteers.length) {
+    let backupVolunteers = await SmsHelper.getBackupVolunteers(scheduler);
+    if (backupVolunteers.length) {
       let smsBody = 'We found some help for you. Respond with ';
-      for (const idx in scheduler.backup_volunteers) {
+      for (const idx in backupVolunteers) {
         let num = parseInt(idx) + 1;
-        smsExtra = `${smsExtra} ${num} for ${scheduler.backup_volunteers[idx].firstName},`;
+        smsExtra = `${smsExtra} ${num} for ${backupVolunteers[idx].firstName},`;
       }
       smsBody = smsBody + smsExtra.slice(0,smsExtra.length-1) + '. Once you do we will transfer the task to them.';
       return {body: smsBody, task, type: 'followup'};
@@ -401,6 +402,25 @@ SmsHelper.applyVacation = async(user) => {
   }
 };
 
+SmsHelper.getBackupVolunteer = (scheduler, backUpNumber) => {
+  const backupVolunteers = SmsHelper.getBackupVolunteers(scheduler);
+  if (!backupVolunteers) {
+    return null;
+  }
+  return backupVolunteers[backUpNumber - 1];
+}
+
+SmsHelper.getBackupVolunteers = (scheduler) => {
+  if (!scheduler || !scheduler.backup_volunteers || scheduler.backup_volunteers.length === 0) {
+    return null;
+  }
+  // Filter out paused volunteers
+  const activeVolunteers = scheduler.backup_volunteers.filter(volunteer => !volunteer.paused);
+
+  return activeVolunteers;
+};
+
+
 SmsHelper.transferTask = async(user, backUpNumber) => {
 
   const latestQuestion = await strapi.service('api::message.message').validateQuestion(user);
@@ -417,8 +437,8 @@ SmsHelper.transferTask = async(user, backUpNumber) => {
   }
   const scheduler = await SmsHelper.getSchedulerFromTask(task);
   
-  if (scheduler && scheduler.backup_volunteers.length) {
-    let newUser = scheduler.backup_volunteers[backUpNumber-1];
+  let newUser = SmsHelper.getBackupVolunteer(scheduler, backUpNumber);
+  if (newUser) {
     try {
       let updatedTask = await strapi.service('api::garden-task.garden-task').updateGardenTask(task, 'INITIALIZED', newUser);
       
@@ -431,7 +451,7 @@ SmsHelper.transferTask = async(user, backUpNumber) => {
         previous: latestQuestion.body,
         user: newUser
     });
-      
+
       // return message to the initiater of transfer.
       const smsBody = `Okay we've transferred to ${newUser.firstName}`;
       return {body:smsBody,type:'complete', task: updatedTask};
@@ -442,7 +462,7 @@ SmsHelper.transferTask = async(user, backUpNumber) => {
     }
 
   } else if (scheduler) {
-    return {body:`Your open task, ${task.title} has no backup volunteers`,type:'reply', task: task};    
+    return {body:`Your open task, ${task.title} has no available backup volunteers`,type:'reply', task: task};    
   } else {
     return {body:'Something went wrong. Sorry!',type:'reply', task: task};
   }
