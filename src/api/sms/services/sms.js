@@ -31,7 +31,8 @@ let sendSms = function(toNum,body){
 };
 
 /** Handle a Task Based SMS or pass in user */
-let handleSms = function(task,body,type, previous, user){
+let handleSms = function(params){
+  let {task, body, type, previous, user} = params
   console.log("sms out: ", body, process.env.ENVIRONMENT);
   if (process.env.ENVIRONMENT == 'test') { return }
 

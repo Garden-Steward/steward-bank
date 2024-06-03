@@ -424,16 +424,13 @@ SmsHelper.transferTask = async(user, backUpNumber) => {
       
       const smsNewGuy = `Hello! ${user.firstName} just assigned you the task of ${task.title}. Reply with YES or NO if you can manage this today.`;
 
-      console.log('updatedTask: ', updatedTask)
-      console.log('sms new guy: ', smsNewGuy)
-
       await strapi.service('api::sms.sms').handleSms({
         task: updatedTask, 
         body: smsNewGuy, 
         type: 'question',
         previous: latestQuestion.body,
         user: newUser
-      });
+    });
       
       // return message to the initiater of transfer.
       const smsBody = `Okay we've transferred to ${newUser.firstName}`;

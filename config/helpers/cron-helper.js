@@ -86,10 +86,11 @@ Helper.sendWaterSms = async(waterTask) => {
   const weather = await Weather.getGardenWeather(waterTask.garden);
 
   if (weather.water) {
-    strapi.service('api::sms.sms').handleSms(
-      waterTask, 
-      `Hi ${waterTask.volunteers[0].firstName}, it's your watering day! Are you able to water today? You have some OPTIONS.`, 
-      'question'
+    strapi.service('api::sms.sms').handleSms({
+      task: waterTask, 
+      body: `Hi ${waterTask.volunteers[0].firstName}, it's your watering day! Are you able to water today? You have some OPTIONS.`, 
+      type: 'question'
+    }
     );
   } else {
     try {
@@ -97,11 +98,11 @@ Helper.sendWaterSms = async(waterTask) => {
     } catch (err) { console.log(err); }
 
     
-    strapi.service('api::sms.sms').handleSms(
-      waterTask, 
-      `Hi ${waterTask.volunteers[0].firstName}, don't worry about watering today! Reason: ${weather.reason}`, 
-      'notification'
-    );
+    strapi.service('api::sms.sms').handleSms({
+      task: waterTask, 
+      body: `Hi ${waterTask.volunteers[0].firstName}, don't worry about watering today! Reason: ${weather.reason}`, 
+      type: 'notification'
+    });
   }
 };
 
@@ -266,17 +267,17 @@ Helper.handleStartedTasks = async() => {
     }
 
     if (task.type === 'Water') {
-      strapi.service('api::sms.sms').handleSms(
+      strapi.service('api::sms.sms').handleSms({  
         task, 
-        `Hey there ${task.volunteers[0].firstName}, once you're DONE with the watering let me know you're FINISHED :)`,
-        'followup'
-      );
+        body: `Hey there ${task.volunteers[0].firstName}, once you're DONE with the watering let me know you're FINISHED :)`,
+        type: 'followup'
+    });
     } else {
-      strapi.service('api::sms.sms').handleSms(
+      strapi.service('api::sms.sms').handleSms({  
         task, 
-        `Hey there ${task.volunteers[0].firstName}, have you managed to ${task.title}? Let me know when you're DONE :)`,
-        'followup'
-      );
+        body: `Hey there ${task.volunteers[0].firstName}, have you managed to ${task.title}? Let me know when you're DONE :)`,
+        type: 'followup'
+      });
     }
   }
   

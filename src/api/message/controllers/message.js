@@ -22,13 +22,13 @@ module.exports = {
     if (user.email == "test@test.com") {
       smsBody = `Hi! It's the Garden Steward bot :D you signed up for ${user.activeGarden.title} but haven't finished registering. Could you kindly respond with your email? Thank you!`
     }
-    strapi.service('api::sms.sms').handleSms(
-      null, 
-      smsBody,
-      'followup',
-      null,
+    strapi.service('api::sms.sms').handleSms({
+      task: null, 
+      body: smsBody,
+      type: 'followup',
+      previous: null,
       user
-    );
+  });
 
     return {message: smsBody, status: 'success'}
 
