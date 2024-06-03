@@ -432,7 +432,7 @@ SmsHelper.transferTask = async(user, backUpNumber) => {
         body: smsNewGuy, 
         type: 'question',
         previous: latestQuestion.body,
-        user: user
+        user: newUser
       });
       
       // return message to the initiater of transfer.
