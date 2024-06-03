@@ -34,7 +34,8 @@ let sendSms = function(toNum,body){
 let handleSms = function(task,body,type, previous, user){
   console.log("sms out: ", body, process.env.ENVIRONMENT);
   if (process.env.ENVIRONMENT == 'test') { return }
-  let member = (task) ? task.volunteers[0] : user
+
+  let member = (!user && task && task.volunteers?.length) ? task.volunteers[0] : user
     
   try {
     strapi.db.query('api::message.message').create({

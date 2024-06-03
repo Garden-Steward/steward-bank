@@ -19,7 +19,7 @@ describe('getAssignees', function() {
       ]
     });
     weeklyScheduleHelper.getAssignees({id:1, ...schedulersMock}).then(res=>{
-      console.log("schedule: ", res);
+      // console.log("schedule: ", res);
       expect([3, 4]).toContain(res[0].assignee);
     });
   });

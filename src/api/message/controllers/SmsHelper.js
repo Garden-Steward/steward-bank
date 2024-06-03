@@ -416,14 +416,16 @@ SmsHelper.transferTask = async(user, backUpNumber) => {
     return {body:'Sorry this isn\'t a task that can be transferred. Only Recurring Tasks can transfer.',type:'reply'};
   }
   const scheduler = await SmsHelper.getSchedulerFromTask(task);
+  
   if (scheduler && scheduler.backup_volunteers.length) {
     let newUser = scheduler.backup_volunteers[backUpNumber-1];
     try {
       let updatedTask = await strapi.service('api::garden-task.garden-task').updateGardenTask(task, 'INITIALIZED', newUser);
       
-      
-      // TODO - sending this sms should be tracked as a question.
       const smsNewGuy = `Hello! ${user.firstName} just assigned you the task of ${task.title}. Reply with YES or NO if you can manage this today.`;
+
+      console.log('updatedTask: ', updatedTask)
+      console.log('sms new guy: ', smsNewGuy)
 
       await strapi.service('api::sms.sms').handleSms({
         task: updatedTask, 

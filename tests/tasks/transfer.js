@@ -52,6 +52,32 @@ describe('transferTask', function() {
       ...messageMock,
       },
     });
+
+    SmsHelper.getSchedulerFromTask = jest.fn().mockReturnValue({
+      day: 'Tuesday',
+      backup_volunteers: [{
+        id: 1,
+        firstName: 'Cameron',
+        lastName: 'Smith',
+        phone: '1234567890',
+        email: 'cameron@smith.com',
+        role: 'volunteer',
+        activeGarden: 1,
+        gardens: [1, 2, 3]
+      },
+      {
+        id: 2,
+        firstName: 'John',
+        lastName: 'Doe',
+        phone: '1234567890',
+        email: 'john@doe.com',
+        role: 'volunteer',
+        activeGarden: 1,
+        gardens: [1, 2, 3]
+      }]
+    });
+
+
   
     await SmsHelper.transferTask({id:1}, 1)
       .then((data) => {
@@ -60,23 +86,23 @@ describe('transferTask', function() {
       });
   });
   
-  // it("should transfer task", async () => {
-  //   await setupTask();
+  it("should transfer task", async () => {
+    await setupTask();
   
-  //   const entry = await strapi.db.query('api::message.message').update({
-  //     where: { id: 1 },
-  //     data: {
-  //       garden_task: 1
-  //     },
-  //   });
-  //   console.log(entry)
+    const entry = await strapi.db.query('api::message.message').update({
+      where: { id: 1 },
+      data: {
+        garden_task: 1
+      },
+    });
+    console.log(entry)
     
-  //   await SmsHelper.transferTask({id:1}, 1)
-  //     .then((data) => {
-  //       console.log('trasnfer: ', data)
-  //       expect(data.body).toEqual("Okay we've transferred to Cameron");
-  //     });
-  // });
+    await SmsHelper.transferTask({id:1}, 2)
+      .then((data) => {
+        console.log('transfer tester: ', data)
+        expect(data.body).toEqual("Okay we've transferred to John");
+      });
+  });
   
 });
 
@@ -101,30 +127,6 @@ describe('findBackupUsers', function() {
           backup_volunteers: [1]
         }
       },
-    });
-
-    SmsHelper.getSchedulerFromTask = jest.fn().mockReturnValue({
-      day: 'Tuesday',
-      backup_volunteers: [{
-        id: 1,
-        firstName: 'Cameron',
-        lastName: 'Smith',
-        phone: '1234567890',
-        email: 'cameron@smith.com',
-        role: 'volunteer',
-        activeGarden: 1,
-        gardens: [1, 2, 3]
-      },
-      {
-        id: 2,
-        firstName: 'John',
-        lastName: 'Doe',
-        phone: '1234567890',
-        email: 'john@doe.com',
-        role: 'volunteer',
-        activeGarden: 1,
-        gardens: [1, 2, 3]
-      }]
     });
 
     await SmsHelper.findBackupUsers(userMock).then((data) => {
