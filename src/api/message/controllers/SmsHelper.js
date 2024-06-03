@@ -366,7 +366,7 @@ SmsHelper.findBackupUsers = async(user) => {
 
     const scheduler = await SmsHelper.getSchedulerFromTask(task);
     let smsExtra = '';
-    let backupVolunteers = await SmsHelper.getBackupVolunteers(scheduler);
+    let backupVolunteers = await SmsHelper.getBackupVolunteers(user, scheduler);
     if (backupVolunteers.length) {
       let smsBody = 'We found some help for you. Respond with ';
       for (const idx in backupVolunteers) {
@@ -402,20 +402,22 @@ SmsHelper.applyVacation = async(user) => {
   }
 };
 
-SmsHelper.getBackupVolunteer = (scheduler, backUpNumber) => {
-  const backupVolunteers = SmsHelper.getBackupVolunteers(scheduler);
+SmsHelper.getBackupVolunteer = (currentUser, scheduler, backUpNumber) => {
+  const backupVolunteers = SmsHelper.getBackupVolunteers(currentUser, scheduler);
   if (!backupVolunteers) {
     return null;
   }
   return backupVolunteers[backUpNumber - 1];
 }
 
-SmsHelper.getBackupVolunteers = (scheduler) => {
+SmsHelper.getBackupVolunteers = (currentUser, scheduler) => {
   if (!scheduler || !scheduler.backup_volunteers || scheduler.backup_volunteers.length === 0) {
     return null;
   }
   // Filter out paused volunteers
-  const activeVolunteers = scheduler.backup_volunteers.filter(volunteer => !volunteer.paused);
+  let activeVolunteers = scheduler.backup_volunteers.filter(volunteer => !volunteer.paused);
+  // Filter out the current user
+  activeVolunteers = activeVolunteers.filter(volunteer => volunteer.id !== currentUser.id);
 
   return activeVolunteers;
 };
@@ -437,7 +439,7 @@ SmsHelper.transferTask = async(user, backUpNumber) => {
   }
   const scheduler = await SmsHelper.getSchedulerFromTask(task);
   
-  let newUser = SmsHelper.getBackupVolunteer(scheduler, backUpNumber);
+  let newUser = SmsHelper.getBackupVolunteer(user, scheduler, backUpNumber);
   if (newUser) {
     try {
       let updatedTask = await strapi.service('api::garden-task.garden-task').updateGardenTask(task, 'INITIALIZED', newUser);
@@ -458,7 +460,7 @@ SmsHelper.transferTask = async(user, backUpNumber) => {
       
     } catch(err) {
       console.log('Task not transferred: ', err);
-      return {body:'There was an issue in transferring.',type:'reply'};
+      return { body:'There was an issue in transferring.',type:'reply', task: task};
     }
 
   } else if (scheduler) {

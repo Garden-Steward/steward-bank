@@ -74,6 +74,16 @@ describe('transferTask', function() {
         role: 'volunteer',
         activeGarden: 1,
         gardens: [1, 2, 3]
+      },
+      {
+        id: 3,
+        firstName: 'Jane',
+        lastName: 'Goodall',
+        phone: '1234567890',
+        email: 'jane@goodall.com',
+        role: 'volunteer',
+        activeGarden: 1,
+        gardens: [1, 2, 3]
       }]
     });
 
@@ -97,7 +107,7 @@ describe('transferTask', function() {
     });
     console.log(entry)
     
-    await SmsHelper.transferTask({firstName:"Cameron", lastName:"Smith", id:1}, 2)
+    await SmsHelper.transferTask({firstName:"Cameron", lastName:"Smith", id:1}, 1)
       .then((data) => {
         expect(data.body).toEqual("Okay we've transferred to John");
       });
