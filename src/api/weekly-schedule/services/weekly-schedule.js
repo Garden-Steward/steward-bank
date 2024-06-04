@@ -20,7 +20,8 @@ module.exports = createCoreService('api::weekly-schedule.weekly-schedule', ({ st
    * @returns weekly-schedule
    */
   async createWeeklySchedule({id, schedulers}) {
-    const assignees = weeklyScheduleHelper.getAssignees({id, schedulers})
+    const assignees = await weeklyScheduleHelper.getAssignees({id, schedulers})
+
     const weekTitle = format(new Date(), 'PPP')
 
     try {
