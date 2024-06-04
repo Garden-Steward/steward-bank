@@ -25,10 +25,24 @@ export interface SchedulingScheduleAssignee extends Schema.Component {
   };
 }
 
+export interface SeoSeoInformation extends Schema.Component {
+  collectionName: 'components_seo_seo_informations';
+  info: {
+    displayName: 'SeoInformation';
+    icon: 'collapse';
+    description: '';
+  };
+  attributes: {
+    seotitle: Attribute.String;
+    seodescription: Attribute.Text;
+  };
+}
+
 declare module '@strapi/types' {
   export module Shared {
     export interface Components {
       'scheduling.schedule-assignee': SchedulingScheduleAssignee;
+      'seo.seo-information': SeoSeoInformation;
     }
   }
 }

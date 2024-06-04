@@ -874,21 +874,60 @@ export interface ApiBlogBlog extends Schema.CollectionType {
     singularName: 'blog';
     pluralName: 'blogs';
     displayName: 'Blog';
+    description: '';
   };
   options: {
     draftAndPublish: true;
   };
   attributes: {
-    Title: Attribute.String;
-    Excerpt: Attribute.Text;
-    Hero: Attribute.Media;
-    Content: Attribute.Blocks;
+    title: Attribute.String;
+    excerpt: Attribute.Text;
+    hero: Attribute.Media;
+    slug: Attribute.String;
+    content: Attribute.Blocks;
+    seo: Attribute.Component<'seo.seo-information'>;
+    category: Attribute.Relation<
+      'api::blog.blog',
+      'oneToOne',
+      'api::category.category'
+    >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
     createdBy: Attribute.Relation<'api::blog.blog', 'oneToOne', 'admin::user'> &
       Attribute.Private;
     updatedBy: Attribute.Relation<'api::blog.blog', 'oneToOne', 'admin::user'> &
+      Attribute.Private;
+  };
+}
+
+export interface ApiCategoryCategory extends Schema.CollectionType {
+  collectionName: 'categories';
+  info: {
+    singularName: 'category';
+    pluralName: 'categories';
+    displayName: 'Category';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    title: Attribute.String;
+    description: Attribute.Text;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    publishedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::category.category',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<
+      'api::category.category',
+      'oneToOne',
+      'admin::user'
+    > &
       Attribute.Private;
   };
 }
@@ -1574,6 +1613,7 @@ declare module '@strapi/types' {
       'plugin::i18n.locale': PluginI18NLocale;
       'api::application.application': ApiApplicationApplication;
       'api::blog.blog': ApiBlogBlog;
+      'api::category.category': ApiCategoryCategory;
       'api::garden.garden': ApiGardenGarden;
       'api::garden-task.garden-task': ApiGardenTaskGardenTask;
       'api::instruction.instruction': ApiInstructionInstruction;
