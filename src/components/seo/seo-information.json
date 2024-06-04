@@ -1,0 +1,17 @@
+{
+  "collectionName": "components_seo_seo_informations",
+  "info": {
+    "displayName": "SeoInformation",
+    "icon": "collapse",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "seotitle": {
+      "type": "string"
+    },
+    "seodescription": {
+      "type": "text"
+    }
+  }
+}

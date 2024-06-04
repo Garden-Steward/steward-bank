@@ -4,31 +4,45 @@
   "info": {
     "singularName": "blog",
     "pluralName": "blogs",
-    "displayName": "Blog"
+    "displayName": "Blog",
+    "description": ""
   },
   "options": {
     "draftAndPublish": true
   },
   "pluginOptions": {},
   "attributes": {
-    "Title": {
+    "title": {
       "type": "string"
     },
-    "Excerpt": {
+    "excerpt": {
       "type": "text"
     },
-    "Hero": {
-      "allowedTypes": [
-        "images",
-        "files",
-        "videos",
-        "audios"
-      ],
+    "hero": {
       "type": "media",
-      "multiple": false
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
     },
-    "Content": {
+    "slug": {
+      "type": "string",
+      "targetField": "title"
+    },
+    "content": {
       "type": "blocks"
+    },
+    "seo": {
+      "displayName": "SeoInformation",
+      "type": "component",
+      "repeatable": false,
+      "component": "seo.seo-information"
+    },
+    "category": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::category.category"
     }
   }
 }
