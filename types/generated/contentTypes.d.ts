@@ -891,6 +891,7 @@ export interface ApiBlogBlog extends Schema.CollectionType {
       'oneToOne',
       'api::category.category'
     >;
+    hero_display: Attribute.Boolean & Attribute.DefaultTo<true>;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
