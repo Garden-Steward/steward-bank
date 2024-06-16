@@ -306,13 +306,15 @@ SmsHelper.finishTask = async(user) => {
     });
     return {
       body:`You rock ${user.firstName}! We\'ve marked your watering day as done :)`,
-      type:'complete'
+      type:'complete',
+      task
     };
   } catch (err) {
     console.log("finish error: ", err);
     return {
       body:'Have you started a task to finish? We found nothing to finish!',
-      type:'reply'
+      type:'reply',
+      task
     };
   }
 };
