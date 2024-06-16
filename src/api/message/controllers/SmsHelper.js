@@ -98,9 +98,9 @@ SmsHelper.simplifySms = ( smsText, garden ) => {
   if (garden) {
     return 'garden'
   }
-  smsText = (smsText.startsWith('ye')) ? 'yes' : smsText
+  smsText = (smsText.startsWith('ye') || smsText.startsWith('yas')) ? 'yes' : smsText
   smsText = (smsText.startsWith(':')) ? 'smiles' : smsText
-  smsText = (smsText.startsWith('emphasized') || smsText.startsWith('loved')) ? 'bot' : smsText
+  smsText = (smsText.startsWith('emphasized') || smsText.startsWith('loved')|| smsText.startsWith('❤️'))  ? 'bot' : smsText
   return smsText;
 }
 SmsHelper.checkEmail = ( user, smsText ) => {

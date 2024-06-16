@@ -63,10 +63,26 @@ Helper.handleVolunteerReminders = async() => {
 }
 
 Helper.sendingWindow = (task) => {
+  const today = new Date();
+  const fourAgo = addHours(today, -4);
+  
   // We always send in testing and staging (Cameron codes at night)
-  if (['test','stg'].indexOf(process.env.ENVIRONMENT)>-1) { return true }
+  if (['test','stg'].indexOf(process.env.ENVIRONMENT)>-1 && !task.test) { return true }
+
   const pacificTime = utcToZonedTime(new Date(), 'America/Los_Angeles');
   let hour = pacificTime.getHours();
+  console.log("hour: ", hour)
+
+  // If the task has been started in the last 4 hours, don't send
+  if (task.status === 'STARTED' && Date.parse(task.started_at) > Date.parse(fourAgo)) {
+    console.log('%s recently updated! no SMS sending for now.', task.id);
+    // if the hour is past 18 we should send - or else they won't be reminded until too late
+    if (hour > 18) {
+      return true;
+    }
+    return false;
+  }
+
   if (hour < 8 || hour > 18) {
     console.log("outside of hours, ", hour)
     return false
@@ -235,11 +251,6 @@ Helper.validateAbandon = async(task) => {
 
 Helper.handleStartedTasks = async() => {
 
-  // let yesterday = new Date(new Date().setDate(new Date().getDate()-1));
-  const today = new Date();
-  const yesterday = addDays(today, -1);
-  const fourAgo = addHours(today, -4);
-
   let started = await strapi.db.query('api::garden-task.garden-task')
   .findMany({
     where: {
@@ -254,10 +265,6 @@ Helper.handleStartedTasks = async() => {
     if (abandoned) {
       continue;
     }
-    if (Date.parse(task.started_at) > Date.parse(fourAgo)) {
-      console.log('%s recently updated! no SMS sending for now.', task.id);
-      continue;
-    }
 
     if (!Helper.sendingWindow(task)) { return }
 
@@ -269,13 +276,13 @@ Helper.handleStartedTasks = async() => {
     if (task.type === 'Water') {
       strapi.service('api::sms.sms').handleSms({  
         task, 
-        body: `Hey there ${task.volunteers[0].firstName}, once you're DONE with the watering let me know you're FINISHED :)`,
+        body: `Hey there ${task.volunteers[0].firstName}, once you're DONE with the watering let me know you're FINISHED :) ...you always have OPTIONS`,
         type: 'followup'
     });
     } else {
       strapi.service('api::sms.sms').handleSms({  
         task, 
-        body: `Hey there ${task.volunteers[0].firstName}, have you managed to ${task.title}? Let me know when you're DONE :)`,
+        body: `Hey there ${task.volunteers[0].firstName}, have you managed to ${task.title}? Let me know when you're DONE :) ...you always have OPTIONS`,
         type: 'followup'
       });
     }

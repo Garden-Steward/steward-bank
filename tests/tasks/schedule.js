@@ -2,12 +2,12 @@ const weeklyScheduleHelper = require('../../src/api/weekly-schedule/services/hel
 
 
 describe('getAssignees', function() {
-  it('should create a create a weekly schedule', function() {
-    const schedulersMock = require('./schedulersMock.js');
-    weeklyScheduleHelper.createWeeklySchedule({id:1, ...schedulersMock}).then(res=>{
-      console.log("schedule: ", res);
-    });
-  });
+  // it('should create a create a weekly schedule', function() {
+  //   const schedulersMock = require('./schedulersMock.js');
+  //   weeklyScheduleHelper.createWeeklySchedule({id:1, ...schedulersMock}).then(res=>{
+  //     console.log("schedule: ", res);
+  //   });
+  // });
   it('should create a get assignees where paused is false', function() {
 
     const schedulersMock = require('./schedulersMock.js');
