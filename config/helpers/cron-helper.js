@@ -76,14 +76,14 @@ Helper.sendingWindow = (task) => {
   // If the task has been started in the last 4 hours, don't send
   if (task.status === 'STARTED' && Date.parse(task.started_at) > Date.parse(fourAgo)) {
     console.log('%s recently updated! no SMS sending for now.', task.id);
-    // if the hour is past 18 we should send - or else they won't be reminded until too late
-    if (hour > 18) {
+    // if the hour is past 19 we should send - or else they won't be reminded until too late
+    if (hour > 19) {
       return true;
     }
     return false;
   }
 
-  if (hour < 8 || hour > 18) {
+  if (hour < 8 || hour > 19) {
     console.log("outside of hours, ", hour)
     return false
   }
@@ -236,6 +236,7 @@ Helper.updateTask = async(task, status) => {
 Helper.validateAbandon = async(task) => {
   const today = new Date();
   const yesterday = addDays(today, -1);
+  // If started_at is more than 24 hours ago, abandon
   if ((Date.parse(task.started_at) || Date.parse(task.updatedAt)) < Date.parse(yesterday)) {
     console.log("abandoning")
     try {
