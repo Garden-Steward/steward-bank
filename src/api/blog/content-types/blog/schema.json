@@ -47,6 +47,9 @@
     "hero_display": {
       "type": "boolean",
       "default": true
+    },
+    "subtitle": {
+      "type": "string"
     }
   }
 }
