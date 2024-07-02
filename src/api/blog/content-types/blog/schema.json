@@ -50,6 +50,15 @@
     },
     "subtitle": {
       "type": "string"
+    },
+    "plants": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::plant.plant"
+    },
+    "oembed": {
+      "type": "customField",
+      "customField": "plugin::oembed.oembed"
     }
   }
 }

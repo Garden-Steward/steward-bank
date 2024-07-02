@@ -1,0 +1,37 @@
+{
+  "kind": "collectionType",
+  "collectionName": "plants",
+  "info": {
+    "singularName": "plant",
+    "pluralName": "plants",
+    "displayName": "Plant"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "text"
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "annual",
+        "perennial",
+        "herb",
+        "tree",
+        "shrub"
+      ]
+    },
+    "water_detail": {
+      "type": "text"
+    },
+    "sun_detail": {
+      "type": "text"
+    }
+  }
+}

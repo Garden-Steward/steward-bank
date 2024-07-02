@@ -786,6 +786,45 @@ export interface PluginUsersPermissionsUser extends Schema.CollectionType {
   };
 }
 
+export interface PluginSlugifySlug extends Schema.CollectionType {
+  collectionName: 'slugs';
+  info: {
+    singularName: 'slug';
+    pluralName: 'slugs';
+    displayName: 'slug';
+  };
+  options: {
+    draftAndPublish: false;
+    comment: '';
+  };
+  pluginOptions: {
+    'content-manager': {
+      visible: false;
+    };
+    'content-type-builder': {
+      visible: false;
+    };
+  };
+  attributes: {
+    slug: Attribute.Text;
+    count: Attribute.Integer;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'plugin::slugify.slug',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<
+      'plugin::slugify.slug',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
 export interface PluginI18NLocale extends Schema.CollectionType {
   collectionName: 'i18n_locale';
   info: {
@@ -893,6 +932,12 @@ export interface ApiBlogBlog extends Schema.CollectionType {
     >;
     hero_display: Attribute.Boolean & Attribute.DefaultTo<true>;
     subtitle: Attribute.String;
+    plants: Attribute.Relation<
+      'api::blog.blog',
+      'oneToMany',
+      'api::plant.plant'
+    >;
+    oembed: Attribute.Text & Attribute.CustomField<'plugin::oembed.oembed'>;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
@@ -1232,6 +1277,42 @@ export interface ApiOrganizationOrganization extends Schema.CollectionType {
       Attribute.Private;
     updatedBy: Attribute.Relation<
       'api::organization.organization',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
+export interface ApiPlantPlant extends Schema.CollectionType {
+  collectionName: 'plants';
+  info: {
+    singularName: 'plant';
+    pluralName: 'plants';
+    displayName: 'Plant';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    title: Attribute.String;
+    description: Attribute.Text;
+    type: Attribute.Enumeration<
+      ['annual', 'perennial', 'herb', 'tree', 'shrub']
+    >;
+    water_detail: Attribute.Text;
+    sun_detail: Attribute.Text;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    publishedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::plant.plant',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<
+      'api::plant.plant',
       'oneToOne',
       'admin::user'
     > &
@@ -1612,6 +1693,7 @@ declare module '@strapi/types' {
       'plugin::users-permissions.permission': PluginUsersPermissionsPermission;
       'plugin::users-permissions.role': PluginUsersPermissionsRole;
       'plugin::users-permissions.user': PluginUsersPermissionsUser;
+      'plugin::slugify.slug': PluginSlugifySlug;
       'plugin::i18n.locale': PluginI18NLocale;
       'api::application.application': ApiApplicationApplication;
       'api::blog.blog': ApiBlogBlog;
@@ -1622,6 +1704,7 @@ declare module '@strapi/types' {
       'api::interest.interest': ApiInterestInterest;
       'api::message.message': ApiMessageMessage;
       'api::organization.organization': ApiOrganizationOrganization;
+      'api::plant.plant': ApiPlantPlant;
       'api::recurring-task.recurring-task': ApiRecurringTaskRecurringTask;
       'api::scheduler.scheduler': ApiSchedulerScheduler;
       'api::sms-campaign.sms-campaign': ApiSmsCampaignSmsCampaign;
