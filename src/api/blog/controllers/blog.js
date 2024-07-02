@@ -17,6 +17,11 @@ module.exports = createCoreController('api::blog.blog', ({ strapi }) => ({
     });
 
     if (entity) {
+      let author = await strapi.db.query('plugin::users-permissions.user').findOne({
+        where: {id: entity.createdBy.id},
+        populate: ["profilePhoto"]
+      });
+      entity.author = author;
       const allBlogs = await strapi.db.query('api::blog.blog').findMany({
         orderBy: { createdAt: 'asc' },
         select: ['slug']
