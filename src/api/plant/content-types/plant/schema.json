@@ -4,7 +4,8 @@
   "info": {
     "singularName": "plant",
     "pluralName": "plants",
-    "displayName": "Plant"
+    "displayName": "Plant",
+    "description": ""
   },
   "options": {
     "draftAndPublish": true
@@ -32,6 +33,22 @@
     },
     "sun_detail": {
       "type": "text"
+    },
+    "slug": {
+      "type": "string"
+    },
+    "latin": {
+      "type": "string"
+    },
+    "images": {
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ],
+      "type": "media",
+      "multiple": true
     }
   }
 }

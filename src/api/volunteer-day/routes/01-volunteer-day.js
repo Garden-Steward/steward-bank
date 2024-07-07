@@ -13,8 +13,18 @@ module.exports = {
     },
     { // Path defined with an URL parameter
       method: 'GET',
+      path: '/volunteer-days/user', 
+      handler: 'volunteer-day.getByUser',
+    },
+    { // Path defined with an URL parameter
+      method: 'GET',
       path: '/volunteer-days/garden/:slug', 
       handler: 'volunteer-day.getByGarden',
+    },
+    {
+      method: 'POST',
+      path: '/volunteer-days/rsvp/:id',
+      handler: 'volunteer-day.rsvpEvent',
     },
 
   ]

@@ -1,5 +1,7 @@
 'use strict';
-
+// const { sanitizeOutput } = require('@strapi/utils');
+// const utils = require('@strapi/utils');
+const eventHelper = require('../services/helper');
 /**
  * volunteer-day controller
  */
@@ -10,6 +12,32 @@ const VdayHelper = require('./VdayHelper');
 
 module.exports = createCoreController('api::volunteer-day.volunteer-day', ({strapi}) => ({
 
+    getByUser: async ctx => {
+      const authUser = ctx.state.user;
+      let fullUser = await strapi.entityService.findOne('plugin::users-permissions.user', authUser.id, {
+        populate: ['gardens']
+      });
+      if (!authUser) {
+        return ctx.unauthorized('You must be logged in to access this resource');
+      }
+      
+      const gardenIds = fullUser.gardens.map(garden => garden.id);
+      const entries = await strapi.entityService.findMany('api::volunteer-day.volunteer-day', {
+        filters: {
+          garden: {
+            id: {
+              $in: gardenIds
+            }
+          },
+          startDatetime: {
+            $gt: new Date().toISOString()
+          }
+        }
+      });
+
+      return entries;
+
+    },
     getByGarden: async ctx => {
       
       const entries = await strapi.entityService.findMany('api::volunteer-day.volunteer-day', {
@@ -19,15 +47,22 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
             slug: ctx.params.slug,
           }
         },
-        populate: ['garden_tasks'],
+        populate: ['garden_tasks', ],
+        limit: 15,
       });
       try {
         ctx.body = entries;
       } catch (err) {
         ctx.body = err;
       }
+    },
 
+    rsvpEvent: async ctx => {
+      console.log("rsvp: ", ctx.params, ctx.request.body);
+      const { data } = ctx.request.body;
+      const updatedEvent = eventHelper.rsvpEvent(ctx.params.id, data);
 
+      return updatedEvent;
     },
 
     testSms: async ctx => {

@@ -1289,6 +1289,7 @@ export interface ApiPlantPlant extends Schema.CollectionType {
     singularName: 'plant';
     pluralName: 'plants';
     displayName: 'Plant';
+    description: '';
   };
   options: {
     draftAndPublish: true;
@@ -1301,6 +1302,9 @@ export interface ApiPlantPlant extends Schema.CollectionType {
     >;
     water_detail: Attribute.Text;
     sun_detail: Attribute.Text;
+    slug: Attribute.String;
+    latin: Attribute.String;
+    images: Attribute.Media;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
@@ -1566,7 +1570,7 @@ export interface ApiVolunteerDayVolunteerDay extends Schema.CollectionType {
       'oneToOne',
       'api::garden.garden'
     >;
-    daysJournal: Attribute.RichText;
+    content: Attribute.RichText;
     startDatetime: Attribute.DateTime;
     endText: Attribute.String;
     disabled: Attribute.Boolean &
@@ -1582,6 +1586,12 @@ export interface ApiVolunteerDayVolunteerDay extends Schema.CollectionType {
       'api::volunteer-day.volunteer-day',
       'oneToMany',
       'api::sms-campaign.sms-campaign'
+    >;
+    slug: Attribute.String;
+    confirmed: Attribute.Relation<
+      'api::volunteer-day.volunteer-day',
+      'oneToMany',
+      'plugin::users-permissions.user'
     >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;

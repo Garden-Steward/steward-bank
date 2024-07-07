@@ -20,3 +20,4 @@ require('./user/registration');
 require('./tasks/transfer');
 require('./tasks/schedule');
 require('./tasks/crontest');
+require('./event/rsvp');

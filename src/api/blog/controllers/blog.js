@@ -13,12 +13,12 @@ module.exports = createCoreController('api::blog.blog', ({ strapi }) => ({
     console.log('running blog slug: ', ctx.params.slug)
     const entity = await strapi.db.query('api::blog.blog').findOne({
       where: {slug: ctx.params.slug},
-      populate: ["category", "hero"]
+      populate: ["category", "hero", "createdBy"]
     });
 
     if (entity) {
       let author = await strapi.db.query('plugin::users-permissions.user').findOne({
-        where: {id: entity.createdBy.id},
+        where: {email: entity.createdBy.email},
         populate: ["profilePhoto"]
       });
       entity.author = author;

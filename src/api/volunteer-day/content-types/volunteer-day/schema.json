@@ -23,7 +23,7 @@
       "relation": "oneToOne",
       "target": "api::garden.garden"
     },
-    "daysJournal": {
+    "content": {
       "type": "richtext"
     },
     "startDatetime": {
@@ -52,6 +52,14 @@
       "relation": "oneToMany",
       "target": "api::sms-campaign.sms-campaign",
       "mappedBy": "volunteer_day"
+    },
+    "slug": {
+      "type": "string"
+    },
+    "confirmed": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "plugin::users-permissions.user"
     }
   }
 }

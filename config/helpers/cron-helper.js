@@ -75,7 +75,7 @@ Helper.sendingWindow = (task) => {
 
   // If the task has been started in the last 4 hours, don't send
   if (task.status === 'STARTED' && Date.parse(task.started_at) > Date.parse(fourAgo)) {
-    console.log('%s recently updated! no SMS sending for now.', task.id);
+    console.log('%s recently updated! no SMS sending for now.', task.id, hour);
     // if the hour is past 19 we should send - or else they won't be reminded until too late
     if (hour > 19) {
       return true;
