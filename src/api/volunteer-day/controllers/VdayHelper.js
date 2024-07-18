@@ -32,7 +32,12 @@ VdayHelper.buildTomorrowCopy = (vDay) => {
   }
   const {startTime} = VdayHelper.getDateCopy(vDay);
   let interestCopy = VdayHelper.buildEventInterestCopy(vDay);
-  let copy = `Tomorrow!! ${vDay.garden.title} has ${interestCopy} "${vDay.title}". ${vDay.blurb} from ${startTime} to ${vDay.endText}.`
+  let copy = `Tomorrow!! ${vDay.garden.title} has ${interestCopy} "${vDay.title}". ${vDay.blurb} `
+  if (vDay.endText) {
+    copy += ` from ${startTime} to ${vDay.endText}.`
+  } else {
+    copy += ` starts at ${startTime}.`
+  }
   return copy
 }
 
@@ -57,7 +62,12 @@ VdayHelper.buildTodayCopy = (vDay) => {
   }
   const {date, startTime} = VdayHelper.getDateCopy(vDay);
   let interestCopy = VdayHelper.buildEventInterestCopy(vDay);
-  let copy = `Today's the day for ${vDay.garden.title}'s ${interestCopy} "${vDay.title}". ${vDay.blurb} ${date}, ${startTime} to ${vDay.endText}.`
+  let copy = `Today's the day for ${vDay.garden.title}'s ${interestCopy} "${vDay.title}". ${vDay.blurb} ${date},`
+  if (vDay.endText) {
+    copy += ` ${startTime} to ${vDay.endText}.`
+  } else {
+    copy += ` starts at ${startTime}.`
+  }
   return copy
 }
 /**

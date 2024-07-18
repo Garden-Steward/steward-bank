@@ -1,5 +1,20 @@
 import type { Schema, Attribute } from '@strapi/strapi';
 
+export interface PlantsBenefits extends Schema.Component {
+  collectionName: 'components_plants_benefits';
+  info: {
+    displayName: 'Benefits';
+    icon: 'handHeart';
+    description: '';
+  };
+  attributes: {
+    title: Attribute.String;
+    potency: Attribute.Enumeration<
+      ['minimal', 'mild', 'moderate', 'strong', 'profound']
+    >;
+  };
+}
+
 export interface SchedulingScheduleAssignee extends Schema.Component {
   collectionName: 'components_scheduling_schedule_assignees';
   info: {
@@ -41,6 +56,7 @@ export interface SeoSeoInformation extends Schema.Component {
 declare module '@strapi/types' {
   export module Shared {
     export interface Components {
+      'plants.benefits': PlantsBenefits;
       'scheduling.schedule-assignee': SchedulingScheduleAssignee;
       'seo.seo-information': SeoSeoInformation;
     }

@@ -1305,6 +1305,7 @@ export interface ApiPlantPlant extends Schema.CollectionType {
     slug: Attribute.String;
     latin: Attribute.String;
     images: Attribute.Media;
+    Benefits: Attribute.Component<'plants.benefits', true>;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
@@ -1592,6 +1593,9 @@ export interface ApiVolunteerDayVolunteerDay extends Schema.CollectionType {
       'api::volunteer-day.volunteer-day',
       'oneToMany',
       'plugin::users-permissions.user'
+    >;
+    accessibility: Attribute.Enumeration<
+      ['Public', 'Garden Members', 'Invite Only']
     >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;

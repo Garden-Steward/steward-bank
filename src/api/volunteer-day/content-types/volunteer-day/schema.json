@@ -60,6 +60,14 @@
       "type": "relation",
       "relation": "oneToMany",
       "target": "plugin::users-permissions.user"
+    },
+    "accessibility": {
+      "type": "enumeration",
+      "enum": [
+        "Public",
+        "Garden Members",
+        "Invite Only"
+      ]
     }
   }
 }

@@ -1,0 +1,24 @@
+{
+  "collectionName": "components_plants_benefits",
+  "info": {
+    "displayName": "Benefits",
+    "icon": "handHeart",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "string"
+    },
+    "potency": {
+      "type": "enumeration",
+      "enum": [
+        "minimal",
+        "mild",
+        "moderate",
+        "strong",
+        "profound"
+      ]
+    }
+  }
+}
