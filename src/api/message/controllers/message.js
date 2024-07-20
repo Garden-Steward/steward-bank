@@ -103,9 +103,9 @@ module.exports = {
         smsBody = null;
         break;
 
-        case 'start':
-          smsBody = "Welcome back! You have been removed from all you gardens so please message their names to rejoin."
-        break;
+      case 'start':
+        smsBody = "Welcome back! You have been removed from all you gardens so please message their names to rejoin."
+      break;
           
       case 'bot':
         smsBody = "I appreciate your enthusiasm in chat, but I'm just the Garden Steward bot..."

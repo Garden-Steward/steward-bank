@@ -1119,7 +1119,6 @@ export interface ApiInstructionInstruction extends Schema.CollectionType {
   };
   attributes: {
     title: Attribute.String;
-    content: Attribute.RichText;
     slug: Attribute.String;
     accept_required: Attribute.Boolean;
     garden: Attribute.Relation<
@@ -1133,6 +1132,7 @@ export interface ApiInstructionInstruction extends Schema.CollectionType {
     affirm_explain: Attribute.Text &
       Attribute.Required &
       Attribute.DefaultTo<"I understand this task's requirements and I am capable. I accept this task.">;
+    content: Attribute.Blocks;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
