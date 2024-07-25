@@ -68,6 +68,12 @@
         "Garden Members",
         "Invite Only"
       ]
+    },
+    "planting": {
+      "displayName": "planting",
+      "type": "component",
+      "repeatable": true,
+      "component": "plants.planting"
     }
   }
 }

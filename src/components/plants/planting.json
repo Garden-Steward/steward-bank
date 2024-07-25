@@ -1,0 +1,13 @@
+{
+  "collectionName": "components_plants_plantings",
+  "info": {
+    "displayName": "planting",
+    "icon": "seed"
+  },
+  "options": {},
+  "attributes": {
+    "plant_name": {
+      "type": "string"
+    }
+  }
+}

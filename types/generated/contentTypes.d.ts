@@ -1597,6 +1597,7 @@ export interface ApiVolunteerDayVolunteerDay extends Schema.CollectionType {
     accessibility: Attribute.Enumeration<
       ['Public', 'Garden Members', 'Invite Only']
     >;
+    planting: Attribute.Component<'plants.planting', true>;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;

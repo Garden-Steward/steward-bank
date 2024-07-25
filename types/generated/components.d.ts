@@ -15,6 +15,17 @@ export interface PlantsBenefits extends Schema.Component {
   };
 }
 
+export interface PlantsPlanting extends Schema.Component {
+  collectionName: 'components_plants_plantings';
+  info: {
+    displayName: 'planting';
+    icon: 'seed';
+  };
+  attributes: {
+    plant_name: Attribute.String;
+  };
+}
+
 export interface SchedulingScheduleAssignee extends Schema.Component {
   collectionName: 'components_scheduling_schedule_assignees';
   info: {
@@ -57,6 +68,7 @@ declare module '@strapi/types' {
   export module Shared {
     export interface Components {
       'plants.benefits': PlantsBenefits;
+      'plants.planting': PlantsPlanting;
       'scheduling.schedule-assignee': SchedulingScheduleAssignee;
       'seo.seo-information': SeoSeoInformation;
     }
