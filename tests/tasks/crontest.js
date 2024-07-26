@@ -13,8 +13,9 @@ describe('cronHelper', function() {
     const pacificTime = utcToZonedTime(new Date(), 'America/Los_Angeles');
     let hour = pacificTime.getHours();
     const currentWindow = hour > 19 ? true : false;
-
+    
     const result = cronHelper.sendingWindow(task)
+    console.log("currentWindow: ", currentWindow, hour, result)
     // console.log("result: ", result)
     expect(result).toEqual(currentWindow);
   });
