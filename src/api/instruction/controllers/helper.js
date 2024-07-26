@@ -1,5 +1,45 @@
 const instructionHelper = {}
 
+instructionHelper.approveInstruction = async ({ user, instruction, question }) => {
+  console.log('approving instruction', instruction)
+  try {
+    await strapi.entityService.update('plugin::users-permissions.user', user.id, {
+      data: {"instructions" : {"connect": [instruction.id]}}
+    });
+
+    // TODO: Send an SMS to the user that they have accepted the instruction, title
+    strapi.service('api::sms.sms').handleSms({
+      task: null, 
+      body: 
+      `You're now qualified to handle ${instruction.title}! Thanks for being involved!`,
+      type: 'complete',
+      previous: question?.body,
+      user
+    });    
+
+  } catch (err) { 
+    console.warn(err);
+    return {success: false, message: "Error approving instruction"};
+  }
+  
+  return {success: true, instructionId: instruction.id, userId: user.id};
+}
+
+instructionHelper.approveInstructionId = async ({ user, instructionId, question }) => {
+  console.log("TACO TACO id ", instructionId);
+  try {
+    let instruction = await strapi.db.query('api::instruction.instruction').findOne({
+      where: {
+        id: instructionId
+      }
+    });
+    return instructionHelper.approveInstruction({user, instruction, question});
+  } catch (err) {
+    console.warn(err);
+    return {success: false, message: "Error approving instruction"};
+  }
+}
+
 instructionHelper.requestApproval = async ({ phoneNumber, instruction }) => {
   // Ensure phoneNumber is a string
   let cleanedNumber = `${phoneNumber}`;
@@ -20,14 +60,13 @@ instructionHelper.requestApproval = async ({ phoneNumber, instruction }) => {
   const formattedPhoneNumber = cleanedNumber.length === 10
     ? `+1${cleanedNumber}`
     : `+${cleanedNumber}`;
-    console.log('formattedPhoneNumber: ', formattedPhoneNumber)
 
   const user = await strapi.db.query('plugin::users-permissions.user').findOne({
     where: {
       phoneNumber: formattedPhoneNumber
     }
   });
-  console.log('got user: ', user)
+
   if (user) {
     // do not approve task
     // send text to user
@@ -36,7 +75,7 @@ instructionHelper.requestApproval = async ({ phoneNumber, instruction }) => {
       body: 
       `Hi ${user.firstName}, we received an instruction request from the Garden Steward website. \n\nDo you "${instruction.affirm_button_title}"? ${instruction.title}`,
       type: 'question',
-      previous: null,
+      previous: 'Phone Number submission via Garden Steward',
       user,
       meta_data: {
         instructionId: instruction.id

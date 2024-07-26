@@ -1,6 +1,7 @@
 const SmsHelper = {};
 const { addDays, differenceInDays } = require('date-fns');
 const {utcToZonedTime,} = require("date-fns-tz");
+const InstructionHelper = require('../../instruction/controllers/helper');
 
 /***
  * Updates tasks like "yes" to find certain status Garden Tasks and update them.
@@ -10,9 +11,14 @@ SmsHelper.handleYesResponse = async(smsText, user) => {
     return {body: "Sorry you have to be registered to use this service", type: "reply"}
   }
   let question = await strapi.service('api::message.message').validateQuestion(user);
-  console.log("q: ", question);
+  console.log("q: ", question.meta_data,  question.meta_data?.instructionId);
   if (question) {
-    return SmsHelper.handleGardenTask(smsText,user);
+    if (question.meta_data?.instructionId) {
+      console.log('approving instruction')
+      return InstructionHelper.approveInstructionId({user, instructionId: question.meta_data?.instructionId, question});
+    } else {
+      return SmsHelper.handleGardenTask(smsText,user);
+    }
   } 
   const lastCampaign = await strapi.service('api::sms-campaign.sms-campaign').getLatestCampaign(user, 'rsvp');
   const currentDate = new Date();

@@ -1,5 +1,7 @@
 'use strict';
 
+const instructionHelper = require('./helper.js');
+
 /**
  * instruction controller
  */
@@ -20,35 +22,15 @@ module.exports = createCoreController('api::instruction.instruction', ({ strapi 
     }
     if (data.userId) {
       user = await strapi.entityService.findOne('plugin::users-permissions.user', data.userId);
+      if (user) {
+        return instructionHelper.approveInstruction(user, instruction);
+      }
     } 
-    
-    if (!user) {
-      return {
-        success: false,
-        message: "User not found"
-      };
-    }
-    try {
-      await strapi.entityService.update('plugin::users-permissions.user', data.userId, {
-        data: {"instructions" : {"connect": [instruction.id]}}
-      });
-
-      // TODO: Send an SMS to the user that they have accepted the instruction, title
-      strapi.service('api::sms.sms').handleSms({
-        task: null, 
-        body: 
-        `You're now qualified to handle ${instruction.title}! Thanks for being involved!`,
-        type: 'followup',
-        previous: null,
-        user
-      });    
-
-    } catch (err) { 
-      console.warn(err);
-      return false;history
-    }
-    
-    return true;
+    return {
+      success: false,
+      message: "User not found"
+    };
   }
+  
 
 }));

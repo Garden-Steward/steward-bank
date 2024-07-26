@@ -98,6 +98,22 @@ describe('transferTask', function() {
   
   it("should transfer task", async () => {
     await setupTask();
+    strapi.service('api::message.message').validateQuestion = jest.fn().mockResolvedValue({
+      id: 1,
+      body: 'Do you "Approve" of this instruction?',
+      type: 'question',
+      previous: 'yes',
+      createdAt: '2024-06-16T03:46:01.476Z',
+      updatedAt: '2024-06-16T03:48:06.526Z',
+      publishedAt: null,
+      garden_task: {
+        id: 1,
+        title: 'Water the Garden',
+        status: 'INITIALIZED',
+        user: 1,
+        recurring_task: 1
+      },
+    });
   
     const entry = await strapi.db.query('api::message.message').update({
       where: { id: 1 },
