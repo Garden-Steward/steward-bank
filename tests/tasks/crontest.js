@@ -15,7 +15,7 @@ describe('cronHelper', function() {
     const currentWindow = hour > 19 ? true : false;
     
     const result = cronHelper.sendingWindow(task)
-    console.log("currentWindow: ", currentWindow, hour, result)
+    // console.log("currentWindow: ", currentWindow, hour, result)
     // console.log("result: ", result)
     expect(result).toEqual(currentWindow);
   });

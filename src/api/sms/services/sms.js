@@ -18,7 +18,7 @@ let sendSms = function(toNum,body){
   const client = require('twilio')(accountSid, authToken);
   console.log('sending sms to: ', toNum);
   if (process.env.ENVIRONMENT == 'test') { 
-    console.log("Sending: ", body, `to ${toNum}`);
+    console.log("Test Sending: ", body, `to ${toNum}`);
     return 
   }
   client.messages
@@ -32,8 +32,8 @@ let sendSms = function(toNum,body){
 
 /** Handle a Task Based SMS or pass in user */
 let handleSms = function(params){
-  let {task, body, type, previous, user} = params
-  console.log("sms out: ", body, process.env.ENVIRONMENT);
+  let {task, body, type, previous, user, meta_data} = params
+  console.log("sms out: ", body, "env: ", process.env.ENVIRONMENT);
   if (process.env.ENVIRONMENT == 'test') { return }
 
   let member = (!user && task && task.volunteers?.length) ? task.volunteers[0] : user
@@ -46,7 +46,8 @@ let handleSms = function(params){
         garden: task?.garden || user.activeGarden,
         body,
         garden_task: task,
-        previous
+        previous,
+        meta_data
       }
     });
   } catch(err) {

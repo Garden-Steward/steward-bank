@@ -16,8 +16,6 @@ module.exports = createCoreController('api::instruction.instruction', ({ strapi 
     });
     let user;
     if (data.phoneNmber) {
-      // TODO: Text User - do they approve of the instruction? But only if they're a registered user tied to the garden.
-      // do not approve task
       return instructionHelper.requestApproval(data.phoneNumber, instruction);
     }
     if (data.userId) {

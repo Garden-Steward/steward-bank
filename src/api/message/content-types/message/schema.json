@@ -43,6 +43,9 @@
     },
     "previous": {
       "type": "text"
+    },
+    "meta_data": {
+      "type": "json"
     }
   }
 }
