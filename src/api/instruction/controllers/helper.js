@@ -1,5 +1,14 @@
 const instructionHelper = {}
 
+/**
+ * APPROVE INSTRUCTION 
+ * adds the passed in instruction onto the user and notifies them
+ * Also inits sending of task back to user
+ * @param {object} user 
+ * @param {object} instruction 
+ * @param {object} question 
+ * @returns 
+ */
 instructionHelper.approveInstruction = async ({ user, instruction, question }) => {
   console.log('approving instruction', instruction)
   try {
@@ -7,23 +16,22 @@ instructionHelper.approveInstruction = async ({ user, instruction, question }) =
       data: {"instructions" : {"connect": [instruction.id]}}
     });
 
-    // TODO: Send an SMS to the user that they have accepted the instruction, title
-    strapi.service('api::sms.sms').handleSms({
-      task: null, 
-      body: 
-      `You're now qualified to handle ${instruction.title}! Thanks for being involved!`,
-      type: 'complete',
-      previous: question?.body,
-      user
-    });    
+    const {success, message} =  await strapi.service('api::instruction.instruction').InstructionAssignTask(instruction, user);
+    console.log("instruction assign task result: ", success, message);
+    if (success) {
+      return {body: `Thank You!!! You're now qualified to handle ${instruction.title}!`, type: "complete", success: true};
+    } else {
+      return {body: `Error approving instruction: ${message}`, type: "error", success: false};
+    }
 
   } catch (err) { 
     console.warn(err);
-    return {success: false, message: "Error approving instruction"};
+    return {body: `Technical Error approving instruction: ${err.message}`, type: "error", success: false};
   }
   
-  return {success: true, instructionId: instruction.id, userId: user.id};
+  
 }
+
 
 instructionHelper.approveInstructionId = async ({ user, instructionId, question }) => {
   console.log("TACO TACO id ", instructionId);

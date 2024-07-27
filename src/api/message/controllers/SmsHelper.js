@@ -41,7 +41,7 @@ SmsHelper.handleGardenTask = async(smsText, user) => {
         started_at: new Date(new Date().getTime())
       }
       // origStatus = 'INITIALIZED'
-      origStatus = {$in:['INITIALIZED','STARTED']};
+      origStatus = {$in:['INITIALIZED','STARTED', 'PENDING']};
     }  
 
     const gardenTask = await strapi.db.query('api::garden-task.garden-task').findOne({
@@ -263,10 +263,19 @@ SmsHelper.getHelp = async(user) => {
         volunteers: {
           phoneNumber: user.phoneNumber
         },
-        status:{$in:['INITIALIZED']}
+        status:{$in:['INITIALIZED', 'PENDING', 'STARTED']}
       }
     });
-    return `Hi ${user.firstName}, you have ${tasks.length} open tasks. YES if you can do the task. NO if want to transfer. SKIP if it isn't needed. `;
+    if (tasks.length == 1 && tasks[0].status == 'PENDING') {
+      return `Hi ${user.firstName}. We are waiting on task ${tasks[0].title}. Please respond to the instruction: YES if you agree you can manage the task. NO will allow you to transfer the task to someone else. You will be resent this instruction each time until approval.`;
+    } else if (tasks.length == 1) {
+      return `Hi ${user.firstName}, you have the task of "${tasks[0].title}" to complete. YES if you can do the task. NO if want to transfer. SKIP if it isn't needed. `;
+    } else if (tasks.length) {
+      return `Hi ${user.firstName}, you have ${tasks.length} open tasks. YES if you can do the task. NO if want to transfer. SKIP if it isn't needed. `;
+    } else {
+      return `Hi ${user.firstName}, you have no open tasks.`;
+    }
+    
   } catch (err) {
     return `Hi ${user.firstName}! You can ask to receive a task, and you can join new SMS Groups by texting us their name. More coming!`;
   }

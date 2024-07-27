@@ -91,13 +91,14 @@ Helper.sendingWindow = (task) => {
   return true
 }
 
-Helper.sendWaterSms = async(waterTask) => {
+Helper.sendWaterSms = async(waterTask, skipWindow) => {
+
   if (!waterTask.volunteers[0].phoneNumber) {
     console.log('Missing phone number for ',waterTask.volunteers[0].username);
-    return;
+    return {success: false, message: 'Missing phone number for ' + waterTask.volunteers[0].username};
   }
 
-  if (!Helper.sendingWindow(waterTask)) { return }
+  if (!skipWindow && !Helper.sendingWindow(waterTask)) { return }
 
   const weather = await Weather.getGardenWeather(waterTask.garden);
 
@@ -108,6 +109,7 @@ Helper.sendWaterSms = async(waterTask) => {
       type: 'question'
     }
     );
+    return {success: true, message: 'Sent water reminder for ' + waterTask.volunteers[0].username};
   } else {
     try {
       await Helper.updateTask(waterTask,'SKIPPED');
@@ -119,6 +121,7 @@ Helper.sendWaterSms = async(waterTask) => {
       body: `Hi ${waterTask.volunteers[0].firstName}, don't worry about watering today! Reason: ${weather.reason}`, 
       type: 'notification'
     });
+    return {success: true, message: 'Sent water skip for ' + waterTask.volunteers[0].username};
   }
 };
 

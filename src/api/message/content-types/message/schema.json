@@ -23,7 +23,8 @@
         "reply",
         "notification",
         "complete",
-        "registration"
+        "registration",
+        "error"
       ]
     },
     "user": {

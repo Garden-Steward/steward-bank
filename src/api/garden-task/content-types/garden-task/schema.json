@@ -19,6 +19,7 @@
       "type": "enumeration",
       "enum": [
         "INITIALIZED",
+        "PENDING",
         "INTERESTED",
         "STARTED",
         "FINISHED",
