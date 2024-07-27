@@ -15,7 +15,7 @@ module.exports = createCoreService('api::instruction.instruction', ({ strapi }) 
    * @returns obj - latest SMS Campaign with confirmations concatenated
    */
   async InstructionAssignTask(instruction, user) {
-    const tasks = await strapi.service('api::garden-task.garden-task').getUserTasksByStatus(user, 'PENDING');
+    const tasks = await strapi.service('api::garden-task.garden-task').getUserTasksByStatus(user, ['PENDING']);
     // if any tasks are pending, send them the initial Text of "Youve been assigned..."
     for (let task of tasks) {
       if (task.recurring_task && task.recurring_task.instruction == instruction.id) {

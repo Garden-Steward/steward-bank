@@ -21,11 +21,11 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
 
   },
 
-  async getUserTasksByStatus(user, status) {
+  async getUserTasksByStatus(user, statusArr) {
     const tasks = await strapi.entityService.findMany('api::garden-task.garden-task', {
       where: {
         user,
-        status
+        status: {$in:statusArr}
       }
     });
     return tasks;

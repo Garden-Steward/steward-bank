@@ -361,9 +361,9 @@ SmsHelper.findBackupUsers = async(user) => {
   const latestQuestion = await strapi.service('api::message.message').validateQuestion(user);
   let task;
   if (!latestQuestion ) {
-    let tasks = await strapi.service('api::garden-task.garden-task').getUserTasksByStatus(user,'INITIALIZED');
+    let tasks = await strapi.service('api::garden-task.garden-task').getUserTasksByStatus(user,['INITIALIZED','STARTED','PENDING']);
     if (!tasks.length) {
-      return 'I\'m sorry, we don\'t have an open task for you right now.';
+      return {body: 'I\'m sorry, we don\'t have an open task for you right now.', type: 'reply'};
     } else {
       // return `The task "${tasks[0].title}" can\'t be transferred, sorry!`;
       task = tasks[0]
@@ -376,10 +376,10 @@ SmsHelper.findBackupUsers = async(user) => {
     }
     console.log("we have task in findBackup");
     if (!task) {
-      return 'Looks like you don\'t have a task to manage. Tell Cameron if it\s unexpected.';
+      return {body: 'Looks like you don\'t have a task to manage. Tell Cameron if it\s unexpected.', type: 'reply'};
     }
     if (!task.recurring_task) {
-      return 'Sorry this isn\'t a task that can be transferred. Only Scheduled Tasks can transfer.';
+      return {body: 'Sorry this isn\'t a task that can be transferred. Only Scheduled Tasks can transfer.', type: 'reply', task, success: false};
     }
 
     const scheduler = await SmsHelper.getSchedulerFromTask(task);
@@ -394,9 +394,9 @@ SmsHelper.findBackupUsers = async(user) => {
       smsBody = smsBody + smsExtra.slice(0,smsExtra.length-1) + '. Once you do we will transfer the task to them.';
       return {body: smsBody, task, type: 'followup'};
     } else if (!scheduler) {
-      return `There is no schedule today for ${task.title}`;
+      return {body: `There is no schedule today for ${task.title}`, type: 'reply', task};
     } else {
-      return 'There are no backup volunteers set for this task yet. You\'re on your own to find some help!';
+      return {body: 'There are no backup volunteers set for this task yet. You\'re on your own to find some help!', type: 'reply', task};
     }
   }
 };

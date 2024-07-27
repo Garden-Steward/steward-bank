@@ -165,11 +165,26 @@ describe('findBackupUsers - SMS Helper No Response', function() {
   it("send back full response smsInfo", async () => {
     strapi.service('api::message.message').validateQuestion = jest.fn().mockReturnValue(false);
     await SmsHelper.findBackupUsers(userMock).then((data) => {
-      console.log("false question findbackup: ", data)
       expect(data.body).toContain("Once you do we will transfer the task to them");
       expect(data.type).toEqual('followup');
     });
 
+  });
+
+  it ('should fail if no recurring task', async () => {
+    strapi.service('api::message.message').validateQuestion = jest.fn().mockReturnValue({
+      body: "Will you do the watering?",
+      type: 'question',
+      garden_task: {
+        title: 'Water the Garden',
+        id: 1,
+        user: 1,
+      },
+    });
+
+    const result = await SmsHelper.findBackupUsers(userMock)
+    expect(result.success).toEqual(false);
+    expect(result.body).toContain('Only Scheduled Tasks can');
   });
 
 });

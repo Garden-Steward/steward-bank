@@ -161,7 +161,7 @@ Helper.buildSchedulerTask = async(curTask, recTask, scheduledUser) => {
         });
         console.log("added volunteer onto: ", curTask.id);
       }
-      return; 
+      return {success: true, message: 'Added volunteer onto: ' + curTask.id}; 
     }
     // Someone could have it started, how many people can work on a task at same time?
     // console.log("setting task: ", recTask)
@@ -177,7 +177,7 @@ Helper.buildSchedulerTask = async(curTask, recTask, scheduledUser) => {
       }
     });
     console.log('newtask added: ',newTask.title, newTask.id);
-
+    return {success: true, message: 'Created Task: ' + newTask.id};
 }
 
 /**
