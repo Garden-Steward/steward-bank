@@ -17,11 +17,12 @@
     "supertest": "^7.0.0"
   },
   "dependencies": {
+    
     "@strapi-community/strapi-provider-upload-google-cloud-storage": "^4.10.5",
-    "@strapi/plugin-i18n": "4.24.3",
-    "@strapi/plugin-users-permissions": "4.24.3",
-    "@strapi/provider-email-sendgrid": "^4.24.3",
-    "@strapi/strapi": "4.24.3",
+    "@strapi/plugin-i18n": "4.25.5",
+    "@strapi/plugin-users-permissions": "4.25.5",
+    "@strapi/provider-email-sendgrid": "^4.25.5",
+    "@strapi/strapi": "4.25.5",
     "axios": "^1.7.2",
     "better-sqlite3": "^7.4.6",
     "date-fns-tz": "^2.0.0",

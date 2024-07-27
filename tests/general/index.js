@@ -72,7 +72,6 @@ describe('Yes Response on SmsHelper', () => {
     });
     
     let result = await SmsHelper.handleYesResponse(smsText, user)
-    console.log("handling yes test: ", result);
     expect(result.type).toBe('complete');
   });
 });

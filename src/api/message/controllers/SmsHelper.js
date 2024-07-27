@@ -374,6 +374,7 @@ SmsHelper.findBackupUsers = async(user) => {
     if (!task) {
       task = latestQuestion.garden_task;
     }
+    console.log("we have task in findBackup");
     if (!task) {
       return 'Looks like you don\'t have a task to manage. Tell Cameron if it\s unexpected.';
     }
@@ -384,7 +385,7 @@ SmsHelper.findBackupUsers = async(user) => {
     const scheduler = await SmsHelper.getSchedulerFromTask(task);
     let smsExtra = '';
     let backupVolunteers = await SmsHelper.getBackupVolunteers(user, scheduler);
-    if (backupVolunteers.length) {
+    if (backupVolunteers?.length) {
       let smsBody = 'We found some help for you. Respond with ';
       for (const idx in backupVolunteers) {
         let num = parseInt(idx) + 1;

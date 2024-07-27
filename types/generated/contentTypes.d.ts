@@ -730,7 +730,7 @@ export interface PluginUsersPermissionsUser extends Schema.CollectionType {
       ['INTERESTED', 'VOLUNTEER', 'PROFESSIONAL', 'INACTIVE']
     >;
     phoneNumber: Attribute.String;
-    profilePhoto: Attribute.Media;
+    profilePhoto: Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     firstName: Attribute.String;
     lastName: Attribute.String;
     bio: Attribute.Text;
@@ -922,7 +922,7 @@ export interface ApiBlogBlog extends Schema.CollectionType {
   attributes: {
     title: Attribute.String;
     excerpt: Attribute.Text;
-    hero: Attribute.Media;
+    hero: Attribute.Media<'images'>;
     slug: Attribute.String;
     content: Attribute.Blocks;
     seo: Attribute.Component<'seo.seo-information'>;
@@ -1266,7 +1266,7 @@ export interface ApiOrganizationOrganization extends Schema.CollectionType {
       'oneToMany',
       'api::garden.garden'
     >;
-    logo: Attribute.Media;
+    logo: Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
@@ -1306,7 +1306,7 @@ export interface ApiPlantPlant extends Schema.CollectionType {
     sun_detail: Attribute.Text;
     slug: Attribute.String;
     latin: Attribute.String;
-    images: Attribute.Media;
+    images: Attribute.Media<'images' | 'files' | 'videos' | 'audios', true>;
     Benefits: Attribute.Component<'plants.benefits', true>;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;

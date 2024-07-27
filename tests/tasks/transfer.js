@@ -121,7 +121,6 @@ describe('transferTask', function() {
         garden_task: 1
       },
     });
-    console.log(entry)
     
     await SmsHelper.transferTask({firstName:"Cameron", lastName:"Smith", id:1}, 1)
       .then((data) => {
@@ -137,7 +136,7 @@ describe('handleGardenTask', function() {
   });
 });
 
-describe('findBackupUsers', function() {
+describe('findBackupUsers - SMS Helper No Response', function() {
   // let strapi
     
   it("send back full response smsInfo", async () => {
@@ -162,4 +161,15 @@ describe('findBackupUsers', function() {
       expect(data.task.title).toEqual("Water the Garden");
     });
   });
+
+  it("send back full response smsInfo", async () => {
+    strapi.service('api::message.message').validateQuestion = jest.fn().mockReturnValue(false);
+    await SmsHelper.findBackupUsers(userMock).then((data) => {
+      console.log("false question findbackup: ", data)
+      expect(data.body).toContain("Once you do we will transfer the task to them");
+      expect(data.type).toEqual('followup');
+    });
+
+  });
+
 });
