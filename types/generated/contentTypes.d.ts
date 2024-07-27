@@ -1052,7 +1052,6 @@ export interface ApiGardenTaskGardenTask extends Schema.CollectionType {
     status: Attribute.Enumeration<
       [
         'INITIALIZED',
-        'PENDING',
         'INTERESTED',
         'STARTED',
         'FINISHED',
@@ -1133,6 +1132,7 @@ export interface ApiInstructionInstruction extends Schema.CollectionType {
     affirm_explain: Attribute.Text &
       Attribute.Required &
       Attribute.DefaultTo<"I understand this task's requirements and I am capable. I accept this task.">;
+    content: Attribute.Blocks;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
@@ -1207,8 +1207,7 @@ export interface ApiMessageMessage extends Schema.CollectionType {
         'reply',
         'notification',
         'complete',
-        'registration',
-        'error'
+        'registration'
       ]
     >;
     user: Attribute.Relation<
@@ -1227,7 +1226,6 @@ export interface ApiMessageMessage extends Schema.CollectionType {
       'api::garden-task.garden-task'
     >;
     previous: Attribute.Text;
-    meta_data: Attribute.JSON;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
