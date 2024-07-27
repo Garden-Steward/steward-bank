@@ -1052,6 +1052,7 @@ export interface ApiGardenTaskGardenTask extends Schema.CollectionType {
     status: Attribute.Enumeration<
       [
         'INITIALIZED',
+        'PENDING',
         'INTERESTED',
         'STARTED',
         'FINISHED',
@@ -1206,7 +1207,8 @@ export interface ApiMessageMessage extends Schema.CollectionType {
         'reply',
         'notification',
         'complete',
-        'registration'
+        'registration',
+        'error'
       ]
     >;
     user: Attribute.Relation<
