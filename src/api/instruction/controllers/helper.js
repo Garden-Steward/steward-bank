@@ -16,10 +16,14 @@ instructionHelper.approveInstruction = async ({ user, instruction, question }) =
       data: {"instructions" : {"connect": [instruction.id]}}
     });
 
-    const {success, message} =  await strapi.service('api::instruction.instruction').InstructionAssignTask(instruction, user);
+    const {success, message, task} =  await strapi.service('api::instruction.instruction').InstructionAssignTask(instruction, user);
     console.log("instruction assign task result: ", success, message);
     if (success) {
-      return {body: `Thank You!!! You're now qualified to handle ${instruction.title}!`, type: "complete", success: true};
+      if (task) {
+        return {body: `Thank You!!! You're now qualified to handle "${instruction.title}"! Task: "${task.title}" now ready for you.`, type: "complete", success: true, task};
+      } else {
+        return {body: `Thank You!!! You're now qualified to handle "${instruction.title}"! You currently don't have this task assigned.`, type: "complete", success: true};
+      }
     } else {
       return {body: `Error approving instruction: ${message}`, type: "error", success: false};
     }

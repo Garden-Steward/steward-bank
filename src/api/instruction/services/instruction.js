@@ -25,7 +25,7 @@ module.exports = createCoreService('api::instruction.instruction', ({ strapi }) 
       }
       // TODO: Handle non water tasks of assigning
     }
-    return false
+    return {success: true, message: 'No tasks found', task: false}
 
   }
 }));
