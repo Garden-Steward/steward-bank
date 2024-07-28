@@ -35,6 +35,9 @@
       "type": "text",
       "default": "I understand this task's requirements and I am capable. I accept this task.",
       "required": true
+    },
+    "content": {
+      "type": "blocks"
     }
   }
 }

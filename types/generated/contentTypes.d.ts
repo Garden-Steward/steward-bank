@@ -1052,6 +1052,7 @@ export interface ApiGardenTaskGardenTask extends Schema.CollectionType {
     status: Attribute.Enumeration<
       [
         'INITIALIZED',
+        'PENDING',
         'INTERESTED',
         'STARTED',
         'FINISHED',
@@ -1207,7 +1208,8 @@ export interface ApiMessageMessage extends Schema.CollectionType {
         'reply',
         'notification',
         'complete',
-        'registration'
+        'registration',
+        'error'
       ]
     >;
     user: Attribute.Relation<
@@ -1226,6 +1228,7 @@ export interface ApiMessageMessage extends Schema.CollectionType {
       'api::garden-task.garden-task'
     >;
     previous: Attribute.Text;
+    meta_data: Attribute.JSON;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;

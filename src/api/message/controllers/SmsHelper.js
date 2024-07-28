@@ -273,7 +273,7 @@ SmsHelper.getHelp = async(user) => {
     } else if (tasks.length) {
       return `Hi ${user.firstName}, you have ${tasks.length} open tasks. YES if you can do the task. NO if want to transfer. SKIP if it isn't needed. `;
     } else {
-      return `Hi ${user.firstName}, you have no open tasks.`;
+      return `Hi ${user.firstName}, you have no open tasks. If you're curious there is the WATER SCHEDULE`;
     }
     
   } catch (err) {
@@ -295,7 +295,7 @@ SmsHelper.waterSchedule = async(user) => {
   const scheduleUsers = await strapi.service('api::weekly-schedule.weekly-schedule').getScheduleAssignees(weeklySchedule.assignees);
 
   console.log("Running waterSchedule request: ",weeklySchedule.Week)
-  resp += `\nSchedule ${weeklySchedule.Week}: ${scheduleUsers}`
+  resp += `\nSchedule ${weeklySchedule.Week}: \n${scheduleUsers}`
   return {body: resp,type: 'reply'}
 };
 

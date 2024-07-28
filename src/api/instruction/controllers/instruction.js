@@ -18,7 +18,7 @@ module.exports = createCoreController('api::instruction.instruction', ({ strapi 
     });
     let user;
     if (data.phoneNmber) {
-      return instructionHelper.requestApproval(data.phoneNumber, instruction);
+      return instructionHelper.requestApproval({phoneNumber: data.phoneNumber, instruction});
     }
     if (data.userId) {
       user = await strapi.entityService.findOne('plugin::users-permissions.user', data.userId);
