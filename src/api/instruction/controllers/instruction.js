@@ -17,7 +17,9 @@ module.exports = createCoreController('api::instruction.instruction', ({ strapi 
       where: {slug: data.slug}
     });
     let user;
-    if (data.phoneNmber) {
+    console.log('got data', data)
+    if (data.phoneNumber) {
+      console.log('got phone number')
       return instructionHelper.requestApproval({phoneNumber: data.phoneNumber, instruction});
     }
     if (data.userId) {
@@ -28,7 +30,7 @@ module.exports = createCoreController('api::instruction.instruction', ({ strapi 
     } 
     return {
       success: false,
-      message: "User not found"
+      message: "Something went wrong"
     };
   }
   

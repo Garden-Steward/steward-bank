@@ -54,6 +54,7 @@ instructionHelper.requestApproval = async ({ phoneNumber, instruction }) => {
 
   // Remove any non-digit characters from the phone number
   cleanedNumber = cleanedNumber.replace(/[^\d]/g, '');
+  console.log('cleanedNumber: ', cleanedNumber)
 
   // Validate phone number using a regex for 10-digit or 11-digit (with country code) US phone numbers
   const phoneRegex = /^(1?[2-9]\d{9})$/;
