@@ -21,10 +21,10 @@ Helper.handleInitialTasks = async() => {
   
   let initTasks = await strapi.db.query('api::garden-task.garden-task').findMany({
     where: {
-      status: 'INITIALIZED',
+      status: {$in:['INITIALIZED','PENDING']},
       volunteers: { $not:null },
     },
-    populate: { garden: true, volunteers: true }
+    populate: ["garden", "volunteers", "recurring_task", "recurring_task.instruction", "volunteers.instructions"]
   });
 
   console.log("init tasks: ", initTasks.length);
@@ -36,9 +36,21 @@ Helper.handleInitialTasks = async() => {
       continue;
     }
 
+    // TODO check if the recurring task has an instruction
+
+    // console.log(initTask, initTask.recurring_task);
+    if (initTask.recurring_task?.instruction) {
+      if (!initTask.volunteers[0].instructions.find(i=> i.id == initTask.recurring_task.instruction.id)) {
+        // TODO - make task PENDING and send link to the instruction
+        return strapi.service('api::instruction.instruction').managePendingTask(initTask.volunteers[0], initTask.recurring_task.instruction, initTask);
+      } else {
+        console.log('already have instruction')
+      }
+    }
     if (initTask.type == 'Water') {
       Helper.sendWaterSms(initTask);
     } else {
+      strapi.service('api::garden-task.garden-task').sendTask(initTask);
       console.log("initTask %s not Water: %s", initTask.id, initTask.type)
     }
   }
@@ -61,7 +73,12 @@ Helper.handleVolunteerReminders = async() => {
   console.log("messages sent: ", messagesSent);
   return messagesSent
 }
-
+/**
+ * Sending Window - 
+ * Don't send late at night or early morning, Not before 8am or after 7pm
+ * @param {obj} task 
+ * @returns 
+ */
 Helper.sendingWindow = (task) => {
   const today = new Date();
   const fourAgo = addHours(today, -4);

@@ -66,7 +66,8 @@ Weather.getGardenWeather = async(garden) => {
 Weather.needWatering = (allWeathers) => {
   let waterEvents = []
   for (let weatherObj of allWeathers) {
-    if (weatherObj.weather_title == 'Rain' || weatherObj.weather_title == 'Mist') {
+    // Weather Titles: 'Mist', 'Rain, 'Clouds'
+    if (weatherObj.weather_title == 'Rain') {
       const recentRain = new Date(weatherObj.date);
       waterEvents.push({water: false, recentRain: recentRain, rainDescription: weatherObj.description});
     }

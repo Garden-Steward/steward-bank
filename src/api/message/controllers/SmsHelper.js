@@ -374,7 +374,6 @@ SmsHelper.findBackupUsers = async(user) => {
     if (!task) {
       task = latestQuestion.garden_task;
     }
-    console.log("we have task in findBackup");
     if (!task) {
       return {body: 'Looks like you don\'t have a task to manage. Tell Cameron if it\s unexpected.', type: 'reply'};
     }
@@ -459,10 +458,22 @@ SmsHelper.transferTask = async(user, backUpNumber) => {
   
   let newUser = SmsHelper.getBackupVolunteer(user, scheduler, backUpNumber);
   if (newUser) {
+    
     try {
-      let updatedTask = await strapi.service('api::garden-task.garden-task').updateGardenTask(task, 'INITIALIZED', newUser);
-      
-      const smsNewGuy = `Hello! ${user.firstName} just assigned you the task of ${task.title}. Reply with YES or NO if you can manage this today.`;
+      let updatedTask = await strapi.service('api::garden-task.garden-task').updateGardenTaskUser(task, 'INITIALIZED', newUser);
+      // console.log('got updatedtask: ', updatedTask);
+      let needsInstruction = false;
+      let smsNewGuy;
+      if (updatedTask.recurring_task.instruction) {
+        needsInstruction = !updatedTask.volunteers[0].instructions.find(i=> i.id == updatedTask.recurring_task.instruction.id);
+      }
+      if (!needsInstruction) {
+        smsNewGuy = `Hello! ${user.firstName} just assigned you the task of ${task.title}. Reply with YES or NO if you can manage this today.`;
+      } else {
+        await strapi.service('api::garden-task.garden-task').updateTaskStatus(task, 'PENDING');
+        smsNewGuy = `Hello! ${user.firstName} just assigned you the task of ${task.title}. First you need to agree to the instructions, then reply with YES or NO if you can manage this today. https://steward.garden/i/${updatedTask.recurring_task.instruction.slug}?u=${user.id}`;
+        
+      }
 
       await strapi.service('api::sms.sms').handleSms({
         task: updatedTask, 

@@ -1,4 +1,5 @@
 'use strict';
+const Helper = require('../../../../config/helpers/cron-helper.js');
 
 /**
  * garden-task service
@@ -32,7 +33,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
 
   },
 
-  async updateGardenTask(task, status, user) {
+  async updateGardenTaskUser(task, status, user) {
     
     return strapi.db.query('api::garden-task.garden-task').update({
       where: {
@@ -42,7 +43,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
         status,
         volunteers: user
       },
-      populate: ['volunteers']
+      populate: ['volunteers','recurring_task','recurring_task.instruction']
     });
   },
 
@@ -71,6 +72,19 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
       },
       populate: ['volunteers']
     });
+
+  },
+
+  sendTask(task) {
+
+    if (!skipWindow && !Helper.sendingWindow(task)) { return }
+    strapi.service('api::sms.sms').handleSms({
+      task: task, 
+      body: `Hi ${task.volunteers[0].firstName}, your task ${task.title} is ready to be done today! Are you able to do it? You have some OPTIONS.`, 
+      type: 'question'
+    }
+    );
+    return {success: true, message: 'Sent task reminder for ' + task.volunteers[0].username, task: task};
 
   }
 

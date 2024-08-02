@@ -38,7 +38,6 @@ instructionHelper.approveInstruction = async ({ user, instruction, question }) =
 
 
 instructionHelper.approveInstructionId = async ({ user, instructionId, question }) => {
-  console.log("TACO TACO id ", instructionId);
   try {
     let instruction = await strapi.db.query('api::instruction.instruction').findOne({
       where: {
@@ -52,36 +51,39 @@ instructionHelper.approveInstructionId = async ({ user, instructionId, question 
   }
 }
 
-instructionHelper.requestApproval = async ({ phoneNumber, instruction }) => {
+instructionHelper.requestApproval = async ({ phoneNumber, userId, instruction }) => {
   // Ensure phoneNumber is a string
-  let cleanedNumber = `${phoneNumber}`;
+  let user;
+  if (phoneNumber) {
+    let cleanedNumber = `${phoneNumber}`;
+  
+    // Remove any non-digit characters from the phone number
+    cleanedNumber = cleanedNumber.replace(/[^\d]/g, '');
+  
+    // Validate phone number using a regex for 10-digit or 11-digit (with country code) US phone numbers
+    const phoneRegex = /^(1?[2-9]\d{9})$/;
+    if (!phoneRegex.test(cleanedNumber)) {
+      return {
+        success: false,
+        message: 'Invalid US phone number format. Please provide a 10-digit number with or without the country code.'
+      };
+    }
+  
+    // Format the phone number to include country code without hyphens
+    const formattedPhoneNumber = cleanedNumber.length === 10
+      ? `+1${cleanedNumber}`
+      : `+${cleanedNumber}`;
 
-  // Remove any non-digit characters from the phone number
-  cleanedNumber = cleanedNumber.replace(/[^\d]/g, '');
-  console.log('cleanedNumber: ', cleanedNumber)
-
-  // Validate phone number using a regex for 10-digit or 11-digit (with country code) US phone numbers
-  const phoneRegex = /^(1?[2-9]\d{9})$/;
-  if (!phoneRegex.test(cleanedNumber)) {
-    return {
-      success: false,
-      message: 'Invalid US phone number format. Please provide a 10-digit number with or without the country code.'
-    };
+    user = await strapi.db.query('plugin::users-permissions.user').findOne({
+      where: {
+        phoneNumber: formattedPhoneNumber
+      }
+    });
+  } else if (userId) {
+    user = await strapi.entityService.findOne('plugin::users-permissions.user', userId);
   }
 
-  // Format the phone number to include country code without hyphens
-  const formattedPhoneNumber = cleanedNumber.length === 10
-    ? `+1${cleanedNumber}`
-    : `+${cleanedNumber}`;
-
-  const user = await strapi.db.query('plugin::users-permissions.user').findOne({
-    where: {
-      phoneNumber: formattedPhoneNumber
-    }
-  });
-
   if (user) {
-    // do not approve task
     // send text to user
     strapi.service('api::sms.sms').handleSms({
       task: null, 
@@ -102,7 +104,7 @@ instructionHelper.requestApproval = async ({ phoneNumber, instruction }) => {
   } else {
     return {
       success: false,
-      message: "User not found with the provided phone number"
+      message: "User not found with the phone number or userId"
     };
   }
   // do not approve task

@@ -17,6 +17,7 @@ it("strapi is defined", () => {
 
 require('./user');
 require('./general');
+require('./general/weather');
 require('./user/registration');
 require('./tasks/transfer');
 require('./tasks/schedule');

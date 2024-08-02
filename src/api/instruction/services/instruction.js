@@ -10,6 +10,8 @@ const { createCoreService } = require('@strapi/strapi').factories;
 module.exports = createCoreService('api::instruction.instruction', ({ strapi }) =>  ({
 
   /**
+   * InstructionAssignTask
+   * After someone has been approved for a task, we need to send them the final text of "Youve been assigned..."
    * 
    * @param {obj} user 
    * @returns obj - latest SMS Campaign with confirmations concatenated
@@ -26,6 +28,31 @@ module.exports = createCoreService('api::instruction.instruction', ({ strapi }) 
       // TODO: Handle non water tasks of assigning
     }
     return {success: true, message: 'No tasks found', task: false}
+
+  },
+
+  /**
+   * Send instruction of a task to volunteer
+   * 
+   * @param {obj} task 
+   * @returns 
+   */
+  async managePendingTask(user, instruction, task) {
+    console.log("sending instruction: ", instruction.slug, user.id);
+    if (task.status == 'INITIALIZED') {
+      try {
+        await strapi.service('api::garden-task.garden-task').updateTaskStatus(task, 'PENDING');
+      } catch (error) {
+        return {success: false, message: 'Error updating task status to PENDING', task: task};
+      }
+    }
+    strapi.service('api::sms.sms').handleSms({
+      task: task, 
+      body: `Hi ${user.firstName}, before we can assign task ${task.title} please agree to the instruction: https://steward.garden/i/${instruction.slug}?u=${user.id}`, 
+      type: 'question'
+    }
+    );
+    return {success: true, message: 'Sent instruction for ' + user.username, task: task};
 
   }
 }));

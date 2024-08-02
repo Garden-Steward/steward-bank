@@ -127,6 +127,16 @@ describe('transferTask', function() {
         expect(data.body).toEqual("Okay we've transferred to John");
       });
   });
+
+  it("should transfer task with instruction", async () => {
+    await setupTask({
+      id: 1,
+    });
+    await SmsHelper.transferTask({firstName:"Cameron", lastName:"Smith", id:1}, 1)
+      .then((data) => {
+        expect(data.body).toContain("First you need to agree to the instructions");
+      });
+  });
   
 });
 

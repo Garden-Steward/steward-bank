@@ -17,21 +17,13 @@ module.exports = createCoreController('api::instruction.instruction', ({ strapi 
       where: {slug: data.slug}
     });
     let user;
-    console.log('got data', data)
-    if (data.phoneNumber) {
+    const authUser = ctx.state.user;
+    if (!authUser) {
       console.log('got phone number')
-      return instructionHelper.requestApproval({phoneNumber: data.phoneNumber, instruction});
+      return instructionHelper.requestApproval({phoneNumber: data.phoneNumber, userId: data.userId, instruction});
+    } else {
+      return instructionHelper.approveInstruction(user, instruction);
     }
-    if (data.userId) {
-      user = await strapi.entityService.findOne('plugin::users-permissions.user', data.userId);
-      if (user) {
-        return instructionHelper.approveInstruction(user, instruction);
-      }
-    } 
-    return {
-      success: false,
-      message: "Something went wrong"
-    };
   }
   
 
