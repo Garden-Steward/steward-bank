@@ -458,15 +458,20 @@ SmsHelper.transferTask = async(user, backUpNumber) => {
   
   let newUser = SmsHelper.getBackupVolunteer(user, scheduler, backUpNumber);
   if (newUser) {
-    
+    let updatedTask;
     try {
-      let updatedTask = await strapi.service('api::garden-task.garden-task').updateGardenTaskUser(task, 'INITIALIZED', newUser);
-      // console.log('got updatedtask: ', updatedTask);
-      let needsInstruction = false;
-      let smsNewGuy;
-      if (updatedTask.recurring_task.instruction) {
-        needsInstruction = !updatedTask.volunteers[0].instructions.find(i=> i.id == updatedTask.recurring_task.instruction.id);
-      }
+      updatedTask = await strapi.service('api::garden-task.garden-task').updateGardenTaskUser(task, 'INITIALIZED', newUser);
+    } catch (err) {
+      console.log('error updating task: ', err);
+      return { body:'Technical error when transferring the task.',type:'reply', task: task};
+    }
+    // console.log('got updatedtask: ', updatedTask);
+    let needsInstruction = false;
+    if (updatedTask.recurring_task.instruction) {
+      needsInstruction = !updatedTask.volunteers[0].instructions.find(i=> i.id == updatedTask.recurring_task.instruction.id);
+    }
+    let smsNewGuy;
+    try{
       if (!needsInstruction) {
         smsNewGuy = `Hello! ${user.firstName} just assigned you the task of ${task.title}. Reply with YES or NO if you can manage this today.`;
       } else {
@@ -474,7 +479,6 @@ SmsHelper.transferTask = async(user, backUpNumber) => {
         smsNewGuy = `Hello! ${user.firstName} just assigned you the task of ${task.title}. First you need to agree to the instructions, then reply with YES or NO if you can manage this today. https://steward.garden/i/${updatedTask.recurring_task.instruction.slug}?u=${user.id}`;
         
       }
-
       await strapi.service('api::sms.sms').handleSms({
         task: updatedTask, 
         body: smsNewGuy, 
@@ -484,12 +488,14 @@ SmsHelper.transferTask = async(user, backUpNumber) => {
     });
 
       // return message to the initiater of transfer.
-      const smsBody = `Okay we've transferred to ${newUser.firstName}`;
+      const bodyExtra = needsInstruction ? ' They will first need to agree to the instructions.' : '';
+      const smsBody = `Okay we've transferred to ${newUser.firstName}.${bodyExtra}`;
       return {body:smsBody,type:'complete', task: updatedTask};
       
     } catch(err) {
       console.log('Task not transferred: ', err);
-      return { body:'There was an issue in transferring.',type:'reply', task: task};
+      const bodyExtra = needsInstruction ? ' and instruction.' : '.';
+      return { body:'There was an issue in transferring the task' + bodyExtra,type:'reply', task: task};
     }
 
   } else if (scheduler) {

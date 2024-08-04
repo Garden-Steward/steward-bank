@@ -43,7 +43,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
         status,
         volunteers: user
       },
-      populate: ['volunteers','recurring_task','recurring_task.instruction']
+      populate: ['volunteers','volunteers.instructions','recurring_task','recurring_task.instruction']
     });
   },
 

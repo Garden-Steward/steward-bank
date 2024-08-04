@@ -12,9 +12,8 @@ describe('Weather Helper', () => {
       title: 'Gravity Garden',
       openweather_id: 5378538
     }
-    console.log('garden: ', garden);
+
     Weather.getGardenWeather(garden).then((res) => {
-      console.log(res)
       expect(res.water).toBe(true);
       expect(res.weather.weather_title).toBe('Mist');
     });

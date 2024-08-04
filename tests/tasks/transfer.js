@@ -18,30 +18,41 @@ const userMock = {
   activeGarden: 1,
   gardens: [1, 2, 3]
 }
-const setupTask = async () => {
+const setupTask = async (addInst) => {
+  const instruction = addInst ? await strapi.service('api::instruction.instruction').create({
+    data: {
+      title: 'Watering Instructions',
+      slug: 'watering-instructions',
+    }
+  }) : null;
+  console.log('made instruction: ', instruction)
 
-  await strapi.service('api::recurring-task.recurring-task').create({
+  const recurringTask = await strapi.service('api::recurring-task.recurring-task').create({
     data: {
       title: 'Water the Garden',
-      type: 'Water'
-    }
+      type: 'Water',
+      instruction: instruction ? instruction.id : null
+    },
+    populate: ['instruction']
   });
+  console.log('made recurring task: ', recurringTask)
   await strapi.service('api::scheduler.scheduler').create({
     data: {
       day: 'Tuesday',
       backup_volunteers: [1],
-      recurring_task: 1
+      recurring_task: recurringTask.id
     }
   });
 
-  await strapi.service('api::garden-task.garden-task').create({
+  return strapi.service('api::garden-task.garden-task').create({
     data: {
       title: 'Water the Garden',
       type: 'Water',
       status: 'INITIALIZED',
       user: 1,
-      recurring_task: 1
-    }
+      recurring_task: recurringTask.id
+    },
+    populate: ['recurring_task']
   });
 }
 describe('transferTask', function() {
@@ -124,17 +135,26 @@ describe('transferTask', function() {
     
     await SmsHelper.transferTask({firstName:"Cameron", lastName:"Smith", id:1}, 1)
       .then((data) => {
-        expect(data.body).toEqual("Okay we've transferred to John");
+        expect(data.body).toEqual("Okay we've transferred to John.");
       });
   });
 
   it("should transfer task with instruction", async () => {
-    await setupTask({
+    let garden_task = await setupTask(true);
+    strapi.service('api::message.message').validateQuestion = jest.fn().mockResolvedValue({
       id: 1,
+      body: 'Do you "Approve" of this instruction?',
+      type: 'question',
+      previous: 'yes',
+      createdAt: '2024-06-16T03:46:01.476Z',
+      updatedAt: '2024-06-16T03:48:06.526Z',
+      publishedAt: null,
+      garden_task,
     });
+
     await SmsHelper.transferTask({firstName:"Cameron", lastName:"Smith", id:1}, 1)
       .then((data) => {
-        expect(data.body).toContain("First you need to agree to the instructions");
+        expect(data.body).toContain("need to agree to the instructions");
       });
   });
   
@@ -145,6 +165,7 @@ describe('handleGardenTask', function() {
     // await SmsHelper.handleGardenTask({id:1}, 1);
   });
 });
+
 
 describe('findBackupUsers - SMS Helper No Response', function() {
   // let strapi
