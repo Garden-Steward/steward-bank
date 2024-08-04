@@ -13,31 +13,6 @@ export interface SeoSeoInformation extends Schema.Component {
   };
 }
 
-export interface SchedulingScheduleAssignee extends Schema.Component {
-  collectionName: 'components_scheduling_schedule_assignees';
-  info: {
-    displayName: 'Schedule Assignee';
-  };
-  attributes: {
-    assignee: Attribute.Relation<
-      'scheduling.schedule-assignee',
-      'oneToOne',
-      'plugin::users-permissions.user'
-    >;
-    day: Attribute.Enumeration<
-      [
-        'Sunday',
-        'Monday',
-        'Tuesday',
-        'Wednesday',
-        'Thursday',
-        'Friday',
-        'Saturday'
-      ]
-    >;
-  };
-}
-
 export interface PlantsPlanting extends Schema.Component {
   collectionName: 'components_plants_plantings';
   info: {
@@ -64,13 +39,38 @@ export interface PlantsBenefits extends Schema.Component {
   };
 }
 
+export interface SchedulingScheduleAssignee extends Schema.Component {
+  collectionName: 'components_scheduling_schedule_assignees';
+  info: {
+    displayName: 'Schedule Assignee';
+  };
+  attributes: {
+    assignee: Attribute.Relation<
+      'scheduling.schedule-assignee',
+      'oneToOne',
+      'plugin::users-permissions.user'
+    >;
+    day: Attribute.Enumeration<
+      [
+        'Sunday',
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday'
+      ]
+    >;
+  };
+}
+
 declare module '@strapi/types' {
   export module Shared {
     export interface Components {
       'seo.seo-information': SeoSeoInformation;
-      'scheduling.schedule-assignee': SchedulingScheduleAssignee;
       'plants.planting': PlantsPlanting;
       'plants.benefits': PlantsBenefits;
+      'scheduling.schedule-assignee': SchedulingScheduleAssignee;
     }
   }
 }
