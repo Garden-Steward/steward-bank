@@ -19,7 +19,7 @@ module.exports = createCoreController('api::instruction.instruction', ({ strapi 
     let user;
     const authUser = ctx.state.user;
     if (!authUser) {
-      console.log('got phone number')
+      console.log('got phone number', data.userId, data.phoneNumber)
       return instructionHelper.requestApproval({phoneNumber: data.phoneNumber, userId: data.userId, instruction});
     } else {
       return instructionHelper.approveInstruction(user, instruction);

@@ -27,7 +27,7 @@ Helper.handleInitialTasks = async() => {
     populate: ["garden", "volunteers", "recurring_task", "recurring_task.instruction", "volunteers.instructions"]
   });
 
-  console.log("init tasks: ", initTasks.length);
+  console.log("init tasks # ", initTasks.length);
 
 
   for (let initTask of initTasks) {
@@ -41,7 +41,7 @@ Helper.handleInitialTasks = async() => {
     // console.log(initTask, initTask.recurring_task);
     if (initTask.recurring_task?.instruction) {
       if (!initTask.volunteers[0].instructions.find(i=> i.id == initTask.recurring_task.instruction.id)) {
-        // TODO - make task PENDING and send link to the instruction
+
         return strapi.service('api::instruction.instruction').managePendingTask(initTask.volunteers[0], initTask.recurring_task.instruction, initTask);
       } else {
         console.log('already have instruction')
@@ -72,7 +72,8 @@ Helper.handleVolunteerReminders = async() => {
   }
   console.log("messages sent: ", messagesSent);
   return messagesSent
-}
+};
+
 /**
  * Sending Window - 
  * Don't send late at night or early morning, Not before 8am or after 7pm
@@ -107,7 +108,12 @@ Helper.sendingWindow = (task) => {
   console.log("we are sending in proper hours: ", hour);
   return true
 }
-
+/**
+ * 
+ * @param {*} waterTask 
+ * @param {*} skipWindow = always send
+ * @returns {obj} {success: true, message: 'Sent water reminder for ' + waterTask.volunteers[0].username, task: waterTask}
+ */
 Helper.sendWaterSms = async(waterTask, skipWindow) => {
 
   if (!waterTask.volunteers[0].phoneNumber) {
@@ -119,7 +125,7 @@ Helper.sendWaterSms = async(waterTask, skipWindow) => {
 
   const weather = await Weather.getGardenWeather(waterTask.garden);
 
-  if (weather.water) {
+  if (!weather || weather.water) {
     strapi.service('api::sms.sms').handleSms({
       task: waterTask, 
       body: `Hi ${waterTask.volunteers[0].firstName}, it's your watering day! Are you able to water today? You have some OPTIONS.`, 

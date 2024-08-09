@@ -39,7 +39,7 @@ module.exports = {
     if (process.env.ENVIRONMENT == 'test') {
       request = {'body':{
         'From': '+13038833330',
-        'Body': 'no'
+        'Body': 'yes'
       }};
     }
     const phoneNumber = request.body.From;

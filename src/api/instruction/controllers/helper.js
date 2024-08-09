@@ -10,16 +10,18 @@ const instructionHelper = {}
  * @returns 
  */
 instructionHelper.approveInstruction = async ({ user, instruction, question }) => {
-  console.log('approving instruction', instruction)
+
   try {
     await strapi.entityService.update('plugin::users-permissions.user', user.id, {
       data: {"instructions" : {"connect": [instruction.id]}}
     });
 
     const {success, message, task} =  await strapi.service('api::instruction.instruction').InstructionAssignTask(instruction, user);
-    console.log("instruction assign task result: ", success, message);
+
     if (success) {
       if (task) {
+        // Update the task to be back to 'INITIALIZED'
+        await strapi.service('api::garden-task.garden-task').updateTaskStatus(task, 'INITIALIZED');
         return {body: `Thank You!!! You're now qualified to handle "${instruction.title}"! Task: "${task.title}" now ready for you.`, type: "complete", success: true, task};
       } else {
         return {body: `Thank You!!! You're now qualified to handle "${instruction.title}"! You currently don't have this task assigned.`, type: "complete", success: true};

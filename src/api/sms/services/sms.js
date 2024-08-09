@@ -34,7 +34,7 @@ let sendSms = function(toNum,body){
 let handleSms = function(params){
   let {task, body, type, previous, user, meta_data} = params
   console.log("sms out: ", body, "env: ", process.env.ENVIRONMENT);
-  if (process.env.ENVIRONMENT == 'test') { return }
+  console.log(params);
 
   let member = (!user && task && task.volunteers?.length) ? task.volunteers[0] : user
     
@@ -53,6 +53,7 @@ let handleSms = function(params){
   } catch(err) {
     console.error('Problem logging message. ', err);
   }
+  if (process.env.ENVIRONMENT == 'test') { return }
 
   sendSms(member.phoneNumber, body);
 };

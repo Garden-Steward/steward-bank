@@ -237,7 +237,6 @@ SmsHelper.getSchedulerFromTask = async(task) => {
 };
 
 SmsHelper.saveMessage = async(user, type, garden, body, garden_task, previous) => {
-  console.log("garden task: ", garden_task)
   try {
     console.log(`saveMessage: saving ${type}`);
     await strapi.db.query('api::message.message').create({

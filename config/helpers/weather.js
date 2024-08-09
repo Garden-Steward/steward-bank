@@ -32,7 +32,8 @@ Weather.runWeatherCron = async() => {
 };
 
 Weather.getGardenWeather = async(garden) => {
-  //
+  
+  if (!garden) { return; }
   const fivehours = (5 * 60) * 60; 
   const unixTime = Math.floor(new Date().getTime() /1000);
   const threeDaysAgo = addDays(new Date(),-3)

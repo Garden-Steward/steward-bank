@@ -25,7 +25,7 @@ const setupTask = async (addInst) => {
       slug: 'watering-instructions',
     }
   }) : null;
-  console.log('made instruction: ', instruction)
+  // console.log('made instruction: ', instruction)
 
   const recurringTask = await strapi.service('api::recurring-task.recurring-task').create({
     data: {
@@ -35,7 +35,7 @@ const setupTask = async (addInst) => {
     },
     populate: ['instruction']
   });
-  console.log('made recurring task: ', recurringTask)
+
   await strapi.service('api::scheduler.scheduler').create({
     data: {
       day: 'Tuesday',
