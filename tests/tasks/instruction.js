@@ -76,7 +76,7 @@ describe('approve of the instruction', function() {
       message: 'Sent water reminder for Cameron', 
       task: waterTask
     });
-
+    strapi.service('api::garden-task.garden-task').updateTaskStatus = jest.fn().mockResolvedValue({});
 
     instructionHelper.approveInstruction({user, instruction}).then(res=>{
       expect(res.success).toBe(true);

@@ -15,6 +15,11 @@ instructionHelper.approveInstruction = async ({ user, instruction, question }) =
     await strapi.entityService.update('plugin::users-permissions.user', user.id, {
       data: {"instructions" : {"connect": [instruction.id]}}
     });
+  } catch (err) {
+    console.warn(err);
+    return {body: `Technical Error updating user instructions: ${err.message}`, type: "error", success: false};
+  }
+  try {
 
     const {success, message, task} =  await strapi.service('api::instruction.instruction').InstructionAssignTask(instruction, user);
 
@@ -31,7 +36,7 @@ instructionHelper.approveInstruction = async ({ user, instruction, question }) =
     }
 
   } catch (err) { 
-    console.warn(err);
+    // console.warn(err);
     return {body: `Technical Error approving instruction: ${err.message}`, type: "error", success: false};
   }
   
@@ -90,7 +95,7 @@ instructionHelper.requestApproval = async ({ phoneNumber, userId, instruction })
     strapi.service('api::sms.sms').handleSms({
       task: null, 
       body: 
-      `Hi ${user.firstName}, we received an instruction request from the Garden Steward website. \n\nDo you "${instruction.affirm_button_title}"? ${instruction.title}`,
+      `Hi ${user.firstName}, we received an instruction request from the Garden Steward website. \n\nDo you ${instruction.affirm_button_title} ${instruction.title}? You can reply with YES or NO`,
       type: 'question',
       previous: 'Phone Number submission via Garden Steward',
       user,
