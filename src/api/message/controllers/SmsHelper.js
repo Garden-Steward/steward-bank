@@ -475,7 +475,7 @@ SmsHelper.transferTask = async(user, backUpNumber) => {
         smsNewGuy = `Hello! ${user.firstName} just assigned you the task of ${task.title}. Reply with YES or NO if you can manage this today.`;
       } else {
         await strapi.service('api::garden-task.garden-task').updateTaskStatus(task, 'PENDING');
-        smsNewGuy = `Hello! ${user.firstName} just assigned you the task of ${task.title}. First you need to agree to the instructions, then reply with YES or NO if you can manage this today. https://steward.garden/i/${updatedTask.recurring_task.instruction.slug}?u=${user.id}`;
+        smsNewGuy = `Hello! ${user.firstName} just assigned you the task of ${task.title}. First you need to agree to the instructions, then reply with YES or NO if you can manage this today. https://steward.garden/i/${updatedTask.recurring_task.instruction.slug}?u=${newUser.id}`;
         
       }
       await strapi.service('api::sms.sms').handleSms({

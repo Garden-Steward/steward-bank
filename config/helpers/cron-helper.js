@@ -126,7 +126,7 @@ Helper.sendWaterSms = async(waterTask, skipWindow) => {
   const weather = await Weather.getGardenWeather(waterTask.garden);
 
   if (!weather || weather.water) {
-    strapi.service('api::sms.sms').handleSms({
+    await strapi.service('api::sms.sms').handleSms({
       task: waterTask, 
       body: `Hi ${waterTask.volunteers[0].firstName}, it's your watering day! Are you able to water today? You have some OPTIONS.`, 
       type: 'question'

@@ -31,7 +31,7 @@ let sendSms = function(toNum,body){
 };
 
 /** Handle a Task Based SMS or pass in user */
-let handleSms = function(params){
+let handleSms = async function(params){
   let {task, body, type, previous, user, meta_data} = params
   console.log("sms out: ", body, "env: ", process.env.ENVIRONMENT);
   console.log(params);
@@ -39,7 +39,7 @@ let handleSms = function(params){
   let member = (!user && task && task.volunteers?.length) ? task.volunteers[0] : user
     
   try {
-    strapi.db.query('api::message.message').create({
+    await strapi.db.query('api::message.message').create({
       data: {
         user:member,
         type,
