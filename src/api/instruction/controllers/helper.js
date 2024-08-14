@@ -91,9 +91,17 @@ instructionHelper.requestApproval = async ({ phoneNumber, userId, instruction })
   }
 
   if (user) {
+    const gardenTask = await strapi.db.query('api::garden-task.garden-task').findOne({
+      where: {
+        status: {$in:['INITIALIZED','STARTED', 'PENDING']},
+        volunteers: {
+          phoneNumber: user.phoneNumber
+        },
+      },
+    })
     // send text to user
     strapi.service('api::sms.sms').handleSms({
-      task: null, 
+      task: gardenTask, 
       body: 
       `Hi ${user.firstName}, we received an instruction request from the Garden Steward website. \n\nDo you ${instruction.affirm_button_title} ${instruction.title}? You can reply with YES or NO`,
       type: 'question',

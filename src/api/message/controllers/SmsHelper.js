@@ -265,10 +265,12 @@ SmsHelper.getHelp = async(user) => {
         status:{$in:['INITIALIZED', 'PENDING', 'STARTED']}
       }
     });
+
     if (tasks.length == 1 && tasks[0].status == 'PENDING') {
-      return `Hi ${user.firstName}. We are waiting on task ${tasks[0].title}. Please respond to the instruction: YES if you agree you can manage the task. NO will allow you to transfer the task to someone else. You will be resent this instruction each time until approval.`;
+      let instructionUrl = tasks[0].recurring_task.instruction ? `https://steward.garden/i/${tasks[0].recurring_task.instruction.slug}?u=${user.id}` : '';
+      return `Hi ${user.firstName}. We are waiting on task ${tasks[0].title}. Please respond to the instruction: YES if you agree you can manage the task. NO will allow you to transfer the task to someone else. You will be resent this instruction each time until approval.\n\n ${instructionUrl}`;
     } else if (tasks.length == 1) {
-      return `Hi ${user.firstName}, you have the task of "${tasks[0].title}" to complete. YES if you can do the task. NO if want to transfer. SKIP if it isn't needed. `;
+      return `Hi ${user.firstName}, you have the task of "${tasks[0].title}" it is in status: ${tasks[0].status}. YES if you can do the task. NO if want to transfer. SKIP if it isn't needed. `;
     } else if (tasks.length) {
       return `Hi ${user.firstName}, you have ${tasks.length} open tasks. YES if you can do the task. NO if want to transfer. SKIP if it isn't needed. `;
     } else {
@@ -443,7 +445,7 @@ SmsHelper.transferTask = async(user, backUpNumber) => {
 
   const latestQuestion = await strapi.service('api::message.message').validateQuestion(user);
   if (!latestQuestion ) {
-    return {body:`I\'m sorry %{user.firstName}, we don\'t have an open task for you right now.`,type:'reply'};
+    return {body:`I\'m sorry ${user.firstName}, we don\'t have an open task for you right now.`,type:'reply'};
   }
   // console.log('latestQuestion: ', latestQuestion)
   const task = latestQuestion.garden_task;
