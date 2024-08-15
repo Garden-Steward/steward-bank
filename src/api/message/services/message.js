@@ -14,7 +14,7 @@ module.exports = createCoreService('api::message.message', ({ strapi }) =>  ({
         user: user.id, 
         type: {$in:['question','complete']},
       },
-      populate: ['garden_task', 'garden_task.recurring_task'],
+      populate: ['garden_task', 'garden_task.recurring_task', 'garden_task.volunteers'],
       limit: 1
     });
     if (latestMessage[0].type=='question') {

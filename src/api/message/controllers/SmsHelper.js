@@ -17,7 +17,7 @@ SmsHelper.handleYesResponse = async(smsText, user) => {
       console.log('approving instruction')
       return InstructionHelper.approveInstructionId({user, instructionId: question.meta_data?.instructionId, question});
     } else {
-      return SmsHelper.handleGardenTask(smsText,user);
+      return SmsHelper.handleGardenTask(smsText, user, question);
     }
   } 
   const lastCampaign = await strapi.service('api::sms-campaign.sms-campaign').getLatestCampaign(user, 'rsvp');
@@ -30,7 +30,7 @@ SmsHelper.handleYesResponse = async(smsText, user) => {
   return {body: "Can't find anything for you to say yes to!? Sorry!", type: "reply"}
 }
 
-SmsHelper.handleGardenTask = async(smsText, user) => {
+SmsHelper.handleGardenTask = async(smsText, user, question) => {
   try {
     console.log("updating task yes start")
     let data = {};
@@ -43,22 +43,25 @@ SmsHelper.handleGardenTask = async(smsText, user) => {
       // origStatus = 'INITIALIZED'
       origStatus = {$in:['INITIALIZED','STARTED', 'PENDING']};
     }  
-
-    const gardenTask = await strapi.db.query('api::garden-task.garden-task').findOne({
-      where: {
-        status: origStatus,
-        volunteers: {
-          phoneNumber: user.phoneNumber
+    let gardenTask = question.garden_task;
+    if (!gardenTask) {
+      gardenTask = await strapi.db.query('api::garden-task.garden-task').findOne({
+        where: {
+          status: origStatus,
+          volunteers: {
+            phoneNumber: user.phoneNumber
+          },
         },
-      },
-      populate: {
-        volunters : {
-          where: {
-            email: user.email
+        populate: {
+          volunters : {
+            where: {
+              email: user.email
+            }
           }
         }
-      }
-    });
+      });
+    }
+
 
     // The user has a task ready to be updated!
     if (gardenTask) {

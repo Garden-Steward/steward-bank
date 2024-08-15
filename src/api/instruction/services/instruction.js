@@ -22,9 +22,9 @@ module.exports = createCoreService('api::instruction.instruction', ({ strapi }) 
     for (let task of tasks) {
       if (task.recurring_task && task.recurring_task.instruction.id == instruction.id) {
         if (task.type === 'Water') {
-          return Helper.sendWaterSms(task, true);
+          return await Helper.sendWaterSms(task, true);
         } else {
-          return strapi.service('api::garden-task.garden-task').sendTask(task);
+          return await strapi.service('api::garden-task.garden-task').sendTask(task);
         }
       }
       // TODO: Handle non water tasks of assigning
