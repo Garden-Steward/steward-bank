@@ -215,7 +215,7 @@ SmsHelper.saveVolunteerName = async(user, msgTxt) => {
     console.log(err);
     return {body: `Sorry we can't accept this name: ${fullName} - You could already be signed up.`, type:'reply'};
   }
-  return {body: `Welcome to the team ${userName}! \n\nIf you haven't already, please click on and add the contact card, sent earlier.`, type:'complete'};
+  return {body: `Welcome to the team ${userName}! \n\nIf you haven't already, please click on and add my contact card, sent earlier.`, type:'complete'};
 };
 
 SmsHelper.getSchedulerFromTask = async(task) => {
