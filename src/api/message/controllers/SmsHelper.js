@@ -20,7 +20,7 @@ SmsHelper.handleYesResponse = async(smsText, user) => {
       return SmsHelper.handleGardenTask(smsText, user, question);
     }
   } 
-  const lastCampaign = await strapi.service('api::sms-campaign.sms-campaign').getLatestCampaign(user, 'rsvp');
+  const lastCampaign = await strapi.service('api::sms-campaign.sms-campaign').getLatestCampaign(user, ['rsvp', 'volunteer-day']);
   const currentDate = new Date();
   const createdAtDate = new Date(lastCampaign?.createdAt);
   const daysDifference = differenceInDays(currentDate, createdAtDate);

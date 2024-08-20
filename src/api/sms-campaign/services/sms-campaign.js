@@ -17,14 +17,15 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
   /**
    * 
    * @param {obj} user 
+   * @param {array} typeArr - array of types to search for
    * @returns obj - latest SMS Campaign with confirmations concatenated
    */
-  async getLatestCampaign(user, type) {
+  async getLatestCampaign(user, typeArr) {
 
     const lastCampaigns = await strapi.db.query('api::sms-campaign.sms-campaign').findMany({
       where : {
         $and: [
-          {type: type},
+          {type: {$in: typeArr}},
           {sent: user.id },
         ]
       },
@@ -42,7 +43,7 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
 
   async confirmSMSCampaign(user) {
     console.log("validateSMSCampaign")
-    const lastCampaign = await strapi.service('api::sms-campaign.sms-campaign').getLatestCampaign(user, 'rsvp');
+    const lastCampaign = await strapi.service('api::sms-campaign.sms-campaign').getLatestCampaign(user, ['rsvp', 'volunteer-day']);
     
     if (!lastCampaign) {
       return {body: "Glad you're down, but I don't have anything to update for you...", type: "complete"}
