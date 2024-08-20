@@ -79,7 +79,6 @@ module.exports = {
 
       case 'yes':
         smsInfo = await SmsHelper.handleYesResponse(responseText, user);
-        // smsInfo = await SmsHelper.handleGardenTask(responseText, user);
         break;
 
       case 'garden':
