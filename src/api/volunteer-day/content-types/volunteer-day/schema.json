@@ -67,7 +67,8 @@
         "Public",
         "Garden Members",
         "Invite Only"
-      ]
+      ],
+      "default": "Public"
     },
     "planting": {
       "displayName": "planting",

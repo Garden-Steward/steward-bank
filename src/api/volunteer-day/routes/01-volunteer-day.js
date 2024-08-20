@@ -22,6 +22,11 @@ module.exports = {
       handler: 'volunteer-day.getByGarden',
     },
     {
+      method: 'GET',
+      path: '/volunteer-days/public', 
+      handler: 'volunteer-day.getPublic',
+    },
+    {
       method: 'POST',
       path: '/volunteer-days/rsvp/:id',
       handler: 'volunteer-day.rsvpEvent',

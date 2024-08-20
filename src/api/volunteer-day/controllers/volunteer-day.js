@@ -38,6 +38,21 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
       return entries;
 
     },
+
+    getPublic: async ctx => {
+      const entries = await strapi.entityService.findMany('api::volunteer-day.volunteer-day', {
+        sort: {startDatetime: 'desc'},
+        filters: {
+          accessibility: 'Public',
+          startDatetime: {
+            // 3 months historic
+            $gt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
+          }
+        }
+      });
+      return entries;
+    },
+
     getByGarden: async ctx => {
       
       const entries = await strapi.entityService.findMany('api::volunteer-day.volunteer-day', {
