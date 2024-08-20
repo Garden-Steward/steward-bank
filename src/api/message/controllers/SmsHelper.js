@@ -199,20 +199,23 @@ SmsHelper.sendContactCard = async(phoneNumber) => {
   return resp;
 }
 
-SmsHelper.saveVolunteerName = async(user, fullName) => {
+SmsHelper.saveVolunteerName = async(user, msgTxt) => {
+  msgTxt = msgTxt.toLowerCase();
+  const fullName = msgTxt.replace(/\b\w/g, s => s.toUpperCase());
   const nameArr = fullName.split(' ');
   let firstName = nameArr[0];
   let lastName = 'Unknown';
   if (nameArr.length > 1) {
     lastName = nameArr.splice(1).join(' ');
   }
+  const userName = (lastName === 'Unknown') ? firstName : fullName;
   try {
     await strapi.db.query("plugin::users-permissions.user").update({where:{id: user.id}, data:{firstName, lastName, username: fullName}});
   } catch (err) {
     console.log(err);
     return {body: `Sorry we can't accept this name: ${fullName} - You could already be signed up.`, type:'reply'};
   }
-  return {body: `Welcome to the team ${fullName}`, type:'complete'};
+  return {body: `Welcome to the team ${userName}! \n\nIf you haven't already, please click on and add the contact card, sent earlier.`, type:'complete'};
 };
 
 SmsHelper.getSchedulerFromTask = async(task) => {

@@ -11,3 +11,18 @@ describe('SmsHelper', () => {
   // });
 });
 
+describe('User Registration', () => {
+  it('should manage registration names properly', async () => {
+    let responseTxt = 'john SMITH';
+    let user = {
+      id: 1,
+      phone: '+13038833330',
+    };
+    let smsInfo = await SmsHelper.saveVolunteerName(user, responseTxt);
+    expect(smsInfo.body).toContain('Welcome to the team John Smith');
+    
+    responseTxt = 'Madonna';
+    smsInfo = await SmsHelper.saveVolunteerName(user, responseTxt);
+    expect(smsInfo.body).toContain('Welcome to the team Madonna');
+  });
+});

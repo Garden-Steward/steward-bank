@@ -145,8 +145,7 @@ module.exports = {
       if (responseText == 'bot' || responseText == 'smiles') {
         smsBody = "I'm a bot btw! Can you tell me your name?";
       } else {
-        const fullName = responseText.replace(/\b\w/g, s => s.toUpperCase());
-        smsInfo = await SmsHelper.saveVolunteerName(user, fullName);
+        smsInfo = await SmsHelper.saveVolunteerName(user, responseText);
       }
     }
     if (smsInfo) {
