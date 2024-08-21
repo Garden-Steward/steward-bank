@@ -93,8 +93,10 @@ SmsHelper.checkGarden = async( smsText ) => {
   smsText = (smsText.startsWith('elder')) ? (gardenSmsSlug = 'elder') : smsText;
   smsText = (smsText.startsWith('volunt')) ? (gardenSmsSlug = 'grav') : smsText;
   smsText = (smsText.startsWith('grav')) ? (gardenSmsSlug = 'grav') : smsText;
-  smsText = (smsText.startsWith('eastlake')) ? (gardenSmsSlug = 'ehsm') : smsText;
   smsText = (smsText.startsWith('ehsm')) ? (gardenSmsSlug = 'ehsm') : smsText;
+  smsText = (smsText.startsWith('parkway')) ? (gardenSmsSlug = 'parkway') : smsText;
+  smsText = (smsText.startsWith('smith')) ? (gardenSmsSlug = 'smith') : smsText;
+  smsText = (smsText.startsWith('fm smith')) ? (gardenSmsSlug = 'smith') : smsText;
   if (gardenSmsSlug) {
     return strapi.db.query("api::garden.garden").findOne({where:{sms_slug: gardenSmsSlug}});
   } else {
