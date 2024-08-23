@@ -75,9 +75,18 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
     rsvpEvent: async ctx => {
       console.log("rsvp: ", ctx.params, ctx.request.body);
       const { data } = ctx.request.body;
-      const updatedEvent = eventHelper.rsvpEvent(ctx.params.id, data);
+      if (data.userId) {
+        return await eventHelper.rsvpEvent(ctx.params.id, data);
+      } else if (data.phoneNumber) {
+        const user = await strapi.db.query("plugin::users-permissions.user").findOne({where:{phoneNumber: data.phoneNumber}});
+        if (!user) {
+          return await eventHelper.inviteUserEvent(ctx.params.id, data);
+        } else {
+          data.userId = user.id;
+          return await eventHelper.rsvpEvent(ctx.params.id, data);
+        }
+      }
 
-      return updatedEvent;
     },
 
     testSms: async ctx => {

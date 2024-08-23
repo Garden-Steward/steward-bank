@@ -32,7 +32,7 @@ let sendSms = function(toNum,body){
 
 /** Handle a Task Based SMS or pass in user */
 let handleSms = async function(params){
-  let {task, body, type, previous, user, meta_data} = params
+  let {task, body, type, previous, user, meta_data, event} = params
   console.log("sms out: ", body, "env: ", process.env.ENVIRONMENT);
   console.log(params);
 
@@ -43,7 +43,7 @@ let handleSms = async function(params){
       data: {
         user:member,
         type,
-        garden: task?.garden || user.activeGarden,
+        garden: task?.garden || user?.activeGarden || event?.garden,
         body,
         garden_task: task,
         previous,

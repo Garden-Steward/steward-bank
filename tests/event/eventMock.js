@@ -2,7 +2,7 @@ module.exports = {
   event: 
     {
       "id": 34,
-      "title": "3rd Sunday January",
+      "title": "Test Event",
       "blurb": "Let's take advantage of the moisture and weed and plant the garden!",
       "createdAt": "2024-01-06T04:02:14.257Z",
       "updatedAt": "2024-07-07T05:56:05.419Z",
@@ -12,7 +12,12 @@ module.exports = {
       "disabled": false,
       "interest": "Everyone",
       "content": "",
-      "slug": null,
+      "slug": "test-event",
+      // garden: {
+      //   "id": 1,
+      //   "title": "Test Garden",
+      //   "sms_slug": "test-garden"
+      // },
       "confirmed": [
         {
           "id": 1,
