@@ -46,11 +46,11 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
     const lastCampaign = await strapi.service('api::sms-campaign.sms-campaign').getLatestCampaign(user, ['rsvp', 'volunteer-day']);
     
     if (!lastCampaign) {
-      return {body: "Glad you're down, but I don't have anything to update for you...", type: "complete"}
+      return {body: "Glad you're down, but I don't have anything to update for you...", type: "reply"}
     }
  
     if (lastCampaign.confirmed.find((c)=> c.id == user.id)) {
-      return {body: "Already got you boo!", type: "complete"}
+      return {body: "Already got you boo!", type: "reply"}
     } else {
       lastCampaign.confirmed.push(user.id)
       try {
