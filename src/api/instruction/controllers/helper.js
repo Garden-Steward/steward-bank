@@ -27,9 +27,9 @@ instructionHelper.approveInstruction = async ({ user, instruction, question }) =
       if (task) {
         // Update the task to be back to 'INITIALIZED'
         await strapi.service('api::garden-task.garden-task').updateTaskStatus(task, 'INITIALIZED');
-        return {body: `Thank You!!! You're now qualified to handle "${instruction.title}"! Task: "${task.title}" now ready for you.`, type: "complete", success: true, task};
+        return {body: `Thank You!!! You're now qualified to handle "${instruction.title}"! Task: "${task.title}" now ready for you.`, type: "followup", success: true, task};
       } else {
-        return {body: `Thank You!!! You're now qualified to handle "${instruction.title}"! You currently don't have this task assigned.`, type: "complete", success: true};
+        return {body: `Thank You!!! You're now qualified to handle "${instruction.title}"! You currently don't have this task assigned.`, type: "followup", success: true};
       }
     } else {
       return {body: `Error approving instruction: ${message}`, type: "error", success: false};

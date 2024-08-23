@@ -452,6 +452,7 @@ SmsHelper.getBackupVolunteers = (currentUser, scheduler) => {
 SmsHelper.transferTask = async(user, backUpNumber) => {
 
   const latestQuestion = await strapi.service('api::message.message').validateQuestion(user);
+  // TODO: If no question, check for a task.
   if (!latestQuestion ) {
     return {body:`I\'m sorry ${user.firstName}, we don\'t have an open task for you right now.`,type:'reply'};
   }
