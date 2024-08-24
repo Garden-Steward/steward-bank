@@ -2,18 +2,19 @@ const utils = require("@strapi/utils");
 
 const eventHelper = {};
 
-eventHelper.inviteUserEvent = async (eventId, data) => {
-  const event = await strapi.db.query("api::volunteer-day.volunteer-day")
-  .findOne({
-    where:{id: ctx.params.id},
-    populate: ["garden"]
-  });
-  let body = `Hello! Do you have interest in participating in ${event.title}? To start, reply with ${event.garden.sms_slug}. We'll walk you through a quick registration.`
+/**
+ * Invites an unknown user to join a garden and then RSVPs them to an event
+ * @param {*} eventId 
+ * @param {*} data 
+ * @returns 
+ */
+eventHelper.inviteUserEvent = async (data) => {
+  let body = `Hello! Do you have interest in participating at ${data.event.title}? To start, reply with ${data.event.garden.sms_slug}. We'll walk you through a quick registration.`
   await strapi.service('api::sms.sms').handleSms({
     meta_data: {phoneNumber: data.phoneNumber}, 
     body,
     type: 'registration',
-    event: event
+    event: data.event
   });
   return {success: true, body: body}
 }
@@ -34,6 +35,14 @@ eventHelper.rsvpEvent = async (eventId, data) => {
     },
     populate: ['confirmed']
   });
+
+  await strapi.service('api::sms.sms').handleSms({
+    meta_data: {phoneNumber: data.user.phoneNumber, rsvpClicked: true}, 
+    body: `You've RSVP'd to ${event.title}!`,
+    type: 'reply',
+    event: event
+  });
+  
   const schema = strapi.getModel('api::volunteer-day.volunteer-day');
   updatedEvent.confirmed = {data: updatedEvent.confirmed}
   let eventSanitized = await utils.sanitize.contentAPI.output({data: {attributes: updatedEvent}}, schema);

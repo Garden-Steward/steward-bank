@@ -91,8 +91,8 @@ SmsHelper.handleGardenTask = async(smsText, user, question) => {
 SmsHelper.checkGarden = async( smsText ) => {
   let gardenSmsSlug = null
   smsText = (smsText.startsWith('elder')) ? (gardenSmsSlug = 'elder') : smsText;
-  smsText = (smsText.startsWith('volunt')) ? (gardenSmsSlug = 'grav') : smsText;
-  smsText = (smsText.startsWith('grav')) ? (gardenSmsSlug = 'grav') : smsText;
+  smsText = (smsText.startsWith('volunt')) ? (gardenSmsSlug = 'gravity') : smsText;
+  smsText = (smsText.startsWith('grav')) ? (gardenSmsSlug = 'gravity') : smsText;
   smsText = (smsText.startsWith('ehsm')) ? (gardenSmsSlug = 'ehsm') : smsText;
   smsText = (smsText.startsWith('parkway')) ? (gardenSmsSlug = 'parkway') : smsText;
   smsText = (smsText.startsWith('smith')) ? (gardenSmsSlug = 'smith') : smsText;

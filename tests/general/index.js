@@ -72,7 +72,7 @@ describe('Yes Response on SmsHelper', () => {
     });
     
     let result = await SmsHelper.handleYesResponse(smsText, user)
-    expect(result.type).toBe('complete');
+    expect(result.type).toBe('followup');
   });
 });
 

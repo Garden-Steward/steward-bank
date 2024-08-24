@@ -75,18 +75,28 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
     rsvpEvent: async ctx => {
       console.log("rsvp: ", ctx.params, ctx.request.body);
       const { data } = ctx.request.body;
+      const userQuery = data.userId ? {id: data.userId} : {phoneNumber: `+1${data.phoneNumber}`};
+      const user = await strapi.db.query("plugin::users-permissions.user").findOne({where:userQuery, populate: ['gardens']});
+      const event = await strapi.db.query("api::volunteer-day.volunteer-day")
+      .findOne({
+        where:{id: ctx.params.id},
+        populate: ["garden"]
+      });
+      data.event = event;
+      data.user = user;
+      const alreadyMember = user.gardens.find(g => g.id === event.garden.id);
+
       if (data.userId) {
         return await eventHelper.rsvpEvent(ctx.params.id, data);
       } else if (data.phoneNumber) {
-        const user = await strapi.db.query("plugin::users-permissions.user").findOne({where:{phoneNumber: data.phoneNumber}});
-        if (!user) {
+        if (!user || !alreadyMember) {
           return await eventHelper.inviteUserEvent(ctx.params.id, data);
         } else {
+          // user is already a member of the garden - SAFE RSVP!
           data.userId = user.id;
           return await eventHelper.rsvpEvent(ctx.params.id, data);
         }
       }
-
     },
 
     testSms: async ctx => {
