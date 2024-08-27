@@ -82,6 +82,9 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
         where:{id: ctx.params.id},
         populate: ["garden"]
       });
+      if (!event) {
+        return {error: "Event not found"}
+      }
       data.event = event;
       data.user = user;
       const alreadyMember = user.gardens.find(g => g.id === event.garden.id);
@@ -90,7 +93,8 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
         return await eventHelper.rsvpEvent(ctx.params.id, data);
       } else if (data.phoneNumber) {
         if (!user || !alreadyMember) {
-          return await eventHelper.inviteUserEvent(ctx.params.id, data);
+          console.log("inviting user");
+          return await eventHelper.inviteUserEvent(data);
         } else {
           // user is already a member of the garden - SAFE RSVP!
           data.userId = user.id;
