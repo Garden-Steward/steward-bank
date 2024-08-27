@@ -11,7 +11,7 @@ const eventHelper = {};
 eventHelper.inviteUserEvent = async (data) => {
   let body = `Hello! Do you have interest in participating at ${data.event.title}? To start, reply with ${data.event.garden.sms_slug}. We'll walk you through a quick registration.`
   await strapi.service('api::sms.sms').handleSms({
-    meta_data: {phoneNumber: data.phoneNumber}, 
+    meta_data: {phoneNumber: data.phoneNumber, eventId: data.event.id}, 
     body,
     type: 'registration',
     event: data.event

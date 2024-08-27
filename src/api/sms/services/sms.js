@@ -34,7 +34,6 @@ let sendSms = function(toNum,body){
 let handleSms = async function(params){
   let {task, body, type, previous, user, meta_data, event} = params
   console.log("sms out: ", body, "env: ", process.env.ENVIRONMENT);
-  console.log(params);
 
   let member = (!user && task && task.volunteers?.length) ? task.volunteers[0] : user
     
