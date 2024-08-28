@@ -175,9 +175,9 @@ SmsHelper.joinGarden = async(user, phoneNumber, garden) => {
         user.gardens.push(garden.id);
         await strapi.db.query("plugin::users-permissions.user").update({where:{id: user.id}, data: user});
         if (garden.welcome_text) {
-          return {body: `${garden.welcome_text} You can STOP messages any time.`,type:'complete'};
+          return {body: `${garden.welcome_text} \n\nYou can STOP messages any time.`,type:'complete'};
         } else {
-          return {body: `Thanks for signing up for ${garden.title}. You\'ll start to receive notification about volunteer days. You can STOP messages any time.`,type:'complete'};
+          return {body: `Thanks for signing up for ${garden.title}. You\'ll start to receive notification about volunteer days. \n\nYou can STOP messages any time.`,type:'complete'};
         }
       }
       await strapi.db.query("plugin::users-permissions.user").update({where:{id: user.id}, data: user});

@@ -40,7 +40,7 @@ describe('getRSVPs', function() {
 
     await eventHelper.inviteUserEvent({phoneNumber: "1234567890", event: createdEvent}).then(res => {
       const {body} = res;
-      expect(body).toBe("Hello! Do you have interest in participating at Test Event? To start, reply with test-garden. We'll walk you through a quick registration.");
+      expect(body).toBe("Hello! Do you have interest in participating at Test Event? To start, reply with TEST-GARDEN. We'll walk you through a quick registration.");
     });
   });
 });
