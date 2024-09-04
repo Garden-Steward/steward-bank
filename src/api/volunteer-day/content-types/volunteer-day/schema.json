@@ -75,6 +75,12 @@
       "type": "component",
       "repeatable": true,
       "component": "plants.planting"
+    },
+    "messages": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::message.message",
+      "mappedBy": "event"
     }
   }
 }

@@ -38,6 +38,12 @@
     },
     "content": {
       "type": "blocks"
+    },
+    "card": {
+      "displayName": "Card",
+      "type": "component",
+      "repeatable": true,
+      "component": "education.card"
     }
   }
 }

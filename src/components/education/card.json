@@ -1,0 +1,14 @@
+{
+  "collectionName": "components_education_cards",
+  "info": {
+    "displayName": "Card",
+    "icon": "store",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "content": {
+      "type": "blocks"
+    }
+  }
+}

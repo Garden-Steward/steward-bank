@@ -29,6 +29,31 @@ async function cleanupStrapi() {
 }
 
 /**
+ * Updates the core of strapi
+ * @param {*} pluginName
+ * @param {*} key
+ * @param {*} newValues
+ * @param {*} environment
+ */
+const updatePluginStore = async (
+  pluginName,
+  key,
+  newValues,
+  environment = ""
+) => {
+  const pluginStore = strapi.store({
+    environment: environment,
+    type: "plugin",
+    name: pluginName,
+  });
+
+  const oldValues = await pluginStore.get({ key });
+  const newValue = Object.assign({}, oldValues, newValues);
+
+  return pluginStore.set({ key: key, value: newValue });
+};
+
+/**
  * Grants database `permissions` table that role can access an endpoint/controllers
  *
  * @param {int} roleID, 1 Authenticated, 2 Public, etc

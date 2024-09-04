@@ -1134,6 +1134,7 @@ export interface ApiInstructionInstruction extends Schema.CollectionType {
       Attribute.Required &
       Attribute.DefaultTo<"I understand this task's requirements and I am capable. I accept this task.">;
     content: Attribute.Blocks;
+    card: Attribute.Component<'education.card', true>;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
@@ -1229,6 +1230,11 @@ export interface ApiMessageMessage extends Schema.CollectionType {
     >;
     previous: Attribute.Text;
     meta_data: Attribute.JSON;
+    event: Attribute.Relation<
+      'api::message.message',
+      'manyToOne',
+      'api::volunteer-day.volunteer-day'
+    >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
@@ -1602,6 +1608,11 @@ export interface ApiVolunteerDayVolunteerDay extends Schema.CollectionType {
     > &
       Attribute.DefaultTo<'Public'>;
     planting: Attribute.Component<'plants.planting', true>;
+    messages: Attribute.Relation<
+      'api::volunteer-day.volunteer-day',
+      'oneToMany',
+      'api::message.message'
+    >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;

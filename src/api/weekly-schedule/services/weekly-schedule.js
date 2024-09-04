@@ -65,7 +65,7 @@ module.exports = createCoreService('api::weekly-schedule.weekly-schedule', ({ st
     const daysCopy = assignees.map((a)=> {return `${a.day}: ${a.assignee.firstName} ${a.assignee.lastName.charAt(0)}`}).join('\n');
     const volGroup = assignees.map((a)=> {return a.assignee.id});
     
-    const copy = `You've been selected to '${recTask.title}' this week! ${daysCopy}. You'll receive a reminder morning of where you can transfer if necessary.`
+    const copy = `You've been selected to '${recTask.title}' this week! \n${daysCopy}. \nYou'll receive a reminder morning of where you can transfer if necessary.`
 
     for (const volunteer of assignees) {
       if (['test','stg'].indexOf(process.env.ENVIRONMENT)>-1) {continue;}

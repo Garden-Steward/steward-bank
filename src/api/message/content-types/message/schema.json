@@ -47,6 +47,12 @@
     },
     "meta_data": {
       "type": "json"
+    },
+    "event": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::volunteer-day.volunteer-day",
+      "inversedBy": "messages"
     }
   }
 }

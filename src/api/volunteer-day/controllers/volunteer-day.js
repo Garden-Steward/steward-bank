@@ -87,7 +87,7 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
       }
       data.event = event;
       data.user = user;
-      const alreadyMember = user.gardens.find(g => g.id === event.garden.id);
+      const alreadyMember = user?.gardens?.find(g => g.id === event.garden.id);
 
       if (data.userId) {
         return await eventHelper.rsvpEvent(ctx.params.id, data);
