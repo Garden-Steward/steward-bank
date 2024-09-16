@@ -56,6 +56,9 @@
       "type": "component",
       "repeatable": true,
       "component": "plants.benefits"
+    },
+    "magic": {
+      "type": "richtext"
     }
   }
 }

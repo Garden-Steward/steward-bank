@@ -1315,6 +1315,7 @@ export interface ApiPlantPlant extends Schema.CollectionType {
     latin: Attribute.String;
     images: Attribute.Media<'images' | 'files' | 'videos' | 'audios', true>;
     Benefits: Attribute.Component<'plants.benefits', true>;
+    magic: Attribute.RichText;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
@@ -1580,7 +1581,6 @@ export interface ApiVolunteerDayVolunteerDay extends Schema.CollectionType {
       'oneToOne',
       'api::garden.garden'
     >;
-    content: Attribute.RichText;
     startDatetime: Attribute.DateTime;
     endText: Attribute.String;
     disabled: Attribute.Boolean &
@@ -1613,6 +1613,7 @@ export interface ApiVolunteerDayVolunteerDay extends Schema.CollectionType {
       'oneToMany',
       'api::message.message'
     >;
+    content: Attribute.Blocks;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
