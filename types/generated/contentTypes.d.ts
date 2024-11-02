@@ -1613,7 +1613,9 @@ export interface ApiVolunteerDayVolunteerDay extends Schema.CollectionType {
       'oneToMany',
       'api::message.message'
     >;
-    content: Attribute.Blocks;
+    content: Attribute.RichText;
+    smsLink: Attribute.Boolean;
+    hero_image: Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;

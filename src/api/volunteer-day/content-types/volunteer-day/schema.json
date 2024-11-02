@@ -81,6 +81,19 @@
       "relation": "oneToMany",
       "target": "api::message.message",
       "mappedBy": "event"
+    },
+    "smsLink": {
+      "type": "boolean"
+    },
+    "hero_image": {
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ],
+      "type": "media",
+      "multiple": false
     }
   }
 }
