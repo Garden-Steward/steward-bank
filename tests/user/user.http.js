@@ -1,11 +1,15 @@
 const {
   grantPrivileges,
+  setupStrapi,
 } = require("../helpers/strapi");
 const request = require("supertest");
 
 const { createUser, defaultData, mockUserData } = require("./factory");
 
+let strapi;
+
 beforeAll(async () => {
+  strapi = await setupStrapi();
 
   await grantPrivileges(
     2,

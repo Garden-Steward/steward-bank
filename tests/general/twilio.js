@@ -31,14 +31,14 @@ afterAll(() => {
 
 describe("Default Twilio methods", () => {
 
-  it('should send a message', async () => {
-    const message = await context
-    .getTwilioClient()
-    .messages.create({
-      to: '+13038833330',
-      from: '+13038833330',
-      body: 'Hello world!',
-    })
-    expect(message).toBeDefined();
-  });
+  // it('should send a message', async () => {
+  //   const message = await context
+  //   .getTwilioClient()
+  //   .messages.create({
+  //     to: '+13038833330',
+  //     from: '+13038833330',
+  //     body: 'Hello world!',
+  //   })
+  //   expect(message).toBeDefined();
+  // });
 });

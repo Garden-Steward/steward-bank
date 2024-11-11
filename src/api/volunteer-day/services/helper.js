@@ -27,6 +27,9 @@ eventHelper.rsvpEvent = async (eventId, data) => {
       id: eventId
     }
   });
+  if (!event) {
+    throw new Error("Event not found");
+  }
 
   event.confirmed.push(data.userId);
   let updatedEvent = await strapi.db.query("api::volunteer-day.volunteer-day").update({

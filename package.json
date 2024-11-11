@@ -9,7 +9,7 @@
     "build": "strapi build",
     "strapi": "strapi",
     "deploy": "flyctl deploy --remote-only",
-    "test": "jest --forceExit --detectOpenHandles"
+    "test": "NODE_ENV=test jest --forceExit --detectOpenHandles"
   },
   "devDependencies": {
     "jest": "^29.7.0",

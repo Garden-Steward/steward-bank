@@ -11,6 +11,13 @@ VdayHelper.getDateCopy = (vDay) => {
   return {startTime, date}
 }
 
+VdayHelper.addSmsLink = (copy, vDay) => {
+  if (vDay.smsLink) {
+    copy += `\n\nView event info here: \nhttps://steward.garden/d/${vDay.id}`;
+  }
+  return copy;
+}
+
 /***
  * SMS COPY FOR VOLUNTEER DAY CRON EMAILS
  */
@@ -22,6 +29,7 @@ VdayHelper.buildUpcomingDayCopy = (vDay) => {
   const {date, startTime} = VdayHelper.getDateCopy(vDay);
   let interestCopy = VdayHelper.buildEventInterestCopy(vDay);
   let copy = `${vDay.garden.title} has an upcoming ${interestCopy} "${vDay.title}". ${vDay.blurb} ${date}, ${startTime} to ${vDay.endText}.`
+  copy = VdayHelper.addSmsLink(copy, vDay);
   return copy
 }
 
@@ -34,10 +42,11 @@ VdayHelper.buildTomorrowCopy = (vDay) => {
   let interestCopy = VdayHelper.buildEventInterestCopy(vDay);
   let copy = `Tomorrow!! ${vDay.garden.title} has ${interestCopy} "${vDay.title}". ${vDay.blurb} `
   if (vDay.endText) {
-    copy += ` from ${startTime} to ${vDay.endText}.`
+    copy += `Come by from ${startTime} to ${vDay.endText}.`
   } else {
     copy += ` starts at ${startTime}.`
   }
+  copy = VdayHelper.addSmsLink(copy, vDay);
   return copy
 }
 
@@ -47,11 +56,11 @@ VdayHelper.buildEventInterestCopy = (vDay) => {
     case 'Meetings':
       return 'a meeting. Hope to see you for';
     case 'Events':
-      return 'an event! See you at'
+      return 'event! See you at'
     case 'Volunteering':
       return 'a volunteer day! Come by for'
     default:
-      return 'an event! All welcome at';
+      return 'event! All welcome at';
   }
 }
 

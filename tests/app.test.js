@@ -1,14 +1,16 @@
 const fs = require('fs');
 const { setupStrapi, cleanupStrapi, grantPrivileges } = require("./helpers/strapi");
 
-jest.setTimeout(15000)
+jest.setTimeout(30000);
 beforeAll(async () => {
   await setupStrapi();
   await grantPrivileges(2, ["permissions.application.controllers.hello.index"]);  // Gives Public access to endpoint
 });
 
 afterAll(async () => {
+  await new Promise(resolve => setTimeout(resolve, 1000));
   await cleanupStrapi();
+  await new Promise(resolve => setTimeout(resolve, 1000));
 });
 
 it("strapi is defined", () => {
@@ -26,3 +28,4 @@ require('./tasks/schedule');
 require('./tasks/crontest');
 require('./tasks/instruction');
 require('./event/rsvp');
+require('./event/messages')

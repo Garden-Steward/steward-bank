@@ -14,13 +14,21 @@ async function setupStrapi() {
 }
 
 async function cleanupStrapi() {
+  // Get database settings before destroying instance
+  const dbSettings = instance.config.get("database.connection");
 
-  const dbSettings = strapi.config.get("database.connection");
-  //close server to release the db-file
+  // Close any open connections/servers first
+  if (instance.server.httpServer) {
+    await new Promise(resolve => {
+      instance.server.httpServer.close(resolve);
+    });
+  }
+
+  // Then destroy the instance
   await instance.destroy();
   await instance.server.destroy();
 
-  //delete test database after all tests
+  // Delete test database if it exists
   if (dbSettings && dbSettings.connection && dbSettings.connection.filename) {
     if (fs.existsSync(dbSettings.connection.filename)) {
       fs.unlinkSync(dbSettings.connection.filename);

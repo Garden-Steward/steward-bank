@@ -1,4 +1,5 @@
 .env.prod
+package-lock.json
 
 ############################
 # OS X

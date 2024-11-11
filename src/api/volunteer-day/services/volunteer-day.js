@@ -50,12 +50,16 @@ module.exports = createCoreService('api::volunteer-day.volunteer-day', ({ strapi
 
     for (const volunteer of volGroup) {
       try {
-        await client.messages
-          .create({
+        if (process.env.NODE_ENV === 'test') {
+          console.log("sending to ", volunteer.phoneNumber, copy);
+        } else {
+          await client.messages
+            .create({
             body: copy,
             from: twilioNum,
             to: volunteer.phoneNumber
           });
+        }
         sentInfo.push(volunteer.phoneNumber);
       } catch (err) {
         await strapi.service('api::garden.garden').unsubscribeUser(volunteer);
