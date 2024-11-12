@@ -44,7 +44,8 @@ eventHelper.rsvpEvent = async (eventId, data) => {
     meta_data: {phoneNumber: data.user.phoneNumber, rsvpClicked: true}, 
     body: `You've RSVP'd to ${event.title}!`,
     type: 'reply',
-    event: event
+    event: event,
+    user: data.user
   });
   
   const schema = strapi.getModel('api::volunteer-day.volunteer-day');
