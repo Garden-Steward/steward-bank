@@ -1,8 +1,8 @@
 {
   "name": "steward-bank",
   "private": true,
-  "version": "0.1.1",
-  "description": "A Strapi application",
+  "version": "0.1.2",
+  "description": "Garden Steward - build your own!",
   "scripts": {
     "develop": "strapi develop",
     "start": "strapi start",
