@@ -56,5 +56,21 @@ module.exports = createCoreService('api::instruction.instruction', ({ strapi }) 
     );
     return {success: true, message: 'Sent instruction for ' + user.username, task: task};
 
+  },
+
+  checkInstruction(task) {
+    let needsInstruction = false;
+    if (task.recurring_task.instruction) {
+      needsInstruction = !task.volunteers[0].instructions.find(i=> i.id == task.recurring_task.instruction.id);
+    }
+    return needsInstruction;
+  },
+
+  getInstructionUrl(instruction, user) {
+    if (!instruction) {
+      return '';
+    }
+    return `https://steward.garden/i/${instruction.slug}?u=${user.id}`;
   }
+
 }));

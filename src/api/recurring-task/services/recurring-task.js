@@ -34,6 +34,17 @@ module.exports = createCoreService('api::recurring-task.recurring-task', ({ stra
       populate: ['schedulers']
 
     })
+  },
+
+  async getRecurringTaskBySchedulerType(garden, scheduler_type) {
+    // TODO: Verify that the recurring task does not have any existing STARTED tasks
+    let tasks = await strapi.service('api::garden-task.garden-task').getTasksByStatusAndRecurringTask(['STARTED'], recurringTask);
+    let recurringTasks = await strapi.entityService.findMany('api::recurring-task.recurring-task', {
+      where: {
+        garden: garden.id,
+        scheduler_type: scheduler_type
+      }
+    })
   }
 
 }));

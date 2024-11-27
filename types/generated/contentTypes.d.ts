@@ -1581,6 +1581,7 @@ export interface ApiVolunteerDayVolunteerDay extends Schema.CollectionType {
       'oneToOne',
       'api::garden.garden'
     >;
+    content: Attribute.RichText;
     startDatetime: Attribute.DateTime;
     endText: Attribute.String;
     disabled: Attribute.Boolean &
@@ -1613,7 +1614,6 @@ export interface ApiVolunteerDayVolunteerDay extends Schema.CollectionType {
       'oneToMany',
       'api::message.message'
     >;
-    content: Attribute.RichText;
     smsLink: Attribute.Boolean;
     hero_image: Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     createdAt: Attribute.DateTime;

@@ -1,5 +1,18 @@
 import type { Schema, Attribute } from '@strapi/strapi';
 
+export interface SeoSeoInformation extends Schema.Component {
+  collectionName: 'components_seo_seo_informations';
+  info: {
+    displayName: 'SeoInformation';
+    icon: 'collapse';
+    description: '';
+  };
+  attributes: {
+    seotitle: Attribute.String;
+    seodescription: Attribute.Text;
+  };
+}
+
 export interface SchedulingScheduleAssignee extends Schema.Component {
   collectionName: 'components_scheduling_schedule_assignees';
   info: {
@@ -22,31 +35,6 @@ export interface SchedulingScheduleAssignee extends Schema.Component {
         'Saturday'
       ]
     >;
-  };
-}
-
-export interface SeoSeoInformation extends Schema.Component {
-  collectionName: 'components_seo_seo_informations';
-  info: {
-    displayName: 'SeoInformation';
-    icon: 'collapse';
-    description: '';
-  };
-  attributes: {
-    seotitle: Attribute.String;
-    seodescription: Attribute.Text;
-  };
-}
-
-export interface EducationCard extends Schema.Component {
-  collectionName: 'components_education_cards';
-  info: {
-    displayName: 'Card';
-    icon: 'store';
-    description: '';
-  };
-  attributes: {
-    content: Attribute.Blocks;
   };
 }
 
@@ -76,14 +64,26 @@ export interface PlantsBenefits extends Schema.Component {
   };
 }
 
+export interface EducationCard extends Schema.Component {
+  collectionName: 'components_education_cards';
+  info: {
+    displayName: 'Card';
+    icon: 'store';
+    description: '';
+  };
+  attributes: {
+    content: Attribute.Blocks;
+  };
+}
+
 declare module '@strapi/types' {
   export module Shared {
     export interface Components {
-      'scheduling.schedule-assignee': SchedulingScheduleAssignee;
       'seo.seo-information': SeoSeoInformation;
-      'education.card': EducationCard;
+      'scheduling.schedule-assignee': SchedulingScheduleAssignee;
       'plants.planting': PlantsPlanting;
       'plants.benefits': PlantsBenefits;
+      'education.card': EducationCard;
     }
   }
 }

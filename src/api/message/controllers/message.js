@@ -113,6 +113,10 @@ module.exports = {
       case 'smiles':
         smsBody = "You\'re cute, but I'm just a bot ;)"
         break;
+
+      case 'task':
+        smsInfo = await strapi.service('api::garden-task.garden-task').getTaskFromSMS(user);
+        break;
       
       case 'finished':
       case 'done':

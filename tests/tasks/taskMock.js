@@ -21,6 +21,11 @@ module.exports = {
       createdAt: '2023-01-17T02:13:59.984Z',
       updatedAt: '2023-12-18T02:01:09.138Z',
       publishedAt: '2023-01-17T02:31:56.753Z',
-      scheduler_type: 'Weekly Shuffle'
+      scheduler_type: 'Weekly Shuffle',
+      instruction: {
+        id: 5,
+        title: 'Water the garden',
+        slug: 'water-the-garden'
+      }
     }
 }

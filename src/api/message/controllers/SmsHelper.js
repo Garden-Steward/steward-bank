@@ -275,7 +275,7 @@ SmsHelper.getHelp = async(user) => {
     });
 
     if (tasks.length == 1 && tasks[0].status == 'PENDING') {
-      let instructionUrl = tasks[0].recurring_task.instruction ? `https://steward.garden/i/${tasks[0].recurring_task.instruction.slug}?u=${user.id}` : '';
+      let instructionUrl = strapi.service('api::instruction.instruction').getInstructionUrl(tasks[0].recurring_task.instruction, user);
       return `Hi ${user.firstName}. We are waiting on task ${tasks[0].title}. Please respond to the instruction: YES if you agree you can manage the task. NO will allow you to transfer the task to someone else. You will be resent this instruction each time until approval.\n\n ${instructionUrl}`;
     } else if (tasks.length == 1) {
       return `Hi ${user.firstName}, you have the task of "${tasks[0].title}" it is in status: ${tasks[0].status}. YES if you can do the task. NO if want to transfer. SKIP if it isn't needed. `;
@@ -476,17 +476,15 @@ SmsHelper.transferTask = async(user, backUpNumber) => {
       return { body:'Technical error when transferring the task.',type:'reply', task: task};
     }
     // console.log('got updatedtask: ', updatedTask);
-    let needsInstruction = false;
-    if (updatedTask.recurring_task.instruction) {
-      needsInstruction = !updatedTask.volunteers[0].instructions.find(i=> i.id == updatedTask.recurring_task.instruction.id);
-    }
+    let needsInstruction = strapi.service('api::instruction.instruction').checkInstruction(updatedTask);
     let smsNewGuy;
     try{
       if (!needsInstruction) {
         smsNewGuy = `Hello! ${user.firstName} just assigned you the task of ${task.title}. Reply with YES or NO if you can manage this today.`;
       } else {
+        let instructionUrl = strapi.service('api::instruction.instruction').getInstructionUrl(updatedTask.recurring_task.instruction, newUser);
         await strapi.service('api::garden-task.garden-task').updateTaskStatus(task, 'PENDING');
-        smsNewGuy = `Hello! ${user.firstName} just assigned you the task of ${task.title}. First you need to agree to the instructions, then reply with YES or NO if you can manage this today. https://steward.garden/i/${updatedTask.recurring_task.instruction.slug}?u=${newUser.id}`;
+        smsNewGuy = `Hello! ${user.firstName} just assigned you the task of ${task.title}. First you need to agree to the instructions, then reply with YES or NO if you can manage this today.\n\n${instructionUrl}`;
         
       }
       await strapi.service('api::sms.sms').handleSms({

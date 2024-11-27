@@ -36,6 +36,64 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
 
   },
 
+  async getTasksByStatusAndRecurringTask(statusArr, recurringTask) {
+    const tasks = await strapi.db.query('api::garden-task.garden-task').findMany({
+      where: {
+        status: { $in: statusArr },
+        recurring_task: recurringTask.id
+      }
+    });
+    return tasks;
+  },
+
+  async getTaskFromSMS(user) {
+    
+    const tasks = await this.getUserTasksByStatus(user, ['INITIALIZED','STARTED','PENDING']);
+    console.log('tasks', tasks);
+    if (tasks.length) {
+      const task = tasks[0];
+      let needsInstruction = strapi.service('api::instruction.instruction').checkInstruction(task);
+      console.log('needsInstruction', task);
+      if (!needsInstruction) {
+        return {body: `You already have the task of "${task.title}": ${task.overview}. \n\nRespond with YES if you can do the task. NO if want to transfer. SKIP if it isn't needed. `, type: 'reply', task};
+      } else {
+        let instructionUrl = strapi.service('api::instruction.instruction').getInstructionUrl(task.recurring_task.instruction, user);
+        await strapi.service('api::garden-task.garden-task').updateTaskStatus(task, 'PENDING');
+        return {body: `"${task.title}" has already been assigned to you. First you need to agree to the instructions, then reply with YES or NO if you can manage this today.\n\n${instructionUrl}`, type: 'reply', task};
+      }
+    }
+
+    let task = await strapi.service('api::garden-task.garden-task').getRandomTask(['INITIALIZED']);
+    if (task) {
+      task = await strapi.service('api::garden-task.garden-task').updateGardenTaskUser(task, 'PENDING', user);
+      let needsInstruction = strapi.service('api::instruction.instruction').checkInstruction(task);
+      if (!needsInstruction) {
+        return {body: `Your new task is "${task.title}": ${task.overview}. \n\nRespond with YES if you can do the task. SKIP if you'd like a different task. `, type: 'reply', task};
+      } else {
+        let instructionUrl = strapi.service('api::instruction.instruction').getInstructionUrl(task.recurring_task.instruction, user);
+        return {body: `We found a task for you! "${task.title}": ${task.overview}. \n\nFirst you need to agree to the instructions, then reply with YES if you can manage this today, or SKIP if you'd like a different task.\n\n${instructionUrl}`, type: 'reply', task};
+      }
+    } else {
+     return {body: 'I\'m sorry, we don\'t have an open task for you right now.', type: 'reply'};
+
+    }
+  },
+
+  async getRandomTask(statusArr) {
+    const tasks = await strapi.db.query('api::garden-task.garden-task').findMany({
+      where: {
+        volunteers: {
+          $null: true
+        },
+        status: {
+          $in: statusArr
+        }
+      },
+      populate: ['volunteers','recurring_task', 'recurring_task.instruction']
+    });
+    return tasks[Math.floor(Math.random() * tasks.length)];
+  },
+
   async updateGardenTaskUser(task, status, user) {
     
     return strapi.db.query('api::garden-task.garden-task').update({
