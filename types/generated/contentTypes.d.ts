@@ -1089,6 +1089,7 @@ export interface ApiGardenTaskGardenTask extends Schema.CollectionType {
       'api::volunteer-day.volunteer-day'
     >;
     max_volunteers: Attribute.Integer;
+    primary_image: Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;

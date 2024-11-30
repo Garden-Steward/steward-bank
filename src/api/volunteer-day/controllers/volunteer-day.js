@@ -62,7 +62,7 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
             slug: ctx.params.slug,
           }
         },
-        populate: ['garden_tasks', ],
+        populate: ['garden_tasks', 'garden_tasks.primary_image'],
         limit: 15,
       });
       try {
