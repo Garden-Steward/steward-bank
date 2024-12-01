@@ -1,6 +1,9 @@
 const userMock = require('../mocks/userMock');
 const taskMock = require('../tasks/taskMock');
+
 describe('getTask', function() {
+  let instruction;
+
   beforeEach(async () => {
     // Clear any existing mocks
     jest.clearAllMocks();
@@ -48,7 +51,7 @@ describe('getTask', function() {
     const instructionData = { ...taskMock.recurring_task.instructions };
     delete instructionData.id;  // Remove the id so it's auto-generated
     
-    const instruction = await strapi.db.query('api::instruction.instruction').create({
+    instruction = await strapi.db.query('api::instruction.instruction').create({
       data: instructionData
     });
 
@@ -83,6 +86,23 @@ describe('getTask', function() {
     const task = await strapi.service('api::garden-task.garden-task').getTaskFromSMS(userMock.user);
     expect(task.type).toBe('reply');
     expect(task.task.recurring_task.instruction.id).toBe(instruction.id);
+  });
+
+  it('should return a basic task you already have', async function() {
+    // Create a task without a recurring_task relation
+    // Create a new task with proper relation to recurring task
+    strapi.service('api::garden-task.garden-task').getUserTasksByStatus = jest.fn().mockResolvedValue([{
+      title: 'SMS Test Task',
+      status: 'STARTED',
+      type: 'General',
+      volunteers: [userMock.user.id],
+      garden: userMock.user.activeGarden
+    }]);
+
+    const task = await strapi.service('api::garden-task.garden-task').getTaskFromSMS(userMock.user);
+    expect(task.type).toBe('reply');
+    // The task should not have a recurring_task
+    expect(task.body).toContain('You already have the task of');
   });
 });
 

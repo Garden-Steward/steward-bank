@@ -49,7 +49,6 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
   async getTaskFromSMS(user) {
     
     const tasks = await this.getUserTasksByStatus(user, ['INITIALIZED','STARTED','PENDING']);
-    console.log('tasks', tasks);
     if (tasks.length) {
       const task = tasks[0];
       let needsInstruction = strapi.service('api::instruction.instruction').checkInstruction(task);

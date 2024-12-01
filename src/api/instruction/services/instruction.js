@@ -60,8 +60,8 @@ module.exports = createCoreService('api::instruction.instruction', ({ strapi }) 
 
   checkInstruction(task) {
     let needsInstruction = false;
-    if (task.recurring_task.instruction) {
-      needsInstruction = !task.volunteers[0].instructions.find(i=> i.id == task.recurring_task.instruction.id);
+    if (task?.recurring_task?.instruction) {
+      needsInstruction = !task.volunteers[0]?.instructions?.find(i => i.id == task.recurring_task.instruction.id);
     }
     return needsInstruction;
   },
