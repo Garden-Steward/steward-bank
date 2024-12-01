@@ -3,6 +3,7 @@ const taskMock = require('../tasks/taskMock');
 
 describe('getTask', function() {
   let instruction;
+  let recurringTask;
 
   beforeEach(async () => {
     // Clear any existing mocks
@@ -45,7 +46,6 @@ describe('getTask', function() {
 
     // Verify cleanup worked
     const existingTasks = await strapi.service('api::garden-task.garden-task').getUserTasksByStatus(userMock.user, ['INITIALIZED', 'STARTED', 'PENDING']);
-    console.log('Existing tasks after cleanup:', existingTasks);
 
     // Create instruction first
     const instructionData = { ...taskMock.recurring_task.instructions };
@@ -62,7 +62,7 @@ describe('getTask', function() {
     recurringTaskData.type = 'General';
     recurringTaskData.scheduler_type = 'No Schedule';
     
-    const recurringTask = await strapi.db.query('api::recurring-task.recurring-task').create({
+    recurringTask = await strapi.db.query('api::recurring-task.recurring-task').create({
       data: {
         ...recurringTaskData,
         instruction: instruction.id
@@ -104,15 +104,59 @@ describe('getTask', function() {
     // The task should not have a recurring_task
     expect(task.body).toContain('You already have the task of');
   });
+
 });
 
-// 1. Get a task from SMS
-// - a. Update the task status to STARTED and assign it to the user
-// 2. If no task is found, create a new task from a recurring task
-// - a. 
+describe('skipTask', function() {
+  let instruction;
+  let recurringTask;
 
-// Q: Should we create all the tasks from recurring tasks and have them ready to be assigned?
-// - this way we have control over which Recurring Tasks are available to be assigned
+  beforeEach(async () => {
+    // Create instruction first
+    const instructionData = { ...taskMock.recurring_task.instructions };
+    delete instructionData.id;  // Remove the id so it's auto-generated
+    
+    instruction = await strapi.db.query('api::instruction.instruction').create({
+      data: instructionData
+    });
 
-// If there is a No Schedule recurring task, we should create a task for it - when?
-// no schedule tasks should be added to a volunteer day.
+    // Create recurring task with instruction relation
+    const recurringTaskData = { ...taskMock.recurring_task };
+    delete recurringTaskData.id;
+    delete recurringTaskData.instructions;
+    recurringTaskData.type = 'General';
+    recurringTaskData.scheduler_type = 'No Schedule';
+    
+    recurringTask = await strapi.db.query('api::recurring-task.recurring-task').create({
+      data: {
+        ...recurringTaskData,
+        instruction: instruction.id
+      }
+    });
+
+    await strapi.db.query('api::garden-task.garden-task').create({
+      data: {
+        title: 'SMS Water Task',
+        status: 'INITIALIZED',
+        type: 'Water',
+        volunteers: [userMock.user.id],
+        recurring_task: recurringTask.id,
+        garden: userMock.user.activeGarden
+      }
+    });
+  });
+
+  it('should skip task properly', async function() {
+    const smsInfo = await strapi.service('api::garden-task.garden-task').skipTask(userMock.user);
+    expect(smsInfo.type).toBe('complete');
+    expect(smsInfo.body).toContain('Alright then! Your task has been skipped!');
+  });
+
+  it('should return a reply if no task is found', async function() {
+    strapi.db.query('api::garden-task.garden-task').update = jest.fn().mockResolvedValue(null);
+    const smsInfo = await strapi.service('api::garden-task.garden-task').skipTask(userMock.user);
+    expect(smsInfo.type).toBe('reply');
+    expect(smsInfo.body).toContain('I\'m sorry, we don\'t have an open task for you right now.');
+  });
+
+});

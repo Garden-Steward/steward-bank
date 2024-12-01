@@ -343,28 +343,6 @@ SmsHelper.finishTask = async(user) => {
   }
 };
 
-SmsHelper.skipTask = async(user) => {
-  const gardenTaskService = strapi.db.query('api::garden-task.garden-task');
-  let gardenTask;
-  try {
-    gardenTask = await gardenTaskService.update({
-      where: {
-        status:{$in:['INITIALIZED','STARTED']},
-        volunteers: user.id,
-        type: 'Water'
-      }, 
-      data: {
-        status: 'SKIPPED',
-        completed_at: new Date(new Date().getTime())
-      }
-    });
-  } catch (err) {
-    console.error('skip error: ', err);
-    return {body:'Problem updating the task!',type: 'complete',task: gardenTask};
-  }
-  return {body:'Alright then! Your task has been skipped!',type: 'complete',task: gardenTask};
-};
-
 SmsHelper.findBackupUsers = async(user) => {
 
   const latestQuestion = await strapi.service('api::message.message').validateQuestion(user);

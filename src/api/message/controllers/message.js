@@ -90,7 +90,7 @@ module.exports = {
         break;
 
       case 'skip':
-        smsInfo = await SmsHelper.skipTask(user);
+        smsInfo = await strapi.service('api::garden-task.garden-task').skipTask(user);
         break;
       
       case 'no':

@@ -120,6 +120,66 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
 
   },
 
+  async skipTask(user) {
+    try {
+      // First try to find and update tasks with scheduler_type that isn't "No Schedule"
+      const scheduledTask = await strapi.db.query('api::garden-task.garden-task').update({
+        where: {
+          volunteers: user.id,
+          status: {$in: ['INITIALIZED', 'STARTED', 'PENDING']},
+          recurring_task: {
+            $not: null
+          }
+        },
+        data: {
+          status: 'SKIPPED',
+          completed_at: new Date()
+        }
+      });
+      console.log('scheduledTask', scheduledTask);
+
+      if (scheduledTask) {
+        return {
+          body: 'Alright then! Your task has been skipped!',
+          type: 'complete',
+          task: scheduledTask
+        };
+      }
+
+      // If no scheduled task found, reset any other tasks back to INITIALIZED
+      const unscheduledTask = await strapi.db.query('api::garden-task.garden-task').update({
+        where: {
+          volunteers: user.id,
+          status: {$in: ['INITIALIZED', 'STARTED', 'PENDING']}
+        },
+        data: {
+          volunteers: null,
+          status: 'INITIALIZED'
+        }
+      });
+
+      if (unscheduledTask) {
+        return {
+          body: 'Okay, you\'re no longer assigned to that task. Respond with TASK to get another.',
+          type: 'complete',
+          task: unscheduledTask
+        };
+      }
+
+      return {
+        body: 'I\'m sorry, we don\'t have an open task for you right now.',
+        type: 'reply'
+      };
+
+    } catch (err) {
+      console.error('skip error: ', err);
+      return {
+        body: 'Problem updating the task!',
+        type: 'complete'
+      };
+    }
+  },
+
   getTypeTasks(garden, type, limit) {
     return strapi.entityService.findMany('api::garden-task.garden-task', {
       where: {
