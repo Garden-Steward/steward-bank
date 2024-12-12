@@ -28,5 +28,14 @@ module.exports = {
        middlewares: [],
      },
     },
+    {
+      method: 'GET',
+      path: '/message/garden/:id',
+      handler: 'message.fetchTaskMessages',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
   ],
 };

@@ -34,6 +34,16 @@ module.exports = {
 
   },
 
+  fetchTaskMessages: async (ctx, next) => {
+    const messages = await strapi.entityService.findMany('api::message.message',{
+      filters: {
+        garden: ctx.params.id,
+      },
+      populate: ['garden_task', 'garden_task.recurring_task', 'garden_task.volunteers'],
+    });
+    return {messages: messages, status: 'success'}
+  },
+
   fetchSms: async ({request}) => {
     
     if (process.env.ENVIRONMENT == 'test') {
