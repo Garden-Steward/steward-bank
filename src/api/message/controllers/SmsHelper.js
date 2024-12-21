@@ -174,11 +174,14 @@ SmsHelper.joinGarden = async(user, phoneNumber, garden) => {
         // User is joining this garden for the first time
         user.gardens.push(garden.id);
         await strapi.db.query("plugin::users-permissions.user").update({where:{id: user.id}, data: user});
+        let smsBody;
         if (garden.welcome_text) {
-          return {body: `${garden.welcome_text} \n\nYou can STOP messages any time.`,type:'complete'};
+          smsBody = {body: `${garden.welcome_text} \n\nYou can STOP messages any time.`,type:'registration'};
         } else {
-          return {body: `Thanks for signing up for ${garden.title}. You\'ll start to receive notification about volunteer days. \n\nYou can STOP messages any time.`,type:'complete'};
+          smsBody = {body: `Thanks for signing up for ${garden.title}. You\'ll start to receive notification about volunteer days. \n\nYou can STOP messages any time.`,type:'registration'};
         }
+        SmsHelper.sendContactCard(phoneNumber);
+        return smsBody;
       }
       await strapi.db.query("plugin::users-permissions.user").update({where:{id: user.id}, data: user});
       return {body: `You\'ve successfully changed your active SMS project to ${garden.title}.`,type:'complete'};
@@ -192,7 +195,28 @@ SmsHelper.joinGarden = async(user, phoneNumber, garden) => {
 
 SmsHelper.saveVolunteerEmail = async(user, email) => {
   await strapi.db.query("plugin::users-permissions.user").update({where:{id: user.id}, data: {email}});
-  // TODO - add email to mailchimp
+  
+  // Add email to Mailchimp
+  try {
+    const mailchimp = require("@mailchimp/mailchimp_marketing");
+    
+    mailchimp.setConfig({
+      apiKey: process.env.MAILCHIMP_API_KEY,
+      server: process.env.MAILCHIMP_SERVER_PREFIX // e.g., "us14"
+    });
+
+    await mailchimp.lists.addListMember(process.env.MAILCHIMP_LIST_ID, {
+      email_address: email,
+      status: "subscribed",
+      merge_fields: {
+        FNAME: user.firstName || '',
+        LNAME: user.lastName || ''
+      }
+    });
+  } catch (err) {
+    console.log('Error adding email to Mailchimp:', err);
+  }
+  
   return {body: 'Thank you! Only one more step before you\'re offical. Just respond with your full name.',type:'reply'};
 };
 

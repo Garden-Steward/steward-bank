@@ -17,7 +17,7 @@
     "supertest": "^7.0.0"
   },
   "dependencies": {
-    
+    "@mailchimp/mailchimp_marketing": "^3.0.80",
     "@strapi-community/strapi-provider-upload-google-cloud-storage": "^4.10.5",
     "@strapi/plugin-i18n": "4.25.5",
     "@strapi/plugin-users-permissions": "4.25.5",

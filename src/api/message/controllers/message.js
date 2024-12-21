@@ -35,10 +35,11 @@ module.exports = {
   },
 
   fetchTaskMessages: async (ctx, next) => {
-    const messages = await strapi.entityService.findMany('api::message.message',{
+    const messages = await strapi.entityService.findMany('api::message.message', {
       filters: {
         garden: ctx.params.id,
       },
+      sort: { id: 'desc' },
       populate: ['garden_task', 'garden_task.recurring_task', 'garden_task.volunteers'],
     });
     return {messages: messages, status: 'success'}
@@ -166,9 +167,6 @@ module.exports = {
       smsBody = smsInfo.body;
       smsType = smsInfo.type;
       smsTask = smsInfo.task;
-    }
-    if (!user && smsType == 'registration') {
-      SmsHelper.sendContactCard(phoneNumber);
     }
     // ** END Volunteer Sign Up Flow ** /
     console.log("sending: ", smsBody);

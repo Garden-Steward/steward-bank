@@ -136,7 +136,6 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
           completed_at: new Date()
         }
       });
-      console.log('scheduledTask', scheduledTask);
 
       if (scheduledTask) {
         return {

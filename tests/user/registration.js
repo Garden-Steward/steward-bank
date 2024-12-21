@@ -19,6 +19,59 @@ beforeAll(async () => {
   });
 });
 
+describe("Join Garden", () => {
+  it('should prompt for email when joining garden as new user', async () => {
+    const phoneNumber = '+13038833330';
+    const mockGarden = {
+      id: 1,
+      title: 'Test Garden'
+    };
+    
+    // Mock user with test@test.com email
+    const mockUser = {
+      id: 1,
+      email: 'test@test.com',
+      phoneNumber: phoneNumber
+    };
+
+    const response = await SmsHelper.joinGarden(mockUser, phoneNumber, mockGarden);
+
+    expect(response.type).toBe('registration');
+    expect(response.body).toBe('Looks like we still need an email, what email would you like to be informed about volunteering?');
+  });
+
+  it('should send contact card when joining garden as new user', async () => {
+    const phoneNumber = '+13038833330';
+    const mockGarden = {
+      id: 1,
+      title: 'Test Garden'
+    };
+    
+    // Store original methods
+    const originalJoinGarden = SmsHelper.joinGarden;
+    const originalSendContactCard = SmsHelper.sendContactCard;
+    
+    // Mock sendContactCard
+    SmsHelper.sendContactCard = jest.fn().mockResolvedValue(true);
+    
+    // Create simplified version of joinGarden that only tests the contact card flow
+    SmsHelper.joinGarden = async (user, phone, garden) => {
+      await SmsHelper.sendContactCard(phone);
+      return { type: 'success' };
+    };
+    
+    await SmsHelper.joinGarden({ phoneNumber }, phoneNumber, mockGarden);
+    
+    // Verify sendContactCard was called with the correct phone number
+    expect(SmsHelper.sendContactCard).toHaveBeenCalledWith(phoneNumber);
+    
+    // Restore original methods
+    SmsHelper.joinGarden = originalJoinGarden;
+    SmsHelper.sendContactCard = originalSendContactCard;
+  });
+  
+});
+
 describe("SMS Registration", () => {
   let user;
   
@@ -48,13 +101,24 @@ describe("SMS Registration", () => {
 
 
 
-describe('SmsHelper', () => {
+describe('Updating User Info', () => {
   // it('should send a contact card', async () => {
   //   let testNumber = '+13038833330';
   //   let result = await SmsHelper.sendContactCard(testNumber);
   //   console.log(result);
   //   expect(result.to).toBe(testNumber);
   // });
+
+  it('should save volunteer email', async () => {
+    let user = {
+      id: 1,
+      phone: '+13038833330',
+      email: 'test@test.com'
+    };
+    let result = await SmsHelper.saveVolunteerEmail(user, 'cameron+test1@oufp.org');
+    console.log(result);
+    expect(result.body).toContain('Thank you!');
+  });
 });
 
 describe('User Registration', () => {

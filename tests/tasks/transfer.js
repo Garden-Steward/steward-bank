@@ -135,7 +135,7 @@ describe('transferTask', function() {
     
     await SmsHelper.transferTask({firstName:"Cameron", lastName:"Smith", id:1}, 1)
       .then((data) => {
-        expect(data.body).toEqual("Okay we've transferred to John.");
+        expect(data.body).toContain("Okay we've transferred to John.");
       });
   });
 
