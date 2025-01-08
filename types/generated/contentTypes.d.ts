@@ -1190,6 +1190,53 @@ export interface ApiInterestInterest extends Schema.CollectionType {
   };
 }
 
+export interface ApiLocationTrackingLocationTracking
+  extends Schema.CollectionType {
+  collectionName: 'location_trackings';
+  info: {
+    singularName: 'location-tracking';
+    pluralName: 'location-trackings';
+    displayName: 'Location Tracking';
+    description: '';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    label: Attribute.String;
+    latitude: Attribute.Float;
+    longitude: Attribute.Float;
+    last_verified: Attribute.DateTime;
+    plant: Attribute.Relation<
+      'api::location-tracking.location-tracking',
+      'oneToOne',
+      'api::plant.plant'
+    >;
+    users_permissions_user: Attribute.Relation<
+      'api::location-tracking.location-tracking',
+      'oneToOne',
+      'plugin::users-permissions.user'
+    >;
+    plant_image: Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
+    analysis: Attribute.Text;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    publishedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::location-tracking.location-tracking',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<
+      'api::location-tracking.location-tracking',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
 export interface ApiMessageMessage extends Schema.CollectionType {
   collectionName: 'messages';
   info: {
@@ -1735,6 +1782,7 @@ declare module '@strapi/types' {
       'api::garden-task.garden-task': ApiGardenTaskGardenTask;
       'api::instruction.instruction': ApiInstructionInstruction;
       'api::interest.interest': ApiInterestInterest;
+      'api::location-tracking.location-tracking': ApiLocationTrackingLocationTracking;
       'api::message.message': ApiMessageMessage;
       'api::organization.organization': ApiOrganizationOrganization;
       'api::plant.plant': ApiPlantPlant;

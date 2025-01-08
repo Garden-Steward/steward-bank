@@ -13,32 +13,6 @@ export interface SeoSeoInformation extends Schema.Component {
   };
 }
 
-export interface PlantsPlanting extends Schema.Component {
-  collectionName: 'components_plants_plantings';
-  info: {
-    displayName: 'planting';
-    icon: 'seed';
-  };
-  attributes: {
-    plant_name: Attribute.String;
-  };
-}
-
-export interface PlantsBenefits extends Schema.Component {
-  collectionName: 'components_plants_benefits';
-  info: {
-    displayName: 'Benefits';
-    icon: 'handHeart';
-    description: '';
-  };
-  attributes: {
-    title: Attribute.String;
-    potency: Attribute.Enumeration<
-      ['minimal', 'mild', 'moderate', 'strong', 'profound']
-    >;
-  };
-}
-
 export interface SchedulingScheduleAssignee extends Schema.Component {
   collectionName: 'components_scheduling_schedule_assignees';
   info: {
@@ -76,14 +50,40 @@ export interface EducationCard extends Schema.Component {
   };
 }
 
+export interface PlantsPlanting extends Schema.Component {
+  collectionName: 'components_plants_plantings';
+  info: {
+    displayName: 'planting';
+    icon: 'seed';
+  };
+  attributes: {
+    plant_name: Attribute.String;
+  };
+}
+
+export interface PlantsBenefits extends Schema.Component {
+  collectionName: 'components_plants_benefits';
+  info: {
+    displayName: 'Benefits';
+    icon: 'handHeart';
+    description: '';
+  };
+  attributes: {
+    title: Attribute.String;
+    potency: Attribute.Enumeration<
+      ['minimal', 'mild', 'moderate', 'strong', 'profound']
+    >;
+  };
+}
+
 declare module '@strapi/types' {
   export module Shared {
     export interface Components {
       'seo.seo-information': SeoSeoInformation;
-      'plants.planting': PlantsPlanting;
-      'plants.benefits': PlantsBenefits;
       'scheduling.schedule-assignee': SchedulingScheduleAssignee;
       'education.card': EducationCard;
+      'plants.planting': PlantsPlanting;
+      'plants.benefits': PlantsBenefits;
     }
   }
 }

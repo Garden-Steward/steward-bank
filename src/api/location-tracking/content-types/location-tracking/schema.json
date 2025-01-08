@@ -1,0 +1,51 @@
+{
+  "kind": "collectionType",
+  "collectionName": "location_trackings",
+  "info": {
+    "singularName": "location-tracking",
+    "pluralName": "location-trackings",
+    "displayName": "Location Tracking",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "label": {
+      "type": "string"
+    },
+    "latitude": {
+      "type": "float"
+    },
+    "longitude": {
+      "type": "float"
+    },
+    "last_verified": {
+      "type": "datetime"
+    },
+    "plant": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::plant.plant"
+    },
+    "users_permissions_user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "plant_image": {
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ],
+      "type": "media",
+      "multiple": false
+    },
+    "analysis": {
+      "type": "text"
+    }
+  }
+}
