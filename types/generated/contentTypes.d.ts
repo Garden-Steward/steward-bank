@@ -716,9 +716,6 @@ export interface PluginUsersPermissionsUser extends Schema.CollectionType {
       }>;
     resetPasswordToken: Attribute.String & Attribute.Private;
     confirmationToken: Attribute.String & Attribute.Private;
-    paused: Attribute.Boolean &
-      Attribute.Configurable &
-      Attribute.DefaultTo<false>;
     confirmed: Attribute.Boolean & Attribute.DefaultTo<false>;
     blocked: Attribute.Boolean & Attribute.DefaultTo<false>;
     role: Attribute.Relation<
@@ -726,6 +723,7 @@ export interface PluginUsersPermissionsUser extends Schema.CollectionType {
       'manyToOne',
       'plugin::users-permissions.role'
     >;
+    paused: Attribute.Boolean & Attribute.DefaultTo<false>;
     status: Attribute.Enumeration<
       ['INTERESTED', 'VOLUNTEER', 'PROFESSIONAL', 'INACTIVE']
     >;
@@ -769,6 +767,7 @@ export interface PluginUsersPermissionsUser extends Schema.CollectionType {
       'oneToMany',
       'api::instruction.instruction'
     >;
+    chatId: Attribute.BigInteger;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
@@ -1212,7 +1211,7 @@ export interface ApiLocationTrackingLocationTracking
       'oneToOne',
       'api::plant.plant'
     >;
-    users_permissions_user: Attribute.Relation<
+    user: Attribute.Relation<
       'api::location-tracking.location-tracking',
       'oneToOne',
       'plugin::users-permissions.user'
