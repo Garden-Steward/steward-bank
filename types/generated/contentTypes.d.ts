@@ -1218,6 +1218,9 @@ export interface ApiLocationTrackingLocationTracking
     >;
     plant_image: Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     analysis: Attribute.Text;
+    planted_date: Attribute.Date;
+    is_plant: Attribute.Boolean;
+    confidence: Attribute.Enumeration<['high', 'medium', 'low']>;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;

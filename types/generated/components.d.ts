@@ -37,6 +37,19 @@ export interface EducationCard extends Schema.Component {
   };
 }
 
+export interface SeoSeoInformation extends Schema.Component {
+  collectionName: 'components_seo_seo_informations';
+  info: {
+    displayName: 'SeoInformation';
+    icon: 'collapse';
+    description: '';
+  };
+  attributes: {
+    seotitle: Attribute.String;
+    seodescription: Attribute.Text;
+  };
+}
+
 export interface PlantsPlanting extends Schema.Component {
   collectionName: 'components_plants_plantings';
   info: {
@@ -63,27 +76,14 @@ export interface PlantsBenefits extends Schema.Component {
   };
 }
 
-export interface SeoSeoInformation extends Schema.Component {
-  collectionName: 'components_seo_seo_informations';
-  info: {
-    displayName: 'SeoInformation';
-    icon: 'collapse';
-    description: '';
-  };
-  attributes: {
-    seotitle: Attribute.String;
-    seodescription: Attribute.Text;
-  };
-}
-
 declare module '@strapi/types' {
   export module Shared {
     export interface Components {
       'scheduling.schedule-assignee': SchedulingScheduleAssignee;
       'education.card': EducationCard;
+      'seo.seo-information': SeoSeoInformation;
       'plants.planting': PlantsPlanting;
       'plants.benefits': PlantsBenefits;
-      'seo.seo-information': SeoSeoInformation;
     }
   }
 }

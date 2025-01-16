@@ -47,6 +47,20 @@
     },
     "analysis": {
       "type": "text"
+    },
+    "planted_date": {
+      "type": "date"
+    },
+    "is_plant": {
+      "type": "boolean"
+    },
+    "confidence": {
+      "type": "enumeration",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ]
     }
   }
 }
