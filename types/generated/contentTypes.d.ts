@@ -1220,7 +1220,12 @@ export interface ApiLocationTrackingLocationTracking
     analysis: Attribute.Text;
     planted_date: Attribute.Date;
     is_plant: Attribute.Boolean;
-    confidence: Attribute.Enumeration<['high', 'medium', 'low']>;
+    confidence: Attribute.Enumeration<
+      ['high', 'medium', 'low', 'unknown', 'unverified']
+    >;
+    map_layer: Attribute.Enumeration<
+      ['fruit_tree', 'pollinator', 'garden', 'other']
+    >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;

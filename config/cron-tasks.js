@@ -2,6 +2,7 @@
 
 const Helper = require('./helpers/cron-helper.js');
 const Weather = require('./helpers/weather.js');
+const Mapping = require('./helpers/mapping.js');
 
 //https://crontab.guru/#0_7_*_*_*/1
 
@@ -16,6 +17,11 @@ module.exports = {
   '0 1/3 * * *': async () => {
     // '1/1 * * * *': async () => {
     Weather.runWeatherCron();
+  },
+
+  '0 1/1 * * *': async () => {
+  // '1/2 * * * *': async () => {
+    // await Mapping.updateGoogleMap();
   },
 
   /** Create Tasks from Recurring Tasks - add Scheduler Volunteers if any */
