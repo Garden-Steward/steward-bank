@@ -1226,6 +1226,7 @@ export interface ApiLocationTrackingLocationTracking
     map_layer: Attribute.Enumeration<
       ['fruit_tree', 'pollinator', 'garden', 'other']
     >;
+    location_image: Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
