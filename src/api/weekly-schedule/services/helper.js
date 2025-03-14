@@ -31,9 +31,15 @@ weeklyScheduleHelper.getAssignees = async ({id, schedulers})=> {
       let flatSchedulerList = schedulers.map((v)=> {
         return v.backup_volunteers.map((bv) => {return bv.id})
       }).flat(1)
-  
-      const weeklySchedule = await strapi.service('api::weekly-schedule.weekly-schedule').getWeeklySchedule(id);
-      let lastWeekSchedulers = weeklySchedule.assignees.map(a=> {return a.assignee.id})
+      let lastWeekSchedulers = []
+      try {
+        const weeklySchedule = await strapi.service('api::weekly-schedule.weekly-schedule').getWeeklySchedule(id);
+        if (weeklySchedule) {
+          lastWeekSchedulers = weeklySchedule.assignees.map(a=> {return a.assignee.id})
+        }
+      } catch (err) {
+        console.error(err);
+      }
   
       let assignees = schedulers.map(s=> {
         let chosenIdx = chooseVolunteer(s.backup_volunteers, {chosenArr, flatSchedulerList, lastWeekSchedulers})
