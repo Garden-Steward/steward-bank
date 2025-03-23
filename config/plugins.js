@@ -45,6 +45,10 @@ module.exports = ({ env }) => ({
           field: 'slug',
           references: 'title',
         },
+        instruction: {
+          field: 'slug',
+          references: 'title',
+        },
       },
     },
   },
