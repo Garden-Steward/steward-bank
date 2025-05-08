@@ -322,7 +322,7 @@ SmsHelper.getHelp = async(user) => {
 
 SmsHelper.waterSchedule = async(user) => {
   if (!user.activeGarden) {
-    return {body: 'You are not a part of any garden. Please join a garden to use this feature.', type: 'reply'};
+    return {body: `I'm sorry ${user.firstName}, you are not a part of any garden. Please join a garden to use this feature.`, type: 'reply'};
   }
   const tasks = await strapi.service('api::garden-task.garden-task').getTypeTasks(user.activeGarden, 'Water', 3);
 
@@ -334,6 +334,9 @@ SmsHelper.waterSchedule = async(user) => {
   }
   const recTask = await strapi.service('api::recurring-task.recurring-task').getTypeRecurringTask(user.activeGarden, 'Water', 1);
   const weeklySchedule = await strapi.service('api::weekly-schedule.weekly-schedule').getWeeklySchedule(recTask[0].id);
+  if (!weeklySchedule) {
+    return {body: `I'm sorry ${user.firstName}, there is no schedule for watering at ${user.activeGarden.title}.`, type: 'reply'};
+  }
   const scheduleUsers = await strapi.service('api::weekly-schedule.weekly-schedule').getScheduleAssignees(weeklySchedule.assignees);
 
   console.log("Running waterSchedule request: ",weeklySchedule.Week)
@@ -536,7 +539,7 @@ SmsHelper.registerUser = async(user) => {
   }
 
   // If user has a valid email, verify it's correct
-  return {body: `Is ${user.email} your correct email address? Please respond with CORRECT to confirm or provide a new email address.`, type: "registration"};
+  return {body: `yarn dIs ${user.email} your correct email address? Please respond with CORRECT to confirm or provide a new email address.`, type: "registration"};
 };
 
 module.exports = SmsHelper;

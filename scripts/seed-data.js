@@ -90,7 +90,7 @@ const basicData = {
       blurb: "A vibrant community garden in the heart of downtown",
       longitude: -122.3321,
       latitude: 47.6062,
-      sms_slug: "downtown",
+      sms_slug: "gravity",
       welcome_text: "Welcome to our downtown garden community!"
     },
     {
@@ -99,7 +99,7 @@ const basicData = {
       blurb: "A neighborhood garden bringing people together",
       longitude: -122.3340,
       latitude: 47.6085,
-      sms_slug: "neighborhood",
+      sms_slug: "elder",
       welcome_text: "Welcome to our neighborhood garden!"
     }
   ],
