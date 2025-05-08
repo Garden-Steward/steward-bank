@@ -310,7 +310,7 @@ SmsHelper.getHelp = async(user) => {
     } else if (tasks.length) {
       return `Hi ${user.firstName}, you have ${tasks.length} open tasks. YES if you can do the task. NO if want to transfer. SKIP if it isn't needed. `;
     } else if (user.activeGarden) {
-      return `Hi ${user.firstName}, you have no open tasks. Your current active garden is ${user.activeGarden.title}.`;
+      return `Hi ${user.firstName}, you have no open tasks. Your current active garden is ${user.activeGarden.title}.\n\nTo restart the registration process, text REGISTER`;
     } else {
       return `Hi ${user.firstName}, you have no open tasks. To restart the registration process, text REGISTER`;
     }
