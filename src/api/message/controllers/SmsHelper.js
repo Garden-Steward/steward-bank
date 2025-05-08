@@ -312,7 +312,7 @@ SmsHelper.getHelp = async(user) => {
     } else if (user.activeGarden) {
       return `Hi ${user.firstName}, you have no open tasks. Your current active garden is ${user.activeGarden.title}.\n\nTo restart the registration process, text REGISTER`;
     } else {
-      return `Hi ${user.firstName}, you don't have an active garden. Enter the garden name you'd like to join! To restart the registration process, text REGISTER`;
+      return `Hi ${user.firstName}, you don't have an active garden. Reply with the garden name you'd like to join! To restart the registration process, text REGISTER`;
     }
     
   } catch (err) {
