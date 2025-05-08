@@ -1,6 +1,8 @@
 const strapiInstance = require('@strapi/strapi');
 const seedMedia = require('./seed-media');
 const seedBasicData = require('./seed-data');
+const seedGardenTasks = require('./seed-garden-tasks');
+const seedMessages = require('./seed-messages');
 
 async function runSeeds() {
   try {
@@ -8,9 +10,11 @@ async function runSeeds() {
     const strapi = await strapiInstance().load();
     console.log('Strapi initialized, starting seed process...');
 
-    // Run the seeds
+    // Run the seeds in order
     await seedMedia(strapi);
     await seedBasicData(strapi);
+    await seedGardenTasks(strapi);
+    await seedMessages(strapi);
 
     // Exit successfully
     console.log('All seeds completed successfully');

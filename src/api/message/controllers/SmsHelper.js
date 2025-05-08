@@ -109,9 +109,13 @@ SmsHelper.simplifySms = ( smsText, garden ) => {
   if (garden) {
     return 'garden'
   }
+  // Don't simplify if it's 'correct'
+  if (smsText.toLowerCase() === 'correct') {
+    return smsText;
+  }
   smsText = (smsText.startsWith('ye') || smsText.startsWith('yas')) ? 'yes' : smsText
   smsText = (smsText.startsWith(':')) ? 'smiles' : smsText
-  smsText = (smsText.startsWith('emphasized') || smsText.startsWith('loved')|| smsText.startsWith('❤️'))  ? 'bot' : smsText
+  smsText = (smsText.startsWith('emphasized') || smsText.startsWith('loved')|| smsText.startsWith('❤️')) ? 'bot' : smsText
   return smsText;
 }
 SmsHelper.checkEmail = ( user, smsText ) => {
@@ -305,8 +309,10 @@ SmsHelper.getHelp = async(user) => {
       return `Hi ${user.firstName}, you have the task of "${tasks[0].title}" it is in status: ${tasks[0].status}. YES if you can do the task. NO if want to transfer. SKIP if it isn't needed. `;
     } else if (tasks.length) {
       return `Hi ${user.firstName}, you have ${tasks.length} open tasks. YES if you can do the task. NO if want to transfer. SKIP if it isn't needed. `;
+    } else if (user.activeGarden) {
+      return `Hi ${user.firstName}, you have no open tasks. Your current active garden is ${user.activeGarden.title}.`;
     } else {
-      return `Hi ${user.firstName}, you have no open tasks. If you're curious there is the WATER SCHEDULE`;
+      return `Hi ${user.firstName}, you have no open tasks. To restart the registration process, text REGISTER`;
     }
     
   } catch (err) {
@@ -315,6 +321,9 @@ SmsHelper.getHelp = async(user) => {
 };
 
 SmsHelper.waterSchedule = async(user) => {
+  if (!user.activeGarden) {
+    return {body: 'You are not a part of any garden. Please join a garden to use this feature.', type: 'reply'};
+  }
   const tasks = await strapi.service('api::garden-task.garden-task').getTypeTasks(user.activeGarden, 'Water', 3);
 
   let resp = "Recent watering updates: \n"
@@ -515,6 +524,19 @@ SmsHelper.transferTask = async(user, backUpNumber) => {
   }
 
 
+};
+
+SmsHelper.registerUser = async(user) => {
+  if (!user) {
+    return {body: "Sorry, we couldn't find your account. Please try joining a garden first.", type: "reply"};
+  }
+
+  if (user.email === 'test@test.com') {
+    return {body: "Please provide your email address to complete registration.", type: "registration"};
+  }
+
+  // If user has a valid email, verify it's correct
+  return {body: `Is ${user.email} your correct email address? Please respond with CORRECT to confirm or provide a new email address.`, type: "registration"};
 };
 
 module.exports = SmsHelper;

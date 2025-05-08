@@ -12,12 +12,12 @@ module.exports = createCoreService('api::message.message', ({ strapi }) =>  ({
       sort: {'id': 'desc'},
       filters: {
         user: user.id, 
-        type: {$in:['question','complete']},
+        type: {$in:['question','complete','registration']},
       },
       populate: ['garden_task', 'garden_task.recurring_task', 'garden_task.volunteers'],
       limit: 1
     });
-    if (latestMessage[0].type=='question') {
+    if (latestMessage[0]?.type=='question' || latestMessage[0]?.type=='registration') {
       return latestMessage[0];
     } else { // type == complete
       // the user completed the last open question.

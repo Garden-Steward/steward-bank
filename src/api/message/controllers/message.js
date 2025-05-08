@@ -47,12 +47,12 @@ module.exports = {
 
   fetchSms: async ({request}) => {
     
-    if (process.env.ENVIRONMENT == 'test') {
-      request = {'body':{
-        'From': '+13038833330',
-        'Body': 'yes'
-      }};
-    }
+    // if (process.env.ENVIRONMENT == 'test') {
+    //   request = {'body':{
+    //     'From': '+13038833330',
+    //     'Body': 'yes'
+    //   }};
+    // }
     const phoneNumber = request.body.From;
     let responseText = request.body.Body.toLowerCase().trim();
 
@@ -138,6 +138,10 @@ module.exports = {
         smsBody = await SmsHelper.getHelp(user);
         break;
 
+      case 'register':
+        smsInfo = await SmsHelper.registerUser(user);
+        break;
+
       case 'vacation':
       case 'back':
         smsInfo = await SmsHelper.applyVacation(user);
@@ -161,6 +165,31 @@ module.exports = {
         smsBody = "I'm a bot btw! Can you tell me your name?";
       } else {
         smsInfo = await SmsHelper.saveVolunteerName(user, responseText);
+      }
+    } else if (user && user.email !== 'test@test.com') {
+      // Handle email verification response
+      const lastMessage = await strapi.service('api::message.message').validateQuestion(user);
+      console.log("lastMessage: ", lastMessage);
+      if (lastMessage && lastMessage.type === 'registration' && lastMessage.body.includes('Could you please provide your full name?')) {
+        SmsHelper.sendContactCard(user.phoneNumber);
+        // Handle name response
+        smsInfo = await SmsHelper.saveVolunteerName(user, responseText);
+      } else if (lastMessage && lastMessage.type === 'registration') {
+        if (responseText.toLowerCase() === 'correct') {
+          smsBody = "Great! Your email has been confirmed. Could you please provide your full name?";
+          smsType = 'registration';
+        } else {
+          // Check if the response is a valid email
+          const emailValidation = new RegExp('[a-z0-9]+@[a-z]+\.[a-z]{2,3}');
+          if (emailValidation.test(responseText)) {
+            smsInfo = await SmsHelper.saveVolunteerEmail(user, responseText);
+            smsBody = "Thank you! Could you please provide your full name?";
+            smsType = 'registration';
+          } else {
+            smsBody = "That doesn't look like a valid email address. Please provide a valid email address.";
+            smsType = 'registration';
+          }
+        }
       }
     }
     if (smsInfo) {

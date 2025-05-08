@@ -2,6 +2,19 @@ const basicData = {
   // Users
   users: [
     {
+      username: "janedoe",
+      email: "janedoe@garden.com",
+      password: "test123",
+      confirmed: true,
+      blocked: false,
+      firstName: "Jane",
+      lastName: "Doe",
+      phoneNumber: "+13038833330",
+      status: "PROFESSIONAL",
+      bio: "Garden steward and community organizer",
+      color: "green"
+    },
+    {
       username: "cpres",
       email: "cameron@garden.com",
       password: "test123",
@@ -9,23 +22,23 @@ const basicData = {
       blocked: false,
       firstName: "Cameron",
       lastName: "Preston",
-      phoneNumber: "+13038833330",
-      status: "PROFESSIONAL",
-      bio: "Garden steward and community organizer",
-      color: "green"
+      phoneNumber: "+13038833331",
+      status: "VOLUNTEER",
+      bio: "Passionate about urban gardening",
+      color: "blue"
     },
     {
-      username: "sdusky",
+      username: "sasha",
       email: "sasha@garden.com",
       password: "test123",
       confirmed: true,
       blocked: false,
       firstName: "Sasha",
       lastName: "Dusky",
-      phoneNumber: "+13038833331",
-      status: "VOLUNTEER",
-      bio: "Passionate about urban gardening",
-      color: "blue"
+      phoneNumber: "+13038833332",
+      status: "PROFESSIONAL",
+      bio: "Garden steward and community organizer",
+      color: "yellow"
     }
   ],
 
@@ -127,6 +140,18 @@ const basicData = {
         },
         {
           day: "Friday"
+        }
+      ]
+    },
+    {
+      title: "Walk the Garden",
+      overview: "Walk the garden and inspect the beds",
+      type: "General",
+      complete_once: true,
+      scheduler_type: "Daily Primary",
+      schedulers: [
+        {
+          day: "Monday"
         }
       ]
     }
@@ -434,17 +459,19 @@ async function seedBasicData(strapi) {
         }
       });
 
-      // Create schedulers for the task
-      for (const scheduler of schedulers) {
-        await strapi.entityService.create('api::scheduler.scheduler', {
-          data: {
-            ...scheduler,
-            recurring_task: createdTask.id,
-            garden: gardens[0].id,
-            volunteer: users[1].id, // Assign Sasha as the volunteer
-            publishedAt: new Date()
-          }
-        });
+      // Create schedulers for the task if they exist
+      if (schedulers && Array.isArray(schedulers)) {
+        for (const scheduler of schedulers) {
+          await strapi.entityService.create('api::scheduler.scheduler', {
+            data: {
+              ...scheduler,
+              recurring_task: createdTask.id,
+              garden: gardens[0].id,
+              volunteer: users[1].id, // Assign Sasha as the volunteer
+              publishedAt: new Date()
+            }
+          });
+        }
       }
     }
 
