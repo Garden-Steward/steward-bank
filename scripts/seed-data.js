@@ -252,10 +252,10 @@ async function setupPermissions(strapi) {
   const permissions = {
     'api::scheduler.scheduler': ['create', 'update', 'delete', 'find', 'findOne'],
     'api::garden.garden': ['find', 'findOne', 'update', 'fullSlug'],
-    'api::recurring-task.recurring-task': ['find', 'findOne', 'update'],
-    'api::volunteer-day.volunteer-day': ['find', 'findOne', 'update', 'getByUser', 'getByGarden', 'getPublic', 'rsvpEvent', 'testSms', 'groupSms'],
+    'api::recurring-task.recurring-task': ['create', 'find', 'findOne', 'update'],
+    'api::volunteer-day.volunteer-day': ['create', 'find', 'findOne', 'update', 'getByUser', 'getByGarden', 'getPublic', 'rsvpEvent', 'testSms', 'groupSms'],
     'api::weather.weather': ['find', 'findOne'],
-    'api::instruction.instruction': ['find', 'findOne', 'approveTask', 'update'],
+    'api::instruction.instruction': ['create', 'find', 'findOne', 'approveTask', 'update'],
     'api::sms-campaign.sms-campaign': ['find', 'findOne', 'getByGarden', 'groupSms', 'testSms'],
     'api::interest.interest': ['find', 'findOne'],
     'api::blog.blog': ['find', 'findOne', 'fullSlug'],

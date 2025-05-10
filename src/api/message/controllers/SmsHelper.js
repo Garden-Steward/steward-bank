@@ -65,16 +65,18 @@ SmsHelper.handleGardenTask = async(smsText, user, question) => {
 
     // The user has a task ready to be updated!
     if (gardenTask) {
-      if (gardenTask.status == 'INITIALIZED') {
+      if (gardenTask.status == 'INITIALIZED' || gardenTask.status == 'PENDING') {
         await strapi.db.query('api::garden-task.garden-task').update({
           data,
           where: {
             id: gardenTask.id
           }
         });
-        return {body: 'That\'s great! Let me know with FINISHED once you\'re done :)', type:'reply', task: gardenTask}
-      } else {
+        return {body: 'That\'s great! Let me know you\'re DONE :)', type:'reply', task: gardenTask}
+      } else if (gardenTask.status == 'STARTED') {
         return {body: 'Looks like you\'ve already started! Let me know with FINISHED once you\'re done :)', type:'reply', task: gardenTask}
+      } else {
+        return {body: 'Unsure what to do with this task! :)', type:'reply', task: gardenTask}
       }
     } else {
       return {body: 'No open tasks for you at the moment, but loving the enthusiasm!!', type:'reply'}

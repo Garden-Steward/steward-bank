@@ -54,11 +54,11 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
       let needsInstruction = strapi.service('api::instruction.instruction').checkInstruction(task);
       console.log('needsInstruction', task);
       if (!needsInstruction) {
-        return {body: `You already have the task of "${task.title}": ${task.overview}. \n\nRespond with YES if you can do the task. NO if want to transfer. SKIP if it isn't needed. `, type: 'reply', task};
+        return {body: `You already have the task of "${task.title}": ${task.overview}. \n\nRespond with YES if you can do the task. NO if want to transfer. SKIP if it isn't needed. `, type: 'question', task};
       } else {
         let instructionUrl = strapi.service('api::instruction.instruction').getInstructionUrl(task.recurring_task.instruction, user);
         await strapi.service('api::garden-task.garden-task').updateTaskStatus(task, 'PENDING');
-        return {body: `"${task.title}" has already been assigned to you. First you need to agree to the instructions, then reply with YES or NO if you can manage this today.\n\n${instructionUrl}`, type: 'reply', task};
+        return {body: `"${task.title}" has already been assigned to you. First you need to agree to the instructions, then reply with YES or NO if you can manage this today.\n\n${instructionUrl}`, type: 'question', task};
       }
     }
 
@@ -67,10 +67,10 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
       task = await strapi.service('api::garden-task.garden-task').updateGardenTaskUser(task, 'PENDING', user);
       let needsInstruction = strapi.service('api::instruction.instruction').checkInstruction(task);
       if (!needsInstruction) {
-        return {body: `Your new task is "${task.title}": ${task.overview}. \n\nRespond with YES if you can do the task. SKIP if you'd like a different task. `, type: 'reply', task};
+        return {body: `Okay ${user.firstName}, your new task is "${task.title}"${task.overview ? `: ${task.overview}` : ''}. \n\nRespond with YES if you can do the task. SKIP if you'd like a different task. `, type: 'question', task};
       } else {
         let instructionUrl = strapi.service('api::instruction.instruction').getInstructionUrl(task.recurring_task.instruction, user);
-        return {body: `We found a task for you! "${task.title}": ${task.overview}. \n\nFirst you need to agree to the instructions, then reply with YES if you can manage this today, or SKIP if you'd like a different task.\n\n${instructionUrl}`, type: 'reply', task};
+        return {body: `We found a task for you! "${task.title}"${task.overview ? `: ${task.overview}` : ''}. \n\nFirst you need to agree to the instructions, then reply with YES if you can manage this today, or SKIP if you'd like a different task.\n\n${instructionUrl}`, type: 'question', task};
       }
     } else {
      return {body: 'I\'m sorry, we don\'t have an open task for you right now.', type: 'reply'};
