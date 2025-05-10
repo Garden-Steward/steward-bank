@@ -265,7 +265,8 @@ async function setupPermissions(strapi) {
     'api::message.message': ['fetchSms', 'fetchTaskMessages', 'requestEmail'],
     'api::user-garden-interest.user-garden-interest': ['create', 'update', 'clearGardenTemp', 'find', 'findOne', 'delete'],
     'plugin::users-permissions.user': ['find', 'findOne', 'update', 'me'],
-    'api::garden-task.garden-task': ['create', 'update', 'find', 'findOne']
+    'api::garden-task.garden-task': ['create', 'update', 'find', 'findOne'],
+    'plugin::upload.content-api': ['create', 'find', 'findOne', 'upload']
   };
 
   // Delete existing permissions for authenticated role
