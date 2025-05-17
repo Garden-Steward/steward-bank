@@ -169,7 +169,6 @@ module.exports = {
     } else if (user && user.email !== 'test@test.com') {
       // Handle email verification response
       const lastMessage = await strapi.service('api::message.message').validateQuestion(user);
-      console.log("lastMessage: ", lastMessage);
       if (lastMessage && lastMessage.type === 'registration' && lastMessage.body.includes('Could you please provide your full name?')) {
         SmsHelper.sendContactCard(user.phoneNumber);
         // Handle name response

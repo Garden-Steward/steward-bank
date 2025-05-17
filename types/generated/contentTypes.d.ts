@@ -1089,6 +1089,7 @@ export interface ApiGardenTaskGardenTask extends Schema.CollectionType {
     >;
     max_volunteers: Attribute.Integer;
     primary_image: Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
+    complete_once: Attribute.Boolean & Attribute.DefaultTo<true>;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
@@ -1409,7 +1410,7 @@ export interface ApiRecurringTaskRecurringTask extends Schema.CollectionType {
       'manyToOne',
       'api::garden.garden'
     >;
-    complete_once: Attribute.Boolean;
+    complete_once: Attribute.Boolean & Attribute.DefaultTo<true>;
     type: Attribute.Enumeration<
       ['General', 'Water', 'Weeding', 'Planting', 'Harvest']
     >;
@@ -1428,6 +1429,7 @@ export interface ApiRecurringTaskRecurringTask extends Schema.CollectionType {
       'oneToOne',
       'api::instruction.instruction'
     >;
+    max_volunteers: Attribute.Integer;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;

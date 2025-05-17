@@ -25,7 +25,8 @@
       "inversedBy": "recurring_tasks"
     },
     "complete_once": {
-      "type": "boolean"
+      "type": "boolean",
+      "default": true
     },
     "type": {
       "type": "enumeration",
@@ -57,6 +58,9 @@
       "type": "relation",
       "relation": "oneToOne",
       "target": "api::instruction.instruction"
+    },
+    "max_volunteers": {
+      "type": "integer"
     }
   }
 }

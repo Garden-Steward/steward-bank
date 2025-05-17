@@ -346,28 +346,75 @@ SmsHelper.waterSchedule = async(user) => {
   return {body: resp,type: 'reply'}
 };
 
+SmsHelper.getTypeSpecificMessage = (taskType) => {
+  const typeMessages = {
+    'Water': 'Your watering efforts keep our garden thriving! 💧',
+    'Weeding': 'Thanks for keeping our garden clean and healthy! 🌿',
+    'Planting': 'New life in the garden thanks to you! 🌱',
+    'Harvest': 'The fruits of your labor are delicious! 🍅',
+    'General': 'This garden wouldn\'t be the same without you! 🌸'
+  };
+  return typeMessages[taskType] || 'Your contribution makes our garden special! 🌻';
+};
+
+SmsHelper.getRandomSuccessMessage = (user, task) => {
+  const firstParts = [
+    `You rock ${user.firstName}!`,
+    `Awesome job ${user.firstName}!`,
+    `Fantastic work ${user.firstName}!`,
+    `Way to go ${user.firstName}!`,
+    `Excellent work ${user.firstName}!`,
+    `Superb job ${user.firstName}!`,
+    `Outstanding work ${user.firstName}!`,
+    `Brilliant job ${user.firstName}!`,
+    `Terrific work ${user.firstName}!`,
+    `Incredible job ${user.firstName}!`
+  ];
+  const firstPart = firstParts[Math.floor(Math.random() * firstParts.length)];
+  const secondPart = SmsHelper.getTypeSpecificMessage(task?.type);
+  return `${firstPart} ${secondPart}`;
+};
+
 SmsHelper.finishTask = async(user) => {
   const gardenTaskService = strapi.db.query('api::garden-task.garden-task');
   console.log('finishing for ', user.email);
   const weekAgo = addDays(new Date(),-7)
 
+  // TODO: Update status of task if complete_once is true on the garden task. Everyone gets the opportunity to complete it themselves
+  // TODO: Add new switch trigger for "ready for next task" to trigger "READY/NEXT" to SMS in. Something more natural than DONE for these complete_once false tasks.
+  // 
+  // complete_once means the task is a one time task and doesn't need to be completed again. Other people can join anytime when this is false.
+  // Once finished, it's complete for everyone.
   try {
-    const task = await gardenTaskService.update({
+    let startedGroupTask = await gardenTaskService.findOne({
       where: {
         status:{$eq:'STARTED'},
+        complete_once: {$eq: false},
         started_at: {$gte: weekAgo},
         volunteers: {
           phoneNumber: user.phoneNumber
-        },
-        type: 'Water'
+        }
+      }
+    })
+    if (startedGroupTask) {
+      
+    }
+    const task = await gardenTaskService.update({
+      where: {
+        status:{$eq:'STARTED'},
+        complete_once: {$eq: true},
+        started_at: {$gte: weekAgo},
+        volunteers: {
+          phoneNumber: user.phoneNumber
+        }
       }, 
       data: {
-      status: 'FINISHED',
-      completed_at: new Date(new Date().getTime())
+        status: 'FINISHED',
+        completed_at: new Date(new Date().getTime())
       }
     });
     return {
-      body:`You rock ${user.firstName}! We\'ve marked your watering day as done :)`,
+      body: SmsHelper.getRandomSuccessMessage(user, task),
       type:'complete',
       task
     };
@@ -386,14 +433,11 @@ SmsHelper.findBackupUsers = async(user) => {
   const latestQuestion = await strapi.service('api::message.message').validateQuestion(user);
   let task;
   if (!latestQuestion ) {
-    let tasks = await strapi.service('api::garden-task.garden-task').getUserTasksByStatus(user,['INITIALIZED','STARTED','PENDING']);
-    if (!tasks.length) {
-      return {body: 'I\'m sorry, we don\'t have an open task for you right now.', type: 'reply'};
-    } else {
-      // return `The task "${tasks[0].title}" can\'t be transferred, sorry!`;
-      task = tasks[0]
-    }
+    task = await strapi.service('api::garden-task.garden-task').findTaskFromUser(user);
+  } else {
+    task = latestQuestion.garden_task;
   }
+
   // There are multiple watering day transfer texts to be aware of only one here:
   if (task || latestQuestion.body.indexOf('it\'s your watering day' > -1)) {
     if (!task) {

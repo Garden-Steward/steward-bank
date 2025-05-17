@@ -19,7 +19,50 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
       data: {status}
     });
     return tasks;
+  },
 
+  async addUserToTask(task, user) {
+    // First get the current task to access existing volunteers
+    const currentTask = await strapi.entityService.findOne('api::garden-task.garden-task', task.id, {
+      populate: ['volunteers']
+    });
+    
+    // Create array of existing volunteer IDs plus the new user
+    const volunteerIds = [
+      ...(currentTask.volunteers?.map(v => v.id) || []),
+      user.id
+    ];
+
+    // Update the task with the combined volunteer array
+    const tasks = await strapi.entityService.update('api::garden-task.garden-task', task.id, {
+      data: {
+        volunteers: volunteerIds
+      }
+    });
+    return tasks;
+  },
+  /**
+   * Find a task for a user, checking their current tasks first
+   * @param {object} user - The user to find a task for
+   * @returns {object} SMS response object with task info
+   */
+  async findTaskFromUser(user) {
+    const tasks = await this.getUserTasksByStatus(user, ['INITIALIZED', 'STARTED', 'PENDING']);
+    if (!tasks.length) {
+      return false;
+    }
+
+    // Check tasks in priority order: Pending, Started, Initialized
+    const statusOrder = ['PENDING', 'STARTED', 'INITIALIZED'];
+    
+    // Find first task matching priority order
+    for (const status of statusOrder) {
+      const filteredTask = tasks.find(t => t.status === status && t.complete_once === true);
+      if (filteredTask) {
+        return filteredTask;
+      }
+    }
+    return false;
   },
 
   async getUserTasksByStatus(user, statusArr) {
@@ -47,12 +90,10 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
   },
 
   async getTaskFromSMS(user) {
-    
-    const tasks = await this.getUserTasksByStatus(user, ['INITIALIZED','STARTED','PENDING']);
-    if (tasks.length) {
-      const task = tasks[0];
+    let task = await strapi.service('api::garden-task.garden-task').findTaskFromUser(user);
+
+    if (task) { // they have one already
       let needsInstruction = strapi.service('api::instruction.instruction').checkInstruction(task);
-      console.log('needsInstruction', task);
       if (!needsInstruction) {
         return {body: `You already have the task of "${task.title}": ${task.overview}. \n\nRespond with YES if you can do the task. NO if want to transfer. SKIP if it isn't needed. `, type: 'question', task};
       } else {
@@ -61,21 +102,59 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
         return {body: `"${task.title}" has already been assigned to you. First you need to agree to the instructions, then reply with YES or NO if you can manage this today.\n\n${instructionUrl}`, type: 'question', task};
       }
     }
+    // User has no tasks, get a random task
+    let smartTask = await strapi.service('api::garden-task.garden-task').getSmartTask(user);
+    if (smartTask) {
+      if ((smartTask.status === 'INITIALIZED' && !smartTask.complete_once)) {
+        await strapi.service('api::garden-task.garden-task').updateTaskStatus(smartTask, 'STARTED');
+        // TODO: add the user ont the volunteers array
+        await strapi.service('api::garden-task.garden-task').addUserToTask(smartTask, user);
 
-    let task = await strapi.service('api::garden-task.garden-task').getRandomTask(['INITIALIZED']);
-    if (task) {
-      task = await strapi.service('api::garden-task.garden-task').updateGardenTaskUser(task, 'PENDING', user);
-      let needsInstruction = strapi.service('api::instruction.instruction').checkInstruction(task);
-      if (!needsInstruction) {
-        return {body: `Okay ${user.firstName}, your new task is "${task.title}"${task.overview ? `: ${task.overview}` : ''}. \n\nRespond with YES if you can do the task. SKIP if you'd like a different task. `, type: 'question', task};
-      } else {
-        let instructionUrl = strapi.service('api::instruction.instruction').getInstructionUrl(task.recurring_task.instruction, user);
-        return {body: `We found a task for you! "${task.title}"${task.overview ? `: ${task.overview}` : ''}. \n\nFirst you need to agree to the instructions, then reply with YES if you can manage this today, or SKIP if you'd like a different task.\n\n${instructionUrl}`, type: 'question', task};
+      } else if (smartTask.status === 'INITIALIZED') {
+        await strapi.service('api::garden-task.garden-task').updateTaskStatus(smartTask, 'PENDING');
       }
+      let needsInstruction = strapi.service('api::instruction.instruction').checkInstruction(smartTask);
+      if (!needsInstruction && !smartTask.complete_once && smartTask.volunteers.length > 1) {
+        return {body: `You are being added to the task of "${smartTask.title}"${smartTask.overview ? `: ${smartTask.overview}` : ''}. \n\nRespond with TASK once you're ready for the next`, type: 'reply', task: smartTask};
+      } else if (!needsInstruction) {
+        return {body: `Okay ${user.firstName}, your new task is "${smartTask.title}"${smartTask.overview ? `: ${smartTask.overview}` : ''}. \n\nRespond with YES if you can do the task. SKIP if you'd like a different task. `, type: 'question', task: smartTask};
+      } else {
+        let instructionUrl = strapi.service('api::instruction.instruction').getInstructionUrl(smartTask.recurring_task.instruction, user);
+        return {body: `We found a task for you! "${smartTask.title}"${smartTask.overview ? `: ${smartTask.overview}` : ''}. \n\nFirst you need to agree to the instructions, then reply with YES if you can manage this today, or SKIP if you'd like a different task.\n\n${instructionUrl}`, type: 'question', task: smartTask};
+      }
+      // TODO: check PENDING and STARTED tasks that may not have enough volunteers
+      
     } else {
      return {body: 'I\'m sorry, we don\'t have an open task for you right now.', type: 'reply'};
 
     }
+  },
+
+  async getSmartTask(user, statusArr = ['STARTED','INITIALIZED', 'PENDING']) {
+    // First get all tasks for the user's active garden
+    console.log('user.activeGarden: ', user.activeGarden);
+    const tasks = await strapi.db.query('api::garden-task.garden-task').findMany({
+      where: {
+        garden: user.activeGarden?.id,
+        status: {
+          $in: statusArr
+        }
+      },
+      populate: ['volunteers','recurring_task', 'recurring_task.instruction']
+    });
+
+    // Filter out tasks where user is already a volunteer
+    const availableTasks = tasks.filter(task => {
+      const isUserVolunteer = task.volunteers?.some(volunteer => volunteer.id === user.id);
+      const maxVolunteers = task.max_volunteers || 1; // Default to 1 if not specified
+      const currentVolunteers = task.volunteers?.length || 0;
+      return !isUserVolunteer && currentVolunteers < maxVolunteers;
+    });
+
+    if (availableTasks.length === 0) {
+      return null;
+    }
+    return availableTasks[Math.floor(Math.random() * availableTasks.length)];
   },
 
   async getRandomTask(statusArr) {

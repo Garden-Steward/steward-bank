@@ -73,14 +73,19 @@
       "type": "integer"
     },
     "primary_image": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
       "allowedTypes": [
         "images",
         "files",
         "videos",
         "audios"
-      ],
-      "type": "media",
-      "multiple": false
+      ]
+    },
+    "complete_once": {
+      "type": "boolean",
+      "default": true
     }
   }
 }
