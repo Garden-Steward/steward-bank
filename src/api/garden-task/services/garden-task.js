@@ -114,8 +114,10 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
     if (smartTask.status === 'INITIALIZED') {
       const status = noComplete ? 'STARTED' : 'PENDING';
       await strapi.service('api::garden-task.garden-task').updateTaskStatus(smartTask, status);
-    }
-    if (noComplete) { // default the user to starting upon assignment.
+      if (!smartTask.volunteers.some(v => v.id === user.id)) {
+        await strapi.service('api::garden-task.garden-task').addUserToTask(smartTask, user);
+      }
+    } else if (noComplete && !smartTask.volunteers.some(v => v.id === user.id)) { // default the user to starting upon assignment.
       await strapi.service('api::garden-task.garden-task').addUserToTask(smartTask, user);
     }
     let needsInstruction = strapi.service('api::instruction.instruction').checkInstruction(smartTask);
