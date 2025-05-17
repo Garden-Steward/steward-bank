@@ -104,30 +104,30 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
     }
     // User has no tasks, get a random task
     let smartTask = await strapi.service('api::garden-task.garden-task').getSmartTask(user);
-    if (smartTask) {
-      if ((smartTask.status === 'INITIALIZED' && !smartTask.complete_once)) {
-        await strapi.service('api::garden-task.garden-task').updateTaskStatus(smartTask, 'STARTED');
-        // TODO: add the user ont the volunteers array
-        await strapi.service('api::garden-task.garden-task').addUserToTask(smartTask, user);
 
-      } else if (smartTask.status === 'INITIALIZED') {
-        await strapi.service('api::garden-task.garden-task').updateTaskStatus(smartTask, 'PENDING');
-      }
-      let needsInstruction = strapi.service('api::instruction.instruction').checkInstruction(smartTask);
-      if (!needsInstruction && !smartTask.complete_once && smartTask.volunteers.length > 1) {
-        return {body: `You are being added to the task of "${smartTask.title}"${smartTask.overview ? `: ${smartTask.overview}` : ''}. \n\nRespond with TASK once you're ready for the next`, type: 'reply', task: smartTask};
-      } else if (!needsInstruction) {
-        return {body: `Okay ${user.firstName}, your new task is "${smartTask.title}"${smartTask.overview ? `: ${smartTask.overview}` : ''}. \n\nRespond with YES if you can do the task. SKIP if you'd like a different task. `, type: 'question', task: smartTask};
-      } else {
-        let instructionUrl = strapi.service('api::instruction.instruction').getInstructionUrl(smartTask.recurring_task.instruction, user);
-        return {body: `We found a task for you! "${smartTask.title}"${smartTask.overview ? `: ${smartTask.overview}` : ''}. \n\nFirst you need to agree to the instructions, then reply with YES if you can manage this today, or SKIP if you'd like a different task.\n\n${instructionUrl}`, type: 'question', task: smartTask};
-      }
-      // TODO: check PENDING and STARTED tasks that may not have enough volunteers
-      
-    } else {
-     return {body: 'I\'m sorry, we don\'t have an open task for you right now.', type: 'reply'};
-
+    if (!smartTask) {
+      return {body: 'I\'m sorry, there are no tasks available for you right now.', type: 'reply'};
     }
+
+    let noComplete = smartTask.complete_once === false;
+    
+    if (smartTask.status === 'INITIALIZED') {
+      const status = noComplete ? 'STARTED' : 'PENDING';
+      await strapi.service('api::garden-task.garden-task').updateTaskStatus(smartTask, status);
+    }
+    if (noComplete) { // default the user to starting upon assignment.
+      await strapi.service('api::garden-task.garden-task').addUserToTask(smartTask, user);
+    }
+    let needsInstruction = strapi.service('api::instruction.instruction').checkInstruction(smartTask);
+    if (!needsInstruction && noComplete) {
+      return {body: `You are being added to the task of "${smartTask.title}"${smartTask.overview ? `: ${smartTask.overview}` : ''}. \n\nRespond with TASK once you're ready for the next`, type: 'reply', task: smartTask};
+    } else if (!needsInstruction && !noComplete) {
+      return {body: `Okay ${user.firstName}, your new task is "${smartTask.title}"${smartTask.overview ? `\n\n${smartTask.overview}` : ''}. \n\nRespond with YES if you can do the task. SKIP if you'd like a different task.`, type: 'question', task: smartTask};
+    } else {
+      let instructionUrl = strapi.service('api::instruction.instruction').getInstructionUrl(smartTask.recurring_task.instruction, user);
+      return {body: `We found a task for you! "${smartTask.title}"${smartTask.overview ? `\n\n${smartTask.overview}` : ''}. \n\nFirst you need to agree to the instructions, then reply with YES if you can manage this today, or SKIP if you'd like a different task.\n\n${instructionUrl}`, type: 'question', task: smartTask};
+    }
+  
   },
 
   async getSmartTask(user, statusArr = ['STARTED','INITIALIZED', 'PENDING']) {

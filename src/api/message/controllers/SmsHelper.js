@@ -11,7 +11,7 @@ SmsHelper.handleYesResponse = async(smsText, user) => {
     return {body: "Sorry you have to be registered to use this service", type: "reply"}
   }
   let question = await strapi.service('api::message.message').validateQuestion(user);
-  console.log("q: ", question.meta_data,  question.meta_data?.instructionId);
+  console.log("q: ", question.id);
   if (question) {
     if (question.meta_data?.instructionId) {
       console.log('approving instruction')
@@ -45,23 +45,12 @@ SmsHelper.handleGardenTask = async(smsText, user, question) => {
     }  
     let gardenTask = question.garden_task;
     if (!gardenTask) {
-      gardenTask = await strapi.db.query('api::garden-task.garden-task').findOne({
-        where: {
-          status: origStatus,
-          volunteers: {
-            phoneNumber: user.phoneNumber
-          },
-        },
-        populate: {
-          volunters : {
-            where: {
-              email: user.email
-            }
-          }
-        }
-      });
+      gardenTask = await strapi.service('api::garden-task.garden-task').findTaskFromUser(user);
     }
-
+    // Check if user is not already in volunteers array and add them if needed
+    if (gardenTask && (!gardenTask.volunteers.some(v => v.id === user.id))) {
+      await strapi.service('api::garden-task.garden-task').addUserToTask(gardenTask, user);
+    }
 
     // The user has a task ready to be updated!
     if (gardenTask) {
@@ -73,8 +62,10 @@ SmsHelper.handleGardenTask = async(smsText, user, question) => {
           }
         });
         return {body: 'That\'s great! Let me know you\'re DONE :)', type:'reply', task: gardenTask}
-      } else if (gardenTask.status == 'STARTED') {
+      } else if (gardenTask.status == 'STARTED' && gardenTask.volunteers.some(v => v.id === user.id)) {
         return {body: 'Looks like you\'ve already started! Let me know with FINISHED once you\'re done :)', type:'reply', task: gardenTask}
+      } else if (gardenTask.status == 'STARTED') {
+        return {body: 'We\'ve added you to the group task! There may be others working on it right now. Let me know with FINISHED once you\'re done :)', type:'reply', task: gardenTask}
       } else {
         return {body: 'Unsure what to do with this task! :)', type:'reply', task: gardenTask}
       }
@@ -414,7 +405,7 @@ SmsHelper.finishTask = async(user) => {
       }
     });
     return {
-      body: SmsHelper.getRandomSuccessMessage(user, task),
+      body: `${SmsHelper.getRandomSuccessMessage(user, task)} \n\nYou can ask for another task by texting TASK`,
       type:'complete',
       task
     };

@@ -21,7 +21,7 @@ module.exports = createCoreController('api::instruction.instruction', ({ strapi 
       console.log('got phone number', data.userId, data.phoneNumber)
       return instructionHelper.requestApproval({phoneNumber: data.phoneNumber, userId: data.userId, instruction});
     } else {
-      return instructionHelper.approveInstruction(authUser, instruction);
+      return instructionHelper.approveInstruction({user: authUser, instruction});
     }
   }
   
