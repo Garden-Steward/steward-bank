@@ -282,7 +282,8 @@ Helper.handleStartedTasks = async() => {
   .findMany({
     where: {
       status:{$eq:'STARTED'},
-      volunteers: {$not:null}
+      volunteers: {$not:null},
+      complete_once: {$ne:false}
     },
     populate: { garden: true, volunteers:true }
   });
@@ -303,13 +304,13 @@ Helper.handleStartedTasks = async() => {
     if (task.type === 'Water') {
       strapi.service('api::sms.sms').handleSms({  
         task, 
-        body: `Hey there ${task.volunteers[0].firstName}, once you're DONE with the watering let me know you're FINISHED :) ...you always have OPTIONS`,
+        body: `Hey there ${task.volunteers[0].firstName}, once you're DONE with "${task.title}" let me know you're FINISHED :) ...you always have OPTIONS`,
         type: 'followup'
     });
     } else {
       strapi.service('api::sms.sms').handleSms({  
         task, 
-        body: `Hey there ${task.volunteers[0].firstName}, have you managed to ${task.title}? Let me know when you're DONE :) ...you always have OPTIONS`,
+        body: `Hey there ${task.volunteers[0].firstName}, have you managed to "${task.title}"? Let me know when you're DONE :) ...you always have OPTIONS`,
         type: 'followup'
       });
     }
