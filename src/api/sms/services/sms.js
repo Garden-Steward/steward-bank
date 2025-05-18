@@ -14,19 +14,23 @@ let sendContactCard = function(toNum){
       mediaUrl: `https://steward.garden/contactcard.vcf`
     });
 }
-let sendSms = function(toNum,body){
+let sendSms = function(toNum,body,mediaUrl){
   const client = require('twilio')(accountSid, authToken);
   console.log('sending sms to: ', toNum);
   if (process.env.ENVIRONMENT == 'test') { 
-    console.log("Test Sending: ", body, `to ${toNum}`);
+    console.log("Test Sending: \n\n", body, `to ${toNum}`);
     return 
   }
+  const sendBody = {
+    body: body,
+    from: twilioNum,
+    to: toNum
+  }
+  if (mediaUrl) {
+    sendBody.mediaUrl = mediaUrl;
+  }
   client.messages
-    .create({
-      body: body,
-      from: twilioNum,
-      to: toNum
-    })
+    .create(sendBody)
     .then(message => console.log('SMS sid: ', message.sid));
 };
 
@@ -53,8 +57,9 @@ let handleSms = async function(params){
     console.error('Problem logging message. ', err);
   }
   if (process.env.ENVIRONMENT == 'test') { return }
-
-  sendSms(member.phoneNumber, body);
+  let mediaUrl = task?.primary_image ? task.primary_image.url : null;
+  console.log("mediaUrl: ", mediaUrl);
+  sendSms(member.phoneNumber, body, mediaUrl);
 };
 
 const handleVoice = function(){

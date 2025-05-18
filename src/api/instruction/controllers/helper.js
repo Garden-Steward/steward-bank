@@ -91,14 +91,7 @@ instructionHelper.requestApproval = async ({ phoneNumber, userId, instruction })
   }
 
   if (user) {
-    const gardenTask = await strapi.db.query('api::garden-task.garden-task').findOne({
-      where: {
-        status: {$in:['INITIALIZED','STARTED', 'PENDING']},
-        volunteers: {
-          phoneNumber: user.phoneNumber
-        },
-      },
-    })
+    const gardenTask = await strapi.service('api::garden-task.garden-task').findTaskFromUser(user);
     // send text to user
     strapi.service('api::sms.sms').handleSms({
       task: gardenTask, 
@@ -110,7 +103,7 @@ instructionHelper.requestApproval = async ({ phoneNumber, userId, instruction })
       meta_data: {
         instructionId: instruction.id
       }
-    });    
+    });
     return {
       success: true,
       message: "User found with the provided phone number"

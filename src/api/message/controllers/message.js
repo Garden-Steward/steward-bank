@@ -199,7 +199,13 @@ module.exports = {
     // ** END Volunteer Sign Up Flow ** /
     console.log("sending: ", smsBody);
     if (smsBody) {
-      twiml.message(smsBody);
+      if (smsInfo && smsInfo.task?.primary_image?.formats?.medium?.url) {
+        const message = twiml.message();
+        message.body(smsBody);
+        message.media(smsInfo.task.primary_image.formats.medium.url);
+      } else {
+        twiml.message(smsBody);
+      }
   
       await SmsHelper.saveMessage(user,smsType, garden, smsBody, smsTask, request.body.Body);
     }

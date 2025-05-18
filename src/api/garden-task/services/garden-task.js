@@ -24,7 +24,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
   async addUserToTask(task, user) {
     // First get the current task to access existing volunteers
     const currentTask = await strapi.entityService.findOne('api::garden-task.garden-task', task.id, {
-      populate: ['volunteers']
+      populate: ['volunteers', 'primary_image']
     });
     
     // Create array of existing volunteer IDs plus the new user
@@ -73,7 +73,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
           $in: statusArr
         }
       },
-      populate: ['recurring_task','recurring_task.instruction','volunteers']
+      populate: ['recurring_task','recurring_task.instruction','volunteers', 'primary_image']
     });
     return tasks;
 
@@ -89,6 +89,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
     return tasks;
   },
 
+  // Called from main switch Message Controller: "task"
   async getTaskFromSMS(user) {
     let task = await strapi.service('api::garden-task.garden-task').findTaskFromUser(user);
 
@@ -134,7 +135,6 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
 
   async getSmartTask(user, statusArr = ['STARTED','INITIALIZED', 'PENDING']) {
     // First get all tasks for the user's active garden
-    console.log('user.activeGarden: ', user.activeGarden);
     const tasks = await strapi.db.query('api::garden-task.garden-task').findMany({
       where: {
         garden: user.activeGarden?.id,
@@ -142,7 +142,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
           $in: statusArr
         }
       },
-      populate: ['volunteers','recurring_task', 'recurring_task.instruction']
+      populate: ['volunteers','recurring_task', 'recurring_task.instruction', 'primary_image']
     });
 
     // Filter out tasks where user is already a volunteer
@@ -169,7 +169,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
           $in: statusArr
         }
       },
-      populate: ['volunteers','recurring_task', 'recurring_task.instruction']
+      populate: ['volunteers','recurring_task', 'recurring_task.instruction', 'primary_image']
     });
     return tasks[Math.floor(Math.random() * tasks.length)];
   },
@@ -184,7 +184,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
         status,
         volunteers: user
       },
-      populate: ['volunteers','volunteers.instructions','recurring_task','recurring_task.instruction']
+      populate: ['volunteers','volunteers.instructions','recurring_task','recurring_task.instruction', 'primary_image']
     });
   },
 
@@ -196,7 +196,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
         recurring_task: recTask.id, 
         garden:recTask.garden
       },
-      populate: { recurring_task: true, volunteers:true }
+      populate: { recurring_task: true, volunteers:true, primary_image: true }
     });
 
   },
@@ -270,7 +270,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
       sort: {
         updatedAt: 'desc'
       },
-      populate: ['volunteers']
+      populate: ['volunteers', 'primary_image']
     });
 
   },

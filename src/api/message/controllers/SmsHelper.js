@@ -351,15 +351,15 @@ SmsHelper.getTypeSpecificMessage = (taskType) => {
 SmsHelper.getRandomSuccessMessage = (user, task) => {
   const firstParts = [
     `You rock ${user.firstName}!`,
-    `Awesome job ${user.firstName}!`,
-    `Fantastic work ${user.firstName}!`,
+    `Holy green gardens ${user.firstName}!`,
+    `Nice work ${user.firstName}!`,
     `Way to go ${user.firstName}!`,
-    `Excellent work ${user.firstName}!`,
-    `Superb job ${user.firstName}!`,
-    `Outstanding work ${user.firstName}!`,
+    `Excellent as always ${user.firstName}!`,
+    `Boo-yah ${user.firstName}!`,
+    `¡Excelente trabajo ${user.firstName}!`,
     `Brilliant job ${user.firstName}!`,
-    `Terrific work ${user.firstName}!`,
-    `Incredible job ${user.firstName}!`
+    `¡Muchas gracias ${user.firstName}!`,
+    `Arigatou gozaimasu ${user.firstName}!`
   ];
   const firstPart = firstParts[Math.floor(Math.random() * firstParts.length)];
   const secondPart = SmsHelper.getTypeSpecificMessage(task?.type);
