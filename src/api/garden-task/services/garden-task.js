@@ -123,7 +123,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
     }
     let needsInstruction = strapi.service('api::instruction.instruction').checkInstruction(smartTask);
     if (!needsInstruction && noComplete) {
-      return {body: `You are being added to the task of "${smartTask.title}"${smartTask.overview ? `: ${smartTask.overview}` : ''}. \n\nRespond with TASK once you're ready for the next`, type: 'reply', task: smartTask};
+      return {body: `You are being added to the task of "${smartTask.title}"${smartTask.overview ? `:\n\n ${smartTask.overview}` : ''}. \n\nRespond with TASK once you're ready for the next`, type: 'reply', task: smartTask};
     } else if (!needsInstruction && !noComplete) {
       return {body: `Okay ${user.firstName}, your new task is "${smartTask.title}"${smartTask.overview ? `\n\n${smartTask.overview}` : ''}. \n\nRespond with YES if you can do the task. SKIP if you'd like a different task.`, type: 'question', task: smartTask};
     } else {
