@@ -202,47 +202,29 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
   },
 
   async skipTask(user) {
+    const latestQuestion = await strapi.service('api::message.message').validateQuestion(user);
+    let task;
+    if (!latestQuestion ) {
+      task = await strapi.service('api::garden-task.garden-task').findTaskFromUser(user);
+    } else {
+      task = latestQuestion.garden_task;
+    }  
     try {
       // First try to find and update tasks with scheduler_type that isn't "No Schedule"
-      const scheduledTask = await strapi.db.query('api::garden-task.garden-task').update({
-        where: {
-          volunteers: user.id,
-          status: {$in: ['INITIALIZED', 'STARTED', 'PENDING']},
-          recurring_task: {
-            $not: null
-          }
-        },
-        data: {
-          status: 'SKIPPED',
-          completed_at: new Date()
+      if (task.recurring_task.scheduler_type !== 'No Schedule') {
+        const scheduledTask = await strapi.service('api::garden-task.garden-task').updateTaskStatus(task, 'SKIPPED');
+        if (scheduledTask) {
+          return {
+            body: 'Alright then! Your task has been skipped!',
+            type: 'complete',
+            task: scheduledTask
+          };
         }
-      });
-
-      if (scheduledTask) {
+      } else if (task) {
         return {
-          body: 'Alright then! Your task has been skipped!',
+          body: 'Easy peasy! Just respond with TASK to get a new task.',
           type: 'complete',
-          task: scheduledTask
-        };
-      }
-
-      // If no scheduled task found, reset any other tasks back to INITIALIZED
-      const unscheduledTask = await strapi.db.query('api::garden-task.garden-task').update({
-        where: {
-          volunteers: user.id,
-          status: {$in: ['INITIALIZED', 'STARTED', 'PENDING']}
-        },
-        data: {
-          volunteers: null,
-          status: 'INITIALIZED'
-        }
-      });
-
-      if (unscheduledTask) {
-        return {
-          body: 'Okay, you\'re no longer assigned to that task. Respond with TASK to get another.',
-          type: 'complete',
-          task: unscheduledTask
+          task: task
         };
       }
 

@@ -877,6 +877,7 @@ export interface ApiApplicationApplication extends Schema.CollectionType {
     singularName: 'application';
     pluralName: 'applications';
     displayName: 'Application';
+    description: '';
   };
   options: {
     draftAndPublish: true;
@@ -888,6 +889,7 @@ export interface ApiApplicationApplication extends Schema.CollectionType {
     description: Attribute.Text;
     city: Attribute.String;
     state: Attribute.String;
+    primary_image: Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
@@ -1430,6 +1432,7 @@ export interface ApiRecurringTaskRecurringTask extends Schema.CollectionType {
       'api::instruction.instruction'
     >;
     max_volunteers: Attribute.Integer;
+    primary_image: Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
