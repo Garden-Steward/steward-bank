@@ -1,47 +1,4 @@
 const basicData = {
-  // Users
-  users: [
-    {
-      username: "janedoe",
-      email: "janedoe@garden.com",
-      password: "test123",
-      confirmed: true,
-      blocked: false,
-      firstName: "Jane",
-      lastName: "Doe",
-      phoneNumber: "+13038833330",
-      status: "PROFESSIONAL",
-      bio: "Garden steward and community organizer",
-      color: "green"
-    },
-    {
-      username: "cpres",
-      email: "cameron@garden.com",
-      password: "test123",
-      confirmed: true,
-      blocked: false,
-      firstName: "Cameron",
-      lastName: "Preston",
-      phoneNumber: "+13038833331",
-      status: "VOLUNTEER",
-      bio: "Passionate about urban gardening",
-      color: "blue"
-    },
-    {
-      username: "sasha",
-      email: "sasha@garden.com",
-      password: "test123",
-      confirmed: true,
-      blocked: false,
-      firstName: "Sasha",
-      lastName: "Dusky",
-      phoneNumber: "+13038833332",
-      status: "PROFESSIONAL",
-      bio: "Garden steward and community organizer",
-      color: "yellow"
-    }
-  ],
-
   // Categories for blog posts and content organization
   categories: [
     {
@@ -129,17 +86,36 @@ const basicData = {
   // Recurring tasks
   recurringTasks: [
     {
-      title: "Water Garden Beds",
+      title: "Water Garden Beds A",
       overview: "Water all garden beds thoroughly",
       type: "Water",
       complete_once: false,
       scheduler_type: "Weekly Shuffle",
       schedulers: [
         {
-          day: "Tuesday"
+          day: "Tuesday",
+          backup_volunteers: []  // Will be populated after users are defined
         },
         {
-          day: "Friday"
+          day: "Friday",
+          backup_volunteers: []  // Will be populated after users are defined
+        }
+      ]
+    },
+    {
+      title: "Water Garden Beds B",
+      overview: "Water all garden beds thoroughly",
+      type: "Water",
+      complete_once: true,
+      scheduler_type: "Weekly Shuffle",
+      schedulers: [
+        {
+          day: "Wednesday",
+          backup_volunteers: []  // Will be populated after users are defined
+        },
+        {
+          day: "Saturday",
+          backup_volunteers: []  // Will be populated after users are defined
         }
       ]
     },
@@ -148,7 +124,7 @@ const basicData = {
       overview: "Walk the garden and inspect the beds",
       type: "General",
       complete_once: true,
-      scheduler_type: "Daily Primary",
+      scheduler_type: "No Schedule",
       schedulers: [
         {
           day: "Monday"
@@ -239,6 +215,80 @@ const basicData = {
     }
   ]
 };
+
+// Add users after basicData initialization
+basicData.users = [
+  {
+    username: "janedoe",
+    email: "janedoe@garden.com",
+    password: "test123",
+    confirmed: true,
+    blocked: false,
+    firstName: "Jane",
+    lastName: "Doe",
+    phoneNumber: "+13038833330",
+    status: "PROFESSIONAL",
+    bio: "Garden steward and community organizer",
+    color: "green"
+  },
+  {
+    username: "cpres",
+    email: "cameron@garden.com",
+    password: "test123",
+    confirmed: true,
+    blocked: false,
+    firstName: "Cameron",
+    lastName: "Preston",
+    phoneNumber: "+13038833331",
+    status: "VOLUNTEER",
+    bio: "Passionate about urban gardening",
+    color: "blue"
+  },
+  {
+    username: "sasha",
+    email: "sasha@garden.com",
+    password: "test123",
+    confirmed: true,
+    blocked: false,
+    firstName: "Sasha",
+    lastName: "Dusky",
+    phoneNumber: "+13038833332",
+    status: "PROFESSIONAL",
+    bio: "Garden steward and community organizer",
+    color: "yellow"
+  },
+  {
+    username: "johndoe",
+    email: "johndoe@garden.com",
+    password: "test123",
+    confirmed: true,
+    blocked: false,
+    firstName: "John",
+    color: "indigo",
+    lastName: "Doe",
+    phoneNumber: "+13038833333",
+    status: "VOLUNTEER",
+    bio: "Garden steward and community organizer",
+  }
+];
+
+// Update backup volunteers in recurring tasks after users are defined
+basicData.recurringTasks[0].schedulers[0].backup_volunteers = [
+  basicData.users[1],
+  basicData.users[2]
+];
+basicData.recurringTasks[0].schedulers[1].backup_volunteers = [
+  basicData.users[0],
+  basicData.users[2]
+];
+basicData.recurringTasks[1].schedulers[0].backup_volunteers = [
+  basicData.users[3],
+  basicData.users[1]
+];
+basicData.recurringTasks[1].schedulers[1].backup_volunteers = [
+  basicData.users[0],
+  basicData.users[3]
+];
 
 async function setupPermissions(strapi) {
   console.log('Setting up permissions...');
@@ -463,15 +513,32 @@ async function seedBasicData(strapi) {
       // Create schedulers for the task if they exist
       if (schedulers && Array.isArray(schedulers)) {
         for (const scheduler of schedulers) {
-          await strapi.entityService.create('api::scheduler.scheduler', {
+          const { backup_volunteers, ...schedulerData } = scheduler;
+          const createdScheduler = await strapi.entityService.create('api::scheduler.scheduler', {
             data: {
-              ...scheduler,
+              ...schedulerData,
               recurring_task: createdTask.id,
               garden: gardens[0].id,
               volunteer: users[1].id, // Assign Sasha as the volunteer
               publishedAt: new Date()
             }
           });
+
+          // If there are backup volunteers specified, create the relationships
+          if (backup_volunteers && Array.isArray(backup_volunteers)) {
+            for (const backupUser of backup_volunteers) {
+              const userIndex = basicData.users.findIndex(u => u.username === backupUser.username);
+              if (userIndex !== -1) {
+                await strapi.entityService.update('api::scheduler.scheduler', createdScheduler.id, {
+                  data: {
+                    backup_volunteers: {
+                      connect: [users[userIndex].id]
+                    }
+                  }
+                });
+              }
+            }
+          }
         }
       }
     }
