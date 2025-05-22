@@ -7,6 +7,14 @@ const request = require("supertest");
 const SmsHelper = require('../../src/api/message/controllers/SmsHelper');
 const { createUser, defaultData, mockUserData } = require("./factory");
 
+// Mock Mailchimp module
+jest.mock('@mailchimp/mailchimp_marketing', () => ({
+  setConfig: jest.fn(),
+  lists: {
+    addListMember: jest.fn().mockResolvedValue({})
+  }
+}));
+
 beforeAll(async () => {
 
   await grantPrivileges(
@@ -115,8 +123,8 @@ describe('Updating User Info', () => {
       phone: '+13038833330',
       email: 'test@test.com'
     };
+    
     let result = await SmsHelper.saveVolunteerEmail(user, 'cameron+test1@oufp.org');
-    console.log(result);
     expect(result.body).toContain('Thank you!');
   });
 });

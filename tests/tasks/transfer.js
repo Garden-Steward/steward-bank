@@ -193,7 +193,7 @@ describe('findBackupUsers - SMS Helper No Response', function() {
     });
   });
 
-  it("send back full response smsInfo", async () => {
+  it("manage with no question", async () => {
     strapi.service('api::message.message').validateQuestion = jest.fn().mockReturnValue(false);
     await SmsHelper.findBackupUsers(userMock).then((data) => {
       expect(data.body).toContain("Once you do we will transfer the task to them");

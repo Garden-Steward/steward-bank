@@ -430,7 +430,7 @@ SmsHelper.findBackupUsers = async(user) => {
   }
 
   // There are multiple watering day transfer texts to be aware of only one here:
-  if (task || latestQuestion.body.indexOf('it\'s your watering day' > -1)) {
+  if (task || latestQuestion?.body?.indexOf('it\'s your watering day' > -1)) {
     if (!task) {
       task = latestQuestion.garden_task;
     }
