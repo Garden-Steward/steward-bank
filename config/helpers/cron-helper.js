@@ -158,14 +158,15 @@ Helper.sendWaterSms = async(waterTask, skipWindow) => {
  * @returns Weekly Message return
  */
 Helper.setWeeklySchedule = async(recTask) => {
-  const scheduleSetDate = 'Sunday'
+  const scheduleSetDate = recTask.week_start_date || 'Sunday';
   const dayOfWeekName = new Date().toLocaleString(
     'default', {weekday: 'long'}
     );
-  console.log("Setting weekly schedule for %s of type ", dayOfWeekName, recTask.scheduler_type)
   if (recTask.scheduler_type !== 'Weekly Shuffle' || dayOfWeekName !== scheduleSetDate) {
     return
   }
+
+    console.log("Setting weekly schedule for %s of type ", dayOfWeekName, recTask.scheduler_type)
   let weeklySchedule = await strapi.service('api::weekly-schedule.weekly-schedule').createWeeklySchedule(recTask);
 
   // Text all the people on the weekly list
@@ -217,7 +218,7 @@ Helper.getScheduledVolunteer = async(recTask) => {
   const dayOfWeekName = new Date().toLocaleString(
     'default', {weekday: 'long'}
   );
-  console.log("Getting %s Schedule", dayOfWeekName);
+  console.log("Getting %s Schedule", dayOfWeekName, recTask.scheduler_type);
 
   if (recTask.scheduler_type == 'Weekly Shuffle') {
     const weeklySchedule = await strapi.db.query('api::weekly-schedule.weekly-schedule')
