@@ -15,25 +15,39 @@ async function setupStrapi() {
 }
 
 async function cleanupStrapi() {
-  // Get database settings before destroying instance
-  const dbSettings = instance.config.get("database.connection");
-
-  // Close any open connections/servers first
-  if (instance.server.httpServer) {
-    await new Promise(resolve => {
-      instance.server.httpServer.close(resolve);
-    });
+  if (!instance) {
+    return;
   }
 
-  // Then destroy the instance
-  await instance.destroy();
-  await instance.server.destroy();
+  try {
+    // Get database settings before destroying instance
+    const dbSettings = instance.config.get("database.connection");
 
-  // Delete test database if it exists
-  if (dbSettings && dbSettings.connection && dbSettings.connection.filename) {
-    if (fs.existsSync(dbSettings.connection.filename)) {
-      fs.unlinkSync(dbSettings.connection.filename);
+    // Close any open connections/servers first
+    if (instance.server && instance.server.httpServer) {
+      await new Promise(resolve => {
+        instance.server.httpServer.close(resolve);
+      });
     }
+
+    // Then destroy the instance
+    if (instance.destroy) {
+      await instance.destroy();
+    }
+    if (instance.server && instance.server.destroy) {
+      await instance.server.destroy();
+    }
+
+    // Delete test database if it exists
+    if (dbSettings && dbSettings.connection && dbSettings.connection.filename) {
+      if (fs.existsSync(dbSettings.connection.filename)) {
+        fs.unlinkSync(dbSettings.connection.filename);
+      }
+    }
+  } catch (error) {
+    console.error('Error during Strapi cleanup:', error);
+  } finally {
+    instance = null;
   }
 }
 

@@ -1,15 +1,40 @@
-import type { Schema, Attribute } from '@strapi/strapi';
+import type { Attribute, Schema } from '@strapi/strapi';
 
-export interface SeoSeoInformation extends Schema.Component {
-  collectionName: 'components_seo_seo_informations';
+export interface EducationCard extends Schema.Component {
+  collectionName: 'components_education_cards';
   info: {
-    displayName: 'SeoInformation';
-    icon: 'collapse';
     description: '';
+    displayName: 'Card';
+    icon: 'store';
   };
   attributes: {
-    seotitle: Attribute.String;
-    seodescription: Attribute.Text;
+    content: Attribute.Blocks;
+  };
+}
+
+export interface PlantsBenefits extends Schema.Component {
+  collectionName: 'components_plants_benefits';
+  info: {
+    description: '';
+    displayName: 'Benefits';
+    icon: 'handHeart';
+  };
+  attributes: {
+    potency: Attribute.Enumeration<
+      ['minimal', 'mild', 'moderate', 'strong', 'profound']
+    >;
+    title: Attribute.String;
+  };
+}
+
+export interface PlantsPlanting extends Schema.Component {
+  collectionName: 'components_plants_plantings';
+  info: {
+    displayName: 'planting';
+    icon: 'seed';
+  };
+  attributes: {
+    plant_name: Attribute.String;
   };
 }
 
@@ -38,52 +63,27 @@ export interface SchedulingScheduleAssignee extends Schema.Component {
   };
 }
 
-export interface PlantsPlanting extends Schema.Component {
-  collectionName: 'components_plants_plantings';
+export interface SeoSeoInformation extends Schema.Component {
+  collectionName: 'components_seo_seo_informations';
   info: {
-    displayName: 'planting';
-    icon: 'seed';
-  };
-  attributes: {
-    plant_name: Attribute.String;
-  };
-}
-
-export interface PlantsBenefits extends Schema.Component {
-  collectionName: 'components_plants_benefits';
-  info: {
-    displayName: 'Benefits';
-    icon: 'handHeart';
     description: '';
+    displayName: 'SeoInformation';
+    icon: 'collapse';
   };
   attributes: {
-    title: Attribute.String;
-    potency: Attribute.Enumeration<
-      ['minimal', 'mild', 'moderate', 'strong', 'profound']
-    >;
-  };
-}
-
-export interface EducationCard extends Schema.Component {
-  collectionName: 'components_education_cards';
-  info: {
-    displayName: 'Card';
-    icon: 'store';
-    description: '';
-  };
-  attributes: {
-    content: Attribute.Blocks;
+    seodescription: Attribute.Text;
+    seotitle: Attribute.String;
   };
 }
 
 declare module '@strapi/types' {
   export module Shared {
     export interface Components {
-      'seo.seo-information': SeoSeoInformation;
-      'scheduling.schedule-assignee': SchedulingScheduleAssignee;
-      'plants.planting': PlantsPlanting;
-      'plants.benefits': PlantsBenefits;
       'education.card': EducationCard;
+      'plants.benefits': PlantsBenefits;
+      'plants.planting': PlantsPlanting;
+      'scheduling.schedule-assignee': SchedulingScheduleAssignee;
+      'seo.seo-information': SeoSeoInformation;
     }
   }
 }

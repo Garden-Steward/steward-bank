@@ -19,7 +19,7 @@ module.exports = createCoreService('api::weekly-schedule.weekly-schedule', ({ st
    * @param {object}  recurringTask Object
    * @returns weekly-schedule
    */
-  async createWeeklySchedule({id, schedulers}) {
+  async createWeeklySchedule({id, title, schedulers}) {
     const assignees = await weeklyScheduleHelper.getAssignees({id, schedulers})
 
     const weekTitle = format(new Date(), 'PPP')
@@ -27,7 +27,7 @@ module.exports = createCoreService('api::weekly-schedule.weekly-schedule', ({ st
     try {
       return strapi.entityService.create('api::weekly-schedule.weekly-schedule', {
         data: {
-          Week:weekTitle,
+          Week: `${title}: ${weekTitle}`,
           recurring_task: id,
           assignees
         },

@@ -108,31 +108,28 @@ describe('transferTask', function() {
   });
   
   it("should transfer task", async () => {
-    await setupTask();
+    // Create the garden task first
+    const gardenTask = await setupTask();
+    
+    // Create the message
+    const message = await strapi.db.query('api::message.message').create({
+      data: {
+        ...messageMock,
+        garden_task: gardenTask.id
+      }
+    });
+
     strapi.service('api::message.message').validateQuestion = jest.fn().mockResolvedValue({
-      id: 1,
+      id: message.id,
       body: 'Do you "Approve" of this instruction?',
       type: 'question',
       previous: 'yes',
       createdAt: '2024-06-16T03:46:01.476Z',
       updatedAt: '2024-06-16T03:48:06.526Z',
       publishedAt: null,
-      garden_task: {
-        id: 1,
-        title: 'Water the Garden',
-        status: 'INITIALIZED',
-        user: 1,
-        recurring_task: 1
-      },
+      garden_task: gardenTask,
     });
   
-    const entry = await strapi.db.query('api::message.message').update({
-      where: { id: 1 },
-      data: {
-        garden_task: 1
-      },
-    });
-    
     await SmsHelper.transferTask({firstName:"Cameron", lastName:"Smith", id:1}, 1)
       .then((data) => {
         expect(data.body).toContain("Okay we've transferred to John.");
