@@ -54,6 +54,9 @@ module.exports = createCoreService('api::weekly-schedule.weekly-schedule', ({ st
 
   async getScheduleAssignees(assignees) {
     return assignees.map((a)=> {
+      if (!a.assignee) {
+        return `${a.day}: Unassigned`;
+      }
       return `${a.day}: ${a.assignee.firstName} ${a.assignee.lastName.charAt(0)}`
     }).join('\n');
   },
