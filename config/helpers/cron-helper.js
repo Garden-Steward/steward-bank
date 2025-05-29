@@ -36,9 +36,6 @@ Helper.handleInitialTasks = async() => {
       continue;
     }
 
-    // TODO check if the recurring task has an instruction
-
-    // console.log(initTask, initTask.recurring_task);
     if (initTask.recurring_task?.instruction) {
       if (!initTask.volunteers[0].instructions.find(i=> i.id == initTask.recurring_task.instruction.id)) {
 
