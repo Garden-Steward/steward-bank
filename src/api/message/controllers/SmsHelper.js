@@ -325,8 +325,9 @@ SmsHelper.waterSchedule = async(user) => {
     const dateReady = utcToZonedTime(new Date(task.updatedAt), 'America/Los_Angeles');
     resp += `${dateReady.toDateString().slice(0,10)} by ${nameCopy}: ${task.status}\n`
   }
-  const recTask = await strapi.service('api::recurring-task.recurring-task').getTypeRecurringTask(user.activeGarden, 'Water', 1);
-  const weeklySchedule = await strapi.service('api::weekly-schedule.weekly-schedule').getWeeklySchedule(recTask[0].id);
+  const recTasks = await strapi.service('api::recurring-task.recurring-task').getTypeRecurringTask(user.activeGarden, 'Water', 3);
+  const weeklyTask = recTasks.find(task => task.scheduler_type === 'Weekly Shuffle');
+  const weeklySchedule = weeklyTask ? await strapi.service('api::weekly-schedule.weekly-schedule').getWeeklySchedule(weeklyTask.id) : null;
   if (!weeklySchedule) {
     return {body: `I'm sorry ${user.firstName}, there is no schedule for watering at ${user.activeGarden.title}.`, type: 'reply'};
   }
