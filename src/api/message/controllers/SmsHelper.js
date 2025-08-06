@@ -107,6 +107,7 @@ SmsHelper.simplifySms = ( smsText, garden ) => {
     return smsText;
   }
   smsText = (smsText.startsWith('ye') || smsText.startsWith('yas')) ? 'yes' : smsText
+  smsText = (smsText.startsWith('done') || smsText.startsWith('finished')) ? 'finished' : smsText
   smsText = (smsText.startsWith(':')) ? 'smiles' : smsText
   smsText = (smsText.startsWith('emphasized') || smsText.startsWith('loved')|| smsText.startsWith('❤️')) ? 'bot' : smsText
   return smsText;
@@ -301,7 +302,11 @@ SmsHelper.getHelp = async(user) => {
     } else if (tasks.length == 1) {
       return `Hi ${user.firstName}, you have the task of "${tasks[0].title}" it is in status: ${tasks[0].status}. YES if you can do the task. NO if want to transfer. SKIP if it isn't needed. `;
     } else if (tasks.length) {
-      return `Hi ${user.firstName}, you have ${tasks.length} open tasks. YES if you can do the task. NO if want to transfer. SKIP if it isn't needed. `;
+      let taskBody = '';
+      for (const task of tasks) {
+        taskBody += `\n${task.title} - ${task.status}`;
+      }
+      return `Hi ${user.firstName}, you have ${tasks.length} open tasks. ${taskBody} \n\nYES works for the INITIALIZED and PENDING tasks. NO if want to transfer. SKIP if it isn't needed. `;
     } else if (user.activeGarden) {
       return `Hi ${user.firstName}, you have no open tasks. Your current active garden is ${user.activeGarden.title}.\n\nTo restart the registration process, text REGISTER`;
     } else {

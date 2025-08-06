@@ -89,6 +89,7 @@ module.exports = {
         break;
 
       case 'yes':
+      case 'rsvp':
         smsInfo = await SmsHelper.handleYesResponse(responseText, user);
         break;
 
