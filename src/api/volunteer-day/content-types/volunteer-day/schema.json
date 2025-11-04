@@ -83,17 +83,32 @@
       "mappedBy": "event"
     },
     "smsLink": {
-      "type": "boolean"
+      "type": "boolean",
+      "default": false
     },
     "hero_image": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
       "allowedTypes": [
         "images",
         "files",
         "videos",
         "audios"
-      ],
-      "type": "media",
-      "multiple": false
+      ]
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "general",
+        "land_work",
+        "cleanup",
+        "art",
+        "workshop"
+      ]
+    },
+    "partiful_link": {
+      "type": "string"
     }
   }
 }

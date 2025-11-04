@@ -166,6 +166,83 @@ const basicData = {
       slug: "maintenance-day-2025",
       accessibility: "Public",
       smsLink: true
+    },
+    // Event last week (7 days ago)
+    {
+      title: "Garden Cleanup Day",
+      blurb: "Help us clean up the garden from the winter season",
+      content: "We'll be removing dead plants, clearing paths, and preparing beds for spring planting.",
+      startDatetime: (() => {
+        const date = new Date();
+        date.setDate(date.getDate() - 7);
+        date.setHours(10, 0, 0, 0);
+        return date;
+      })(),
+      endText: "3:00 PM",
+      disabled: false,
+      interest: "Volunteering",
+      slug: "cleanup-day-past",
+      accessibility: "Public",
+      smsLink: true,
+      type: "cleanup"
+    },
+    // Event next week (7 days from now)
+    {
+      title: "Seed Starting Workshop",
+      blurb: "Learn how to start seeds indoors for your garden",
+      content: "Join us for a hands-on workshop on seed starting techniques, soil preparation, and caring for young seedlings.",
+      startDatetime: (() => {
+        const date = new Date();
+        date.setDate(date.getDate() + 7);
+        date.setHours(2, 0, 0, 0); // 2:00 PM
+        return date;
+      })(),
+      endText: "4:00 PM",
+      disabled: false,
+      interest: "Events",
+      slug: "seed-workshop-next-week",
+      accessibility: "Public",
+      smsLink: true,
+      type: "workshop",
+      partiful_link: "https://partiful.com/e/i54N8BBwCO5aTSP73cRP"
+    },
+    // Event 1 month in the future
+    {
+      title: "Community Land Work Day",
+      blurb: "Join us for a day of community land restoration",
+      content: "We'll be working on trail maintenance, erosion control, and native plant restoration. Bring water and work gloves!",
+      startDatetime: (() => {
+        const date = new Date();
+        date.setMonth(date.getMonth() + 1);
+        date.setHours(9, 0, 0, 0);
+        return date;
+      })(),
+      endText: "2:00 PM",
+      disabled: false,
+      interest: "Volunteering",
+      slug: "land-work-month-1",
+      accessibility: "Public",
+      smsLink: true,
+      type: "land_work"
+    },
+    // Event 2 months in the future
+    {
+      title: "Garden Art Installation",
+      blurb: "Help create a community art installation in the garden",
+      content: "We'll be creating mosaic pieces and installing them throughout the garden. No experience necessary!",
+      startDatetime: (() => {
+        const date = new Date();
+        date.setMonth(date.getMonth() + 2);
+        date.setHours(11, 0, 0, 0);
+        return date;
+      })(),
+      endText: "3:00 PM",
+      disabled: false,
+      interest: "Events",
+      slug: "art-installation-month-2",
+      accessibility: "Public",
+      smsLink: true,
+      type: "art"
     }
   ],
 

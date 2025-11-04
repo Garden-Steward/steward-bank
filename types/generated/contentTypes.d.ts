@@ -1177,6 +1177,7 @@ export interface ApiVolunteerDayVolunteerDay extends Schema.CollectionType {
       'oneToMany',
       'api::message.message'
     >;
+    partiful_link: Attribute.String;
     planting: Attribute.Component<'plants.planting', true>;
     publishedAt: Attribute.DateTime;
     slug: Attribute.String;
@@ -1185,9 +1186,12 @@ export interface ApiVolunteerDayVolunteerDay extends Schema.CollectionType {
       'oneToMany',
       'api::sms-campaign.sms-campaign'
     >;
-    smsLink: Attribute.Boolean;
+    smsLink: Attribute.Boolean & Attribute.DefaultTo<false>;
     startDatetime: Attribute.DateTime;
     title: Attribute.String;
+    type: Attribute.Enumeration<
+      ['general', 'land_work', 'cleanup', 'art', 'workshop']
+    >;
     updatedAt: Attribute.DateTime;
     updatedBy: Attribute.Relation<
       'api::volunteer-day.volunteer-day',
