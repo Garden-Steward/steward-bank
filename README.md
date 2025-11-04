@@ -1,57 +1,171 @@
-# 🚀 Getting started with Strapi
+# Garden Steward
 
-Strapi comes with a full featured [Command Line Interface](https://docs.strapi.io/developer-docs/latest/developer-resources/cli/CLI.html) (CLI) which lets you scaffold and manage your project in seconds.
+A comprehensive community garden management system built with Strapi. Garden Steward helps organizations manage gardens, coordinate volunteers, schedule tasks, and track activities through SMS and web interfaces.
 
-### `develop`
+## Features
 
-Start your Strapi application with autoReload enabled. [Learn more](https://docs.strapi.io/developer-docs/latest/developer-resources/cli/CLI.html#strapi-develop)
+- **Garden Management**: Create and manage multiple community gardens with location tracking
+- **Task Scheduling**: Recurring and one-time garden tasks with volunteer assignment
+- **Volunteer Coordination**: Manage volunteers, interests, and garden assignments
+- **SMS Integration**: Twilio integration for SMS notifications and communication
+- **Weather Integration**: OpenWeatherMap integration for weather-aware task management
+- **Content Management**: Blog posts, plant information, and educational content
+- **Organization Management**: Multi-organization support for managing multiple garden groups
+- **Volunteer Days**: Event management for volunteer workdays with RSVP functionality
+- **Media Management**: Google Cloud Storage integration for image and file uploads
+- **Mapping Features**: Optional Google Maps integration for location tracking
 
+## Tech Stack
+
+- **Backend**: Strapi 4.25.22
+- **Database**: PostgreSQL (production), SQLite (development/testing)
+- **Storage**: Google Cloud Storage
+- **Email**: SendGrid
+- **SMS**: Twilio
+- **Weather**: OpenWeatherMap API
+- **Maps**: Google Maps Platform (optional)
+
+## Prerequisites
+
+- Node.js >= 16 <= 20.x.x
+- npm >= 6.0.0
+- PostgreSQL (for production)
+- Google Cloud Storage account (for media uploads)
+- Twilio account (for SMS features)
+- SendGrid account (for email)
+- OpenWeatherMap API key (for weather features)
+- Google Maps API key (optional, for mapping features)
+
+## Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/cpres/steward-bank.git
+cd steward-bank
 ```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Set up environment variables:
+```bash
+cp .env.example .env
+# Edit .env with your configuration
+```
+
+4. Run database migrations (if needed):
+```bash
 npm run develop
-# or
-yarn develop
 ```
 
-### `start`
-
-Start your Strapi application with autoReload disabled. [Learn more](https://docs.strapi.io/developer-docs/latest/developer-resources/cli/CLI.html#strapi-start)
-
-```
-npm run start
-# or
-yarn start
+5. Seed initial data (optional):
+```bash
+npm run seed
 ```
 
-### `build`
+## Configuration
 
-Build your admin panel. [Learn more](https://docs.strapi.io/developer-docs/latest/developer-resources/cli/CLI.html#strapi-build)
+See `.env.example` for all required environment variables. Key configuration includes:
 
+- Database connection settings
+- JWT secrets for authentication
+- Google Cloud Storage credentials
+- Twilio credentials for SMS
+- SendGrid API key for emails
+- OpenWeatherMap API key
+- Google Maps API key (optional)
+
+## Development
+
+Start the development server:
+```bash
+npm run develop
 ```
+
+The admin panel will be available at `http://localhost:1337/admin`
+
+## Testing
+
+Run the test suite:
+```bash
+npm test
+```
+
+## Building
+
+Build the admin panel for production:
+```bash
 npm run build
-# or
-yarn build
 ```
 
-## ⚙️ Deployment
+## Deployment
 
-Strapi gives you many possible deployment options for your project. Find the one that suits you on the [deployment section of the documentation](https://docs.strapi.io/developer-docs/latest/setup-deployment-guides/deployment.html).
+Deploy to Fly.io:
+```bash
+npm run deploy
+```
 
-## 📚 Learn more
+Or start the production server:
+```bash
+npm start
+```
 
-- [Resource center](https://strapi.io/resource-center) - Strapi resource center.
-- [Strapi documentation](https://docs.strapi.io) - Official Strapi documentation.
-- [Strapi tutorials](https://strapi.io/tutorials) - List of tutorials made by the core team and the community.
-- [Strapi blog](https://docs.strapi.io) - Official Strapi blog containing articles made by the Strapi team and the community.
-- [Changelog](https://strapi.io/changelog) - Find out about the Strapi product updates, new features and general improvements.
+## Project Structure
 
-Feel free to check out the [Strapi GitHub repository](https://github.com/strapi/strapi). Your feedback and contributions are welcome!
+```
+steward-bank/
+├── config/              # Configuration files
+│   ├── admin.js        # Admin panel configuration
+│   ├── database.js      # Database configuration
+│   ├── plugins.js      # Plugin configuration
+│   └── server.js       # Server configuration
+├── src/
+│   ├── api/            # API endpoints and content types
+│   ├── components/     # Reusable components
+│   └── extensions/     # Strapi extensions
+├── database/           # Database migrations
+├── scripts/            # Utility scripts
+├── tests/              # Test files
+└── public/             # Public assets
+```
 
-## ✨ Community
+## API Content Types
 
-- [Discord](https://discord.strapi.io) - Come chat with the Strapi community including the core team.
-- [Forum](https://forum.strapi.io/) - Place to discuss, ask questions and find answers, show your Strapi project and get feedback or just talk with other Community members.
-- [Awesome Strapi](https://github.com/strapi/awesome-strapi) - A curated list of awesome things related to Strapi.
+The application includes the following main content types:
 
----
+- **Garden**: Community garden information and location
+- **Garden Task**: Individual tasks within gardens
+- **Recurring Task**: Recurring task templates with scheduling
+- **Volunteer Day**: Event management for volunteer workdays
+- **Plant**: Plant information and growing guides
+- **Blog**: Blog posts and educational content
+- **Organization**: Organization management
+- **User Garden Interest**: User interest tracking
+- **Message**: SMS and email message handling
+- **Weather**: Weather data integration
 
-<sub>🤫 Psst! [Strapi is hiring](https://strapi.io/careers).</sub>
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+For issues and questions, please open an issue on GitHub.
+
+## Acknowledgments
+
+- Built with [Strapi](https://strapi.io/)
+- Weather data provided by [OpenWeatherMap](https://openweathermap.org/)
+- SMS services by [Twilio](https://www.twilio.com/)

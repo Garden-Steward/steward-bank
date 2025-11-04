@@ -73,6 +73,9 @@ $RECYCLE.BIN/
 *.sql
 *.sqlite
 *.sqlite3
+export_*
+export_error_log_*.log
+pg_backup.sql
 
 
 ############################

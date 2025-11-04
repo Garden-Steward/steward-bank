@@ -30,4 +30,6 @@ async function updateAllUserPasswords(newPassword) {
   }
 }
 
-updateAllUserPasswords('test123').catch(console.error);
+// Usage: SCRIPT_TOKEN=your_token API_URL=your_api_url node scripts/updateUsers.js
+// Note: This script should be run with proper environment variables
+// updateAllUserPasswords('newPassword').catch(console.error);
