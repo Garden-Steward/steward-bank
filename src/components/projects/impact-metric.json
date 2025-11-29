@@ -1,0 +1,23 @@
+{
+  "collectionName": "components_projects_impact_metrics",
+  "info": {
+    "displayName": "Impact Metric",
+    "description": "Measurable impact from a project"
+  },
+  "options": {},
+  "attributes": {
+    "label": {
+      "type": "string",
+      "required": true
+    },
+    "value": {
+      "type": "string",
+      "required": true
+    },
+    "icon": {
+      "type": "string",
+      "description": "Emoji or icon identifier"
+    }
+  }
+}
+

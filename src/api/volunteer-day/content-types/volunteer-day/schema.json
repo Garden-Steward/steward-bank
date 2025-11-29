@@ -109,6 +109,21 @@
     },
     "partiful_link": {
       "type": "string"
+    },
+    "featured_gallery": {
+      "type": "media",
+      "multiple": true,
+      "required": false,
+      "allowedTypes": ["images"],
+      "description": "3-8 favorite photos from the event"
+    },
+    "photo_album_url": {
+      "type": "string",
+      "description": "Link to Google Photos shared album"
+    },
+    "photo_album_id": {
+      "type": "string",
+      "description": "Extracted Google Photos album ID"
     }
   }
 }
