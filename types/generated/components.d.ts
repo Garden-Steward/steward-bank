@@ -38,6 +38,19 @@ export interface PlantsPlanting extends Schema.Component {
   };
 }
 
+export interface ProjectsImpactMetric extends Schema.Component {
+  collectionName: 'components_projects_impact_metrics';
+  info: {
+    description: 'Measurable impact from a project';
+    displayName: 'Impact Metric';
+  };
+  attributes: {
+    icon: Attribute.String;
+    label: Attribute.String & Attribute.Required;
+    value: Attribute.String & Attribute.Required;
+  };
+}
+
 export interface SchedulingScheduleAssignee extends Schema.Component {
   collectionName: 'components_scheduling_schedule_assignees';
   info: {
@@ -82,6 +95,7 @@ declare module '@strapi/types' {
       'education.card': EducationCard;
       'plants.benefits': PlantsBenefits;
       'plants.planting': PlantsPlanting;
+      'projects.impact-metric': ProjectsImpactMetric;
       'scheduling.schedule-assignee': SchedulingScheduleAssignee;
       'seo.seo-information': SeoSeoInformation;
     }

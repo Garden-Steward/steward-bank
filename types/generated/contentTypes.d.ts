@@ -576,6 +576,11 @@ export interface ApiGardenGarden extends Schema.CollectionType {
       'manyToOne',
       'api::organization.organization'
     >;
+    projects: Attribute.Relation<
+      'api::garden.garden',
+      'oneToMany',
+      'api::project.project'
+    >;
     publishedAt: Attribute.DateTime;
     recurring_tasks: Attribute.Relation<
       'api::garden.garden',
@@ -884,6 +889,79 @@ export interface ApiPlantPlant extends Schema.CollectionType {
   };
 }
 
+export interface ApiProjectProject extends Schema.CollectionType {
+  collectionName: 'projects';
+  info: {
+    description: 'Garden projects, milestones, and community initiatives';
+    displayName: 'Project';
+    pluralName: 'projects';
+    singularName: 'project';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    category: Attribute.Enumeration<
+      ['Infrastructure', 'Art', 'Event', 'Education', 'Planting', 'Community']
+    > &
+      Attribute.DefaultTo<'Community'>;
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::project.project',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    date: Attribute.Date & Attribute.Required;
+    description: Attribute.RichText;
+    featured: Attribute.Boolean & Attribute.DefaultTo<false>;
+    featured_gallery: Attribute.Media<'images', true>;
+    garden: Attribute.Relation<
+      'api::project.project',
+      'manyToOne',
+      'api::garden.garden'
+    >;
+    hero_image: Attribute.Media<'images'>;
+    hours_contributed: Attribute.Decimal &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    impact_metrics: Attribute.Component<'projects.impact-metric', true>;
+    photo_album_id: Attribute.String;
+    photo_album_url: Attribute.String;
+    publishedAt: Attribute.DateTime;
+    related_events: Attribute.Relation<
+      'api::project.project',
+      'manyToMany',
+      'api::volunteer-day.volunteer-day'
+    >;
+    short_description: Attribute.Text &
+      Attribute.Required &
+      Attribute.SetMinMaxLength<{
+        maxLength: 250;
+      }>;
+    slug: Attribute.String & Attribute.Required & Attribute.Unique;
+    title: Attribute.String & Attribute.Required;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::project.project',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    volunteer_count: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+  };
+}
+
 export interface ApiRecurringTaskRecurringTask extends Schema.CollectionType {
   collectionName: 'recurring_tasks';
   info: {
@@ -1160,6 +1238,7 @@ export interface ApiVolunteerDayVolunteerDay extends Schema.CollectionType {
       Attribute.Required &
       Attribute.DefaultTo<false>;
     endText: Attribute.String;
+    featured_gallery: Attribute.Media<'images', true>;
     garden: Attribute.Relation<
       'api::volunteer-day.volunteer-day',
       'oneToOne',
@@ -1178,6 +1257,8 @@ export interface ApiVolunteerDayVolunteerDay extends Schema.CollectionType {
       'api::message.message'
     >;
     partiful_link: Attribute.String;
+    photo_album_id: Attribute.String;
+    photo_album_url: Attribute.String;
     planting: Attribute.Component<'plants.planting', true>;
     publishedAt: Attribute.DateTime;
     slug: Attribute.String;
@@ -1806,6 +1887,7 @@ declare module '@strapi/types' {
       'api::message.message': ApiMessageMessage;
       'api::organization.organization': ApiOrganizationOrganization;
       'api::plant.plant': ApiPlantPlant;
+      'api::project.project': ApiProjectProject;
       'api::recurring-task.recurring-task': ApiRecurringTaskRecurringTask;
       'api::scheduler.scheduler': ApiSchedulerScheduler;
       'api::sms-campaign.sms-campaign': ApiSmsCampaignSmsCampaign;
