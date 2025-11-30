@@ -6,8 +6,6 @@ You've received OAuth tokens. **Store them securely** - never commit them to git
 
 ## Your Tokens
 
-**⚠️ IMPORTANT: Never commit actual tokens to git!**
-
 ```json
 {
   "access_token": "YOUR_ACCESS_TOKEN_HERE",
@@ -15,8 +13,6 @@ You've received OAuth tokens. **Store them securely** - never commit them to git
   "expiry_date": 1764368057031
 }
 ```
-
-Replace the placeholder values with your actual tokens from the OAuth callback response.
 
 ## Token Information
 
@@ -44,7 +40,7 @@ To test listing photos from an album, you need:
 ### Test Command
 
 ```bash
-# Replace ALBUM_ID and YOUR_ACCESS_TOKEN with actual values
+# Replace ALBUM_ID with your actual album ID
 curl -X POST http://localhost:1337/api/google-photos/album/ALBUM_ID/photos \
   -H "Content-Type: application/json" \
   -d '{

@@ -912,7 +912,8 @@ export interface ApiProjectProject extends Schema.CollectionType {
       'admin::user'
     > &
       Attribute.Private;
-    date: Attribute.Date & Attribute.Required;
+    date_end: Attribute.Date;
+    date_start: Attribute.Date;
     description: Attribute.RichText;
     featured: Attribute.Boolean & Attribute.DefaultTo<false>;
     featured_gallery: Attribute.Media<'images', true>;
