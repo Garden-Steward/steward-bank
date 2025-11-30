@@ -28,5 +28,6 @@ require('./tasks/schedule');
 require('./tasks/crontest');
 require('./tasks/instruction');
 require('./tasks/smsTask');
+require('./tasks/publish');
 require('./event/rsvp');
 require('./event/messages')

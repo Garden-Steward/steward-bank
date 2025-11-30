@@ -55,6 +55,10 @@ SmsHelper.handleGardenTask = async(smsText, user, question) => {
     // The user has a task ready to be updated!
     if (gardenTask) {
       if (gardenTask.status == 'INITIALIZED' || gardenTask.status == 'PENDING') {
+        // If status is changing from INITIALIZED to anything else (except PENDING), publish the task
+        if (gardenTask.status === 'INITIALIZED' && data.status && data.status !== 'INITIALIZED' && data.status !== 'PENDING') {
+          data.publishedAt = new Date();
+        }
         await strapi.db.query('api::garden-task.garden-task').update({
           data,
           where: {
@@ -421,13 +425,21 @@ SmsHelper.finishTask = async(user) => {
     }
 
     if (task) {
+      // Prepare update data
+      const updateData = {
+        status: 'FINISHED',
+        completed_at: new Date(new Date().getTime())
+      };
+      
+      // If status is changing from INITIALIZED to anything else, publish the task
+      if (task.status === 'INITIALIZED') {
+        updateData.publishedAt = new Date();
+      }
+      
       // Update the task to FINISHED
       const updatedTask = await gardenTaskService.update({
         where: { id: task.id },
-        data: {
-          status: 'FINISHED',
-          completed_at: new Date(new Date().getTime())
-        }
+        data: updateData
       });
       
       console.log(`Task ${task.id} marked as FINISHED for user ${user.email}`);

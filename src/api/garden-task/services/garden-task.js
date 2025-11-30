@@ -15,8 +15,19 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
    * @returns obj - latest SMS Campaign with confirmations concatenated
    */
   async updateTaskStatus(task, status) {
+    // Get current task to check if status is INITIALIZED
+    const currentTask = await strapi.entityService.findOne('api::garden-task.garden-task', task.id);
+    
+    // Prepare update data
+    const updateData = { status };
+    
+    // If status is changing from INITIALIZED to anything else (except PENDING), publish the task
+    if (currentTask.status === 'INITIALIZED' && status !== 'INITIALIZED' && status !== 'PENDING') {
+      updateData.publishedAt = new Date();
+    }
+    
     const tasks = await strapi.entityService.update('api::garden-task.garden-task', task.id, {
-      data: {status}
+      data: updateData
     });
     return tasks;
   },
@@ -175,15 +186,27 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
   },
 
   async updateGardenTaskUser(task, status, user) {
+    // Get current task to check if status is INITIALIZED
+    const currentTask = await strapi.db.query('api::garden-task.garden-task').findOne({
+      where: { id: task.id }
+    });
+    
+    // Prepare update data
+    const updateData = {
+      status,
+      volunteers: user
+    };
+    
+    // If status is changing from INITIALIZED to anything else (except PENDING), publish the task
+    if (currentTask.status === 'INITIALIZED' && status !== 'INITIALIZED' && status !== 'PENDING') {
+      updateData.publishedAt = new Date();
+    }
     
     return strapi.db.query('api::garden-task.garden-task').update({
       where: {
         id: task.id
       }, 
-      data: {
-        status,
-        volunteers: user
-      },
+      data: updateData,
       populate: ['volunteers','volunteers.instructions','recurring_task','recurring_task.instruction', 'primary_image']
     });
   },
