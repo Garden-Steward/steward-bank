@@ -844,6 +844,7 @@ export interface ApiOrganizationOrganization extends Schema.CollectionType {
     > &
       Attribute.Private;
     url: Attribute.String;
+    venmo_handle: Attribute.String;
   };
 }
 

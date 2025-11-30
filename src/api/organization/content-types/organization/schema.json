@@ -36,6 +36,10 @@
       ],
       "type": "media",
       "multiple": false
+    },
+    "venmo_handle": {
+      "type": "string",
+      "description": "Venmo username/handle for donations"
     }
   }
 }
