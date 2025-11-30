@@ -18,7 +18,7 @@ module.exports = createCoreController('api::project.project', ({ strapi }) => ({
         }
       },
       populate: ['hero_image', 'featured_gallery', 'garden', 'impact_metrics'],
-      orderBy: { date: 'desc' }
+      orderBy: { date_start: 'desc' }
     });
     
     ctx.body = projects;
