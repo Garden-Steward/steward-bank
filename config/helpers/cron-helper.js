@@ -31,9 +31,43 @@ Helper.handleInitialTasks = async() => {
 
 
   for (let initTask of initTasks) {
+    console.log(`Processing task ${initTask.id} (${initTask.title}) - Status: ${initTask.status}, Recurring Task: ${initTask.recurring_task?.id || 'none'}`);
     let abandoned = await Helper.validateAbandon(initTask);
     if (abandoned) {
       continue;
+    }
+
+    // FIX: Check if there's already a FINISHED task for this recurring task
+    // If so, skip sending SMS for this INITIALIZED/PENDING task (it's likely a duplicate)
+    if (initTask.recurring_task) {
+      const gardenId = initTask.garden?.id || initTask.garden;
+      const finishedTask = await strapi.db.query('api::garden-task.garden-task').findOne({
+        where: {
+          status: 'FINISHED',
+          recurring_task: initTask.recurring_task.id,
+          garden: gardenId,
+          completed_at: { $notNull: true }
+        },
+        orderBy: { completed_at: 'DESC' }
+      });
+      
+      if (finishedTask) {
+        // Check if the finished task was completed more recently than this task was created
+        // If so, this is likely an old task that should be cleaned up
+        const finishedDate = new Date(finishedTask.completed_at);
+        const taskCreatedDate = new Date(initTask.createdAt);
+        
+        if (finishedDate > taskCreatedDate) {
+          console.log(`Skipping SMS for task ${initTask.id}: A newer FINISHED task (${finishedTask.id}) exists for recurring task ${initTask.recurring_task.id}`);
+          // Mark this task as SKIPPED since a newer one was finished
+          try {
+            await strapi.service('api::garden-task.garden-task').updateTaskStatus(initTask, 'SKIPPED');
+          } catch (err) {
+            console.log('Error skipping duplicate task:', err);
+          }
+          continue;
+        }
+      }
     }
 
     if (initTask.recurring_task?.instruction) {
@@ -172,18 +206,42 @@ Helper.setWeeklySchedule = async(recTask) => {
 }
 
 Helper.buildSchedulerTask = async(curTask, recTask, scheduledUser) => {
+    console.log(`[buildSchedulerTask] Processing recurring task ${recTask.id} (${recTask.title}), curTask: ${curTask?.id || 'none'}, status: ${curTask?.status || 'N/A'}`);
     // ASSIGN && SKIP IF ALREADY INITIALIZED
     if (curTask && curTask.recurring_task) {
-      if (scheduledUser && !curTask.volunteers.length) {
-        curTask.volunteer = scheduledUser;
+      // FIX: Check if this task is FINISHED - if so, we should create a new one
+      if (curTask.status === 'FINISHED' || curTask.status === 'SKIPPED' || curTask.status === 'ABANDONED') {
+        console.log(`[buildSchedulerTask] Task ${curTask.id} is ${curTask.status}, creating new task for recurring task ${recTask.id}`);
+        // Fall through to create new task
+      } else {
+        // Task exists and is not finished, just assign volunteer if needed
+        if (scheduledUser && !curTask.volunteers.length) {
+          curTask.volunteer = scheduledUser;
+          await strapi.db.query('api::garden-task.garden-task').update({
+            data:{ volunteers: scheduledUser },
+            where: {id: curTask.id}
+          });
+          console.log("added volunteer onto: ", curTask.id);
+        }
+        return {success: true, message: 'Added volunteer onto: ' + curTask.id}; 
+      }
+    }
+    
+    // FIX: Before creating new task, double-check there isn't already an active one
+    // This prevents race conditions where multiple tasks get created
+    const existingActiveTask = await strapi.service('api::garden-task.garden-task').getTaskByRecurringUndone(recTask);
+    if (existingActiveTask && existingActiveTask.id !== curTask?.id) {
+      console.log(`Found existing active task ${existingActiveTask.id} for recurring task ${recTask.id}, skipping creation`);
+      if (scheduledUser && !existingActiveTask.volunteers.length) {
         await strapi.db.query('api::garden-task.garden-task').update({
           data:{ volunteers: scheduledUser },
-          where: {id: curTask.id}
+          where: {id: existingActiveTask.id}
         });
-        console.log("added volunteer onto: ", curTask.id);
+        console.log("added volunteer onto existing task: ", existingActiveTask.id);
       }
-      return {success: true, message: 'Added volunteer onto: ' + curTask.id}; 
+      return {success: true, message: 'Using existing task: ' + existingActiveTask.id};
     }
+    
     // Someone could have it started, how many people can work on a task at same time?
     // console.log("setting task: ", recTask)
     let newTask = await strapi.db.query('api::garden-task.garden-task').create({

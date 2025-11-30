@@ -374,7 +374,7 @@ SmsHelper.getRandomSuccessMessage = (user, task) => {
 
 SmsHelper.finishTask = async(user) => {
   const gardenTaskService = strapi.db.query('api::garden-task.garden-task');
-  console.log('finishing for ', user.email);
+  console.log(`[finishTask] User ${user.email} (${user.phoneNumber}) attempting to finish task`);
   const weekAgo = addDays(new Date(),-7)
 
   // TODO: Update status of task if complete_once is true on the garden task. Everyone gets the opportunity to complete it themselves
@@ -383,44 +383,95 @@ SmsHelper.finishTask = async(user) => {
   // complete_once means the task is a one time task and doesn't need to be completed again. Other people can join anytime when this is false.
   // Once finished, it's complete for everyone.
   try {
-    let startedGroupTask = await gardenTaskService.findOne({
+    // FIX: Also check for INITIALIZED and PENDING tasks, not just STARTED
+    // Users might respond FINISHED before the task is marked as STARTED
+    let task = await gardenTaskService.findOne({
       where: {
-        status:{$eq:'STARTED'},
-        complete_once: {$eq: false},
-        started_at: {$gte: weekAgo},
-        volunteers: {
-          phoneNumber: user.phoneNumber
-        }
-      }
-    })
-    if (startedGroupTask) {
-      
-    }
-    const task = await gardenTaskService.update({
-      where: {
-        status:{$eq:'STARTED'},
+        status: {$in: ['STARTED', 'INITIALIZED', 'PENDING']},
         complete_once: {$eq: true},
-        started_at: {$gte: weekAgo},
         volunteers: {
           phoneNumber: user.phoneNumber
         }
-      }, 
-      data: {
-        status: 'FINISHED',
-        completed_at: new Date(new Date().getTime())
-      }
+      },
+      populate: ['recurring_task', 'garden'],
+      orderBy: { createdAt: 'DESC' }
     });
+
+    // If no task found with complete_once=true, check for group tasks (complete_once=false)
+    if (!task) {
+      let startedGroupTask = await gardenTaskService.findOne({
+        where: {
+          status: {$in: ['STARTED', 'INITIALIZED', 'PENDING']},
+          complete_once: {$eq: false},
+          started_at: {$gte: weekAgo},
+          volunteers: {
+            phoneNumber: user.phoneNumber
+          }
+        },
+        populate: ['recurring_task', 'garden']
+      });
+      if (startedGroupTask) {
+        // For group tasks, we don't mark as FINISHED, just acknowledge
+        return {
+          body: `${SmsHelper.getRandomSuccessMessage(user, startedGroupTask)} \n\nYou can ask for another task by texting TASK`,
+          type:'complete',
+          task: startedGroupTask
+        };
+      }
+    }
+
+    if (task) {
+      // Update the task to FINISHED
+      const updatedTask = await gardenTaskService.update({
+        where: { id: task.id },
+        data: {
+          status: 'FINISHED',
+          completed_at: new Date(new Date().getTime())
+        }
+      });
+      
+      console.log(`Task ${task.id} marked as FINISHED for user ${user.email}`);
+      
+      // FIX: Also mark any other INITIALIZED/PENDING tasks for the same recurring task as SKIPPED
+      // This prevents duplicate SMS reminders
+      if (task.recurring_task) {
+        const duplicateTasks = await gardenTaskService.findMany({
+          where: {
+            status: {$in: ['INITIALIZED', 'PENDING']},
+            recurring_task: task.recurring_task.id,
+            garden: task.garden?.id || task.garden,
+            id: {$ne: task.id}
+          }
+        });
+        
+        for (const dupTask of duplicateTasks) {
+          try {
+            await strapi.service('api::garden-task.garden-task').updateTaskStatus(dupTask, 'SKIPPED');
+            console.log(`Marked duplicate task ${dupTask.id} as SKIPPED`);
+          } catch (err) {
+            console.log(`Error skipping duplicate task ${dupTask.id}:`, err);
+          }
+        }
+      }
+      
+      return {
+        body: `${SmsHelper.getRandomSuccessMessage(user, updatedTask)} \n\nYou can ask for another task by texting TASK`,
+        type:'complete',
+        task: updatedTask
+      };
+    }
+    
     return {
-      body: `${SmsHelper.getRandomSuccessMessage(user, task)} \n\nYou can ask for another task by texting TASK`,
-      type:'complete',
-      task
+      body:'Have you started a task to finish? We found nothing to finish!',
+      type:'reply',
+      task: null
     };
   } catch (err) {
     console.log("finish error: ", err);
     return {
       body:'Have you started a task to finish? We found nothing to finish!',
       type:'reply',
-      task
+      task: null
     };
   }
 };
