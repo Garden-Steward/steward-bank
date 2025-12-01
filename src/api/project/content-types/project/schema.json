@@ -48,7 +48,7 @@
     "short_description": {
       "type": "text",
       "required": true,
-      "maxLength": 250
+      "maxLength": 350
     },
     "description": {
       "type": "richtext"

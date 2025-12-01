@@ -943,7 +943,7 @@ export interface ApiProjectProject extends Schema.CollectionType {
     short_description: Attribute.Text &
       Attribute.Required &
       Attribute.SetMinMaxLength<{
-        maxLength: 250;
+        maxLength: 350;
       }>;
     slug: Attribute.String & Attribute.Required & Attribute.Unique;
     title: Attribute.String & Attribute.Required;
