@@ -563,6 +563,8 @@ export interface ApiGardenGarden extends Schema.CollectionType {
       'admin::user'
     > &
       Attribute.Private;
+    description: Attribute.RichText;
+    hero_image: Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     latitude: Attribute.Float;
     longitude: Attribute.Float;
     managers: Attribute.Relation<

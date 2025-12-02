@@ -18,6 +18,9 @@
     "blurb": {
       "type": "text"
     },
+    "description": {
+      "type": "richtext"
+    },
     "longitude": {
       "type": "float"
     },
@@ -67,6 +70,17 @@
       "relation": "oneToMany",
       "target": "api::project.project",
       "mappedBy": "garden"
+    },
+    "hero_image": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
     }
   }
 }
