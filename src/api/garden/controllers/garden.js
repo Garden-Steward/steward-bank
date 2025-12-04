@@ -29,8 +29,15 @@ module.exports = createCoreController('api::garden.garden', ({ strapi }) => ({
   }, 
   
   async find(ctx) {
-    if (ctx.state.user.role.type !== 'administrator') {
+    // Handle public access (no authenticated user)
+    if (!ctx.state.user) {
+      // For public access, use the default core action which respects permissions
+      const { data, meta } = await super.find(ctx);
+      return { data, meta };
+    }
 
+    // Handle authenticated non-administrator users
+    if (ctx.state.user.role.type !== 'administrator') {
       const gardens = await strapi.db.query('api::garden.garden').findMany({
         where: {
           volunteers: ctx.state.user.id
@@ -43,7 +50,7 @@ module.exports = createCoreController('api::garden.garden', ({ strapi }) => ({
       return this.transformResponse(gardens);
     }
         
-    // Calling the default core action
+    // Calling the default core action for administrators
     const { data, meta } = await super.find(ctx);
     // some more custom logic
     meta.date = Date.now()
