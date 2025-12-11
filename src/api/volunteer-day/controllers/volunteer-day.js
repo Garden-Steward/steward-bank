@@ -54,19 +54,46 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
     },
 
     getByGarden: async ctx => {
+      // Extract pagination parameters from query string
+      // Strapi/Koa may parse nested query params differently
+      // Try multiple access patterns to be safe
+      let page = 1;
+      let pageSize = 15;
       
-      const entries = await strapi.entityService.findMany('api::volunteer-day.volunteer-day', {
-        sort: {startDatetime: 'desc'},
-        filters: {
-          garden: {
-            slug: ctx.params.slug,
-          }
-        },
-        populate: ['garden_tasks', 'garden_tasks.primary_image'],
-        limit: 15,
-      });
+      // Try nested object access first (most common)
+      if (ctx.query.pagination) {
+        page = parseInt(ctx.query.pagination.page) || 1;
+        pageSize = parseInt(ctx.query.pagination.pageSize) || 15;
+      } 
+      // Fallback to bracket notation (if Koa parses as string keys)
+      else if (ctx.query['pagination[page]']) {
+        page = parseInt(ctx.query['pagination[page]']) || 1;
+        pageSize = parseInt(ctx.query['pagination[pageSize]']) || 15;
+      }
+      
+      console.log("ctx.query:", JSON.stringify(ctx.query, null, 2));
+      console.log("Extracted - page:", page, "pageSize:", pageSize);
+      
       try {
-        ctx.body = entries;
+        // findPage supports page and pageSize directly (no need to convert to start/limit)
+        const { results, pagination: paginationMeta } = await strapi.entityService.findPage('api::volunteer-day.volunteer-day', {
+          sort: {startDatetime: 'desc'},
+          filters: {
+            garden: {
+              slug: ctx.params.slug,
+            }
+          },
+          populate: ['garden_tasks', 'garden_tasks.primary_image'],
+          page,
+          pageSize,
+        });
+        
+        ctx.body = {
+          data: results,
+          meta: {
+            pagination: paginationMeta
+          }
+        };
       } catch (err) {
         ctx.body = err;
       }

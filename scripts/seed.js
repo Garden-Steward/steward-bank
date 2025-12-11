@@ -3,6 +3,7 @@ const seedMedia = require('./seed-media');
 const seedBasicData = require('./seed-data');
 const seedGardenTasks = require('./seed-garden-tasks');
 const seedMessages = require('./seed-messages');
+const seedEvents = require('./seed-events');
 
 async function runSeeds() {
   try {
@@ -13,6 +14,7 @@ async function runSeeds() {
     // Run the seeds in order
     await seedMedia(strapi);
     await seedBasicData(strapi);
+    await seedEvents(strapi);
     await seedGardenTasks(strapi);
     await seedMessages(strapi);
 
