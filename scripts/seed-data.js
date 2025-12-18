@@ -310,7 +310,7 @@ basicData.users = [
   },
   {
     username: "cpres",
-    email: "cameron@garden.com",
+    email: "cameron@oufp.org",
     password: "test123",
     confirmed: true,
     blocked: false,
@@ -529,13 +529,19 @@ async function seedBasicData(strapi) {
     // Seed gardens with organization relationships
     console.log('Seeding gardens...');
     const gardens = [];
+    // Ensure cameron@oufp.org is included as a manager (should be in users array)
+    const cameronUser = users.find(user => user.email === 'cameron@oufp.org');
+    if (!cameronUser) {
+      console.warn('Warning: cameron@oufp.org not found in users array!');
+    }
+    
     for (let i = 0; i < basicData.gardens.length; i++) {
       const created = await strapi.entityService.create('api::garden.garden', {
         data: {
           ...basicData.gardens[i],
           organization: organizations[i % organizations.length].id,
-          managers: users.map(user => user.id), // Add both users as managers
-          volunteers: users.map(user => user.id), // Add both users as volunteers
+          managers: users.map(user => user.id), // All users as managers, including cameron@oufp.org
+          volunteers: users.map(user => user.id), // Add all users as volunteers
           publishedAt: new Date()
         }
       });

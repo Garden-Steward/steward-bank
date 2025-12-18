@@ -187,3 +187,4 @@ async function seedEvents(strapi) {
 }
 
 module.exports = seedEvents;
+
