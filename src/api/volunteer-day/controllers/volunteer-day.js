@@ -83,16 +83,77 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
     },
 
     getPublic: async ctx => {
-      const entries = await strapi.entityService.findMany('api::volunteer-day.volunteer-day', {
-        sort: {startDatetime: 'desc'},
-        filters: {
-          accessibility: 'Public',
-          startDatetime: {
-            // 3 months historic
-            $gt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
-          }
+      // Extract pagination parameters from query string
+      let page = null;
+      let pageSize = null;
+      
+      // Try nested object access first (most common)
+      if (ctx.query.pagination) {
+        page = parseInt(ctx.query.pagination.page) || null;
+        pageSize = parseInt(ctx.query.pagination.pageSize) || null;
+      } 
+      // Fallback to bracket notation (if Koa parses as string keys)
+      else if (ctx.query['pagination[page]']) {
+        page = parseInt(ctx.query['pagination[page]']) || null;
+        pageSize = parseInt(ctx.query['pagination[pageSize]']) || null;
+      }
+
+      const filters = {
+        accessibility: 'Public',
+        startDatetime: {
+          // 3 months historic
+          $gt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
         }
+      };
+
+      // Always populate hero_image (volunteer-day's) and garden with its hero_image
+      const populate = ['hero_image', 'garden', 'garden.hero_image'];
+
+      let entries;
+      let paginationMeta = null;
+
+      // Use findPage if pagination is requested
+      if (page !== null && pageSize !== null) {
+        const result = await strapi.entityService.findPage('api::volunteer-day.volunteer-day', {
+          sort: {startDatetime: 'desc'},
+          filters,
+          populate,
+          page,
+          pageSize,
+        });
+        entries = result.results;
+        paginationMeta = result.pagination;
+      } else {
+        entries = await strapi.entityService.findMany('api::volunteer-day.volunteer-day', {
+          sort: {startDatetime: 'desc'},
+          filters,
+          populate,
+        });
+      }
+
+      // Prefer volunteer-day's hero_image over garden's hero_image
+      entries = entries.map(entry => {
+        // Check if volunteer-day has a valid hero_image (has id property)
+        const hasVolunteerDayHeroImage = entry.hero_image && entry.hero_image.id;
+        console.log("hasVolunteerDayHeroImage: ", hasVolunteerDayHeroImage);
+        
+        // Only use garden's hero_image if volunteer-day doesn't have one
+        if (!hasVolunteerDayHeroImage && entry.garden && entry.garden.hero_image && entry.garden.hero_image.id) {
+          entry.hero_image = entry.garden.hero_image;
+        }
+        return entry;
       });
+
+      // Return paginated response if pagination was requested
+      if (page !== null && pageSize !== null) {
+        return {
+          data: entries,
+          meta: {
+            pagination: paginationMeta
+          }
+        };
+      }
+
       return entries;
     },
 
