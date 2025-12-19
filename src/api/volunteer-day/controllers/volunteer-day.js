@@ -135,7 +135,6 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
       entries = entries.map(entry => {
         // Check if volunteer-day has a valid hero_image (has id property)
         const hasVolunteerDayHeroImage = entry.hero_image && entry.hero_image.id;
-        console.log("hasVolunteerDayHeroImage: ", hasVolunteerDayHeroImage);
         
         // Only use garden's hero_image if volunteer-day doesn't have one
         if (!hasVolunteerDayHeroImage && entry.garden && entry.garden.hero_image && entry.garden.hero_image.id) {
