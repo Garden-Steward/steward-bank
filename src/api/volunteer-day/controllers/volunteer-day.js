@@ -261,6 +261,74 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
       const sentInfo = strapi.service('api::volunteer-day.volunteer-day').sendGroupMsg(vDay,copy);
     
       return  sentInfo;
-  }
+    },
+
+    getGardenMedia: async ctx => {
+      try {
+        const { gardenId } = ctx.params;
+
+        // Fetch all volunteer-days for the garden with hero_image and featured_gallery populated
+        const volunteerDays = await strapi.entityService.findMany('api::volunteer-day.volunteer-day', {
+          filters: {
+            garden: {
+              id: gardenId
+            }
+          },
+          populate: ['hero_image', 'featured_gallery'],
+          sort: { updatedAt: 'desc' }
+        });
+
+        // Extract unique media IDs and track most recent usage
+        const mediaMap = new Map(); // Map<mediaId, { media, lastUsed }>
+
+        volunteerDays.forEach(vDay => {
+          const lastUsed = vDay.updatedAt || vDay.startDatetime || vDay.createdAt;
+
+          // Process hero_image (single media)
+          if (vDay.hero_image && vDay.hero_image.id) {
+            const mediaId = vDay.hero_image.id;
+
+            // If we haven't seen this media, or this usage is more recent, update it
+            if (!mediaMap.has(mediaId) || 
+                new Date(lastUsed) > new Date(mediaMap.get(mediaId).lastUsed)) {
+              mediaMap.set(mediaId, {
+                media: vDay.hero_image,
+                lastUsed: lastUsed
+              });
+            }
+          }
+
+          // Process featured_gallery (array of media)
+          if (vDay.featured_gallery && Array.isArray(vDay.featured_gallery)) {
+            vDay.featured_gallery.forEach(galleryMedia => {
+              if (galleryMedia && galleryMedia.id) {
+                const mediaId = galleryMedia.id;
+
+                // If we haven't seen this media, or this usage is more recent, update it
+                if (!mediaMap.has(mediaId) || 
+                    new Date(lastUsed) > new Date(mediaMap.get(mediaId).lastUsed)) {
+                  mediaMap.set(mediaId, {
+                    media: galleryMedia,
+                    lastUsed: lastUsed
+                  });
+                }
+              }
+            });
+          }
+        });
+
+        // Convert map to array and sort by most recently used
+        const mediaArray = Array.from(mediaMap.values())
+          .sort((a, b) => {
+            return new Date(b.lastUsed) - new Date(a.lastUsed);
+          })
+          .map(item => item.media);
+
+        return mediaArray;
+      } catch (err) {
+        console.error('Error fetching garden media:', err);
+        return ctx.badRequest('Failed to fetch media for this garden');
+      }
+    }
 }));
 
