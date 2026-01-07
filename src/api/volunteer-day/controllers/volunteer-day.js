@@ -64,8 +64,30 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
         return ctx.unauthorized('You must be logged in to access this resource');
       }
       
+      // Extract populate from query params
+      let populate = null;
+      
+      if (ctx.query.populate) {
+        // Handle different populate formats from Strapi query string
+        if (typeof ctx.query.populate === 'string') {
+          // Format: ?populate=field1,field2 or ?populate=*
+          if (ctx.query.populate === '*') {
+            populate = '*';
+          } else {
+            // Parse comma-separated string
+            populate = ctx.query.populate.split(',').map(field => field.trim());
+          }
+        } else if (Array.isArray(ctx.query.populate)) {
+          // Format: ?populate[]=field1&populate[]=field2
+          populate = ctx.query.populate;
+        } else if (typeof ctx.query.populate === 'object') {
+          // Format: ?populate[field1]=true&populate[field2]=true
+          populate = Object.keys(ctx.query.populate);
+        }
+      }
+      
       const gardenIds = fullUser.gardens.map(garden => garden.id);
-      const entries = await strapi.entityService.findMany('api::volunteer-day.volunteer-day', {
+      const queryOptions = {
         filters: {
           garden: {
             id: {
@@ -73,10 +95,17 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
             }
           },
           startDatetime: {
-            $gt: new Date().toISOString()
+            $gt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString()
           }
         }
-      });
+      };
+      
+      // Only add populate if it was provided
+      if (populate !== null) {
+        queryOptions.populate = populate;
+      }
+      
+      const entries = await strapi.entityService.findMany('api::volunteer-day.volunteer-day', queryOptions);
 
       return entries;
 
@@ -331,4 +360,5 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
       }
     }
 }));
+
 
