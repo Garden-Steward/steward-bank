@@ -85,4 +85,27 @@ module.exports = {
       tz: 'America/Los_Angeles',
     },
   },
+
+  /**
+   * Process Recurring Event Templates
+   * Runs daily at 2am Pacific time to maintain future event instances.
+   * Creates new volunteer-day entries from active recurring templates
+   * to ensure each template has up to max_future_instances scheduled.
+   */
+  processRecurringEvents: {
+    task: async ({ strapi }) => {
+      strapi.log.info('triggering processRecurringEvents cron');
+      try {
+        const summary = await strapi.service('api::recurring-event-template.recurring-event-template').processAllTemplates();
+        strapi.log.info(`processRecurringEvents complete: ${summary.totalCreated} instances created from ${summary.totalTemplates} templates`);
+      } catch (err) {
+        strapi.log.error('ERR processRecurringEvents: ', err);
+      }
+    },
+    options: {
+      // Run daily at 2am Pacific time
+      rule: '0 2 * * *',
+      tz: 'America/Los_Angeles',
+    },
+  },
 };
