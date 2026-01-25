@@ -640,12 +640,21 @@ SmsHelper.registerUser = async(user) => {
     return {body: "Sorry, we couldn't find your account. Please try joining a garden first.", type: "reply"};
   }
 
+  // Reset username to phoneNumber to enable the name collection flow
+  // This matches the brand new numbers registration flow
+  if (user.username !== user.phoneNumber) {
+    await strapi.db.query("plugin::users-permissions.user").update({
+      where: { id: user.id },
+      data: { username: user.phoneNumber }
+    });
+  }
+
   if (user.email === 'test@test.com') {
     return {body: "Please provide your email address to complete registration.", type: "registration"};
   }
 
   // If user has a valid email, verify it's correct
-  return {body: `yarn dIs ${user.email} your correct email address? Please respond with CORRECT to confirm or provide a new email address.`, type: "registration"};
+  return {body: `Is ${user.email} your correct email address? Please respond with CORRECT to confirm or provide a new email address.`, type: "registration"};
 };
 
 module.exports = SmsHelper;
