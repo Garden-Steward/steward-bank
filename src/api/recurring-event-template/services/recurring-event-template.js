@@ -197,7 +197,7 @@ module.exports = createCoreService('api::recurring-event-template.recurring-even
         return baseTitle;
 
       case 'title_month':
-        return `${baseTitle} - ${format(occurrenceDate, 'MMMM yyyy')}`;
+        return `${baseTitle} - ${format(occurrenceDate, 'MMMM')}`;
 
       case 'title_day_of_month':
         return `${baseTitle} - ${format(occurrenceDate, 'MMMM d, yyyy')}`;
