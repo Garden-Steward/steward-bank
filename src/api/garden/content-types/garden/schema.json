@@ -81,6 +81,12 @@
         "videos",
         "audios"
       ]
+    },
+    "recurring_event_templates": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::recurring-event-template.recurring-event-template",
+      "mappedBy": "garden"
     }
   }
 }

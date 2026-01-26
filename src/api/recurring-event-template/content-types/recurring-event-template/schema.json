@@ -1,0 +1,153 @@
+{
+  "kind": "collectionType",
+  "collectionName": "recurring_event_templates",
+  "info": {
+    "singularName": "recurring-event-template",
+    "pluralName": "recurring-event-templates",
+    "displayName": "Recurring Event Template",
+    "description": "Templates for auto-generating monthly recurring volunteer events"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title_template": {
+      "type": "string",
+      "required": true,
+      "description": "Base title for generated events (e.g., 'Second Sunday Cleanup')"
+    },
+    "naming_convention": {
+      "type": "enumeration",
+      "enum": [
+        "title_only",
+        "title_month",
+        "title_day_of_month",
+        "title_nth_weekday"
+      ],
+      "default": "title_only",
+      "description": "How to format generated event titles"
+    },
+    "recurrence_type": {
+      "type": "enumeration",
+      "enum": [
+        "day_of_month",
+        "nth_weekday"
+      ],
+      "required": true,
+      "description": "day_of_month: specific date (e.g., 15th); nth_weekday: specific weekday (e.g., 2nd Sunday)"
+    },
+    "day_of_month": {
+      "type": "integer",
+      "min": 1,
+      "max": 31,
+      "description": "Day of month (1-31) for day_of_month recurrence type"
+    },
+    "nth_occurrence": {
+      "type": "enumeration",
+      "enum": [
+        "first",
+        "second",
+        "third",
+        "fourth",
+        "last"
+      ],
+      "description": "Which occurrence of the weekday (for nth_weekday type)"
+    },
+    "weekday": {
+      "type": "enumeration",
+      "enum": [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday"
+      ],
+      "description": "Day of the week (for nth_weekday type)"
+    },
+    "start_time": {
+      "type": "time",
+      "description": "Start time for the event (e.g., 10:00)"
+    },
+    "end_text": {
+      "type": "string",
+      "description": "End time display text (e.g., '12pm', '2:00 PM', 'whenever')"
+    },
+    "blurb": {
+      "type": "text",
+      "description": "Short description for the event"
+    },
+    "content": {
+      "type": "richtext",
+      "description": "Full content/details for the event"
+    },
+    "garden": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::garden.garden",
+      "inversedBy": "recurring_event_templates",
+      "description": "Garden this template belongs to"
+    },
+    "interest": {
+      "type": "string",
+      "default": "Everyone",
+      "description": "Interest group filter for event notifications"
+    },
+    "accessibility": {
+      "type": "enumeration",
+      "enum": [
+        "Public",
+        "Garden Members",
+        "Invite Only"
+      ],
+      "default": "Public",
+      "description": "Who can see/attend this event"
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "general",
+        "land_work",
+        "cleanup",
+        "art",
+        "workshop"
+      ],
+      "description": "Type of volunteer event"
+    },
+    "hero_image": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ],
+      "description": "Default hero image for generated events"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this template should generate new instances"
+    },
+    "first_occurrence_date": {
+      "type": "date",
+      "required": true,
+      "description": "Date to start generating instances from"
+    },
+    "max_future_instances": {
+      "type": "integer",
+      "default": 3,
+      "min": 1,
+      "max": 12,
+      "description": "Maximum number of future instances to maintain"
+    },
+    "generated_events": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::volunteer-day.volunteer-day",
+      "mappedBy": "recurring_template",
+      "description": "Events generated from this template"
+    }
+  }
+}

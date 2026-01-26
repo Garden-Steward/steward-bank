@@ -30,4 +30,8 @@ require('./tasks/instruction');
 require('./tasks/smsTask');
 require('./tasks/publish');
 require('./event/rsvp');
-require('./event/messages')
+require('./event/messages');
+
+// Recurring event tests (unit tests for date calculations)
+require('./recurring-events/date-calculations.test');
+require('./recurring-events/instance-generation.test');

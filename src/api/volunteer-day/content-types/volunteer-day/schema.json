@@ -124,6 +124,18 @@
     "photo_album_id": {
       "type": "string",
       "description": "Extracted Google Photos album ID"
+    },
+    "recurring_template": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::recurring-event-template.recurring-event-template",
+      "inversedBy": "generated_events",
+      "description": "The recurring template this event was generated from"
+    },
+    "is_recurring_instance": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this event was auto-generated from a recurring template"
     }
   }
 }

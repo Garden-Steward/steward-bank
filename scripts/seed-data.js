@@ -380,6 +380,7 @@ async function setupPermissions(strapi) {
     'api::scheduler.scheduler': ['create', 'update', 'delete', 'find', 'findOne'],
     'api::garden.garden': ['find', 'findOne', 'update', 'fullSlug'],
     'api::recurring-task.recurring-task': ['create', 'find', 'findOne', 'update'],
+    'api::recurring-event-template.recurring-event-template': ['create', 'find', 'findOne', 'update', 'delete', 'process', 'preview', 'processAll'],
     'api::volunteer-day.volunteer-day': ['create', 'find', 'findOne', 'update', 'getByUser', 'getByGarden', 'getPublic', 'getGardenMedia', 'rsvpEvent', 'testSms', 'groupSms'],
     'api::weather.weather': ['find', 'findOne'],
     'api::instruction.instruction': ['create', 'find', 'findOne', 'approveTask', 'update'],
@@ -459,6 +460,9 @@ async function cleanup(strapi) {
     where: {}
   });
   await strapi.db.query('api::volunteer-day.volunteer-day').deleteMany({
+    where: {}
+  });
+  await strapi.db.query('api::recurring-event-template.recurring-event-template').deleteMany({
     where: {}
   });
 }
@@ -626,15 +630,51 @@ async function seedBasicData(strapi) {
       }
     }
 
+    // Get available media images for hero images and featured galleries
+    console.log('Getting available media images...');
+    const knownMediaIds = [237, 24, 249, 250, 252, 253, 251, 247, 245];
+    const availableMedia = [];
+    for (const imageId of knownMediaIds) {
+      try {
+        const mediaFile = await strapi.entityService.findOne('plugin::upload.file', imageId);
+        if (mediaFile) {
+          availableMedia.push(imageId);
+        }
+      } catch (err) {
+        // Skip if not found
+      }
+    }
+    console.log(`Found ${availableMedia.length} available media images`);
+
     // Seed volunteer days
     console.log('Seeding volunteer days...');
     const volunteerDays = [];
-    for (const dayData of basicData.volunteerDays) {
+    for (let i = 0; i < basicData.volunteerDays.length; i++) {
+      const dayData = basicData.volunteerDays[i];
+      
+      // Vary hero images across volunteer days
+      const heroImageIndex = i % availableMedia.length;
+      const heroImage = availableMedia.length > 0 ? availableMedia[heroImageIndex] : null;
+      
+      // Add featured gallery to some volunteer days (every other one, starting with first)
+      let featuredGallery = null;
+      if (i % 2 === 0 && availableMedia.length >= 3) {
+        const galleryStartIndex = (i + 1) % availableMedia.length;
+        const galleryImages = [
+          availableMedia[galleryStartIndex % availableMedia.length],
+          availableMedia[(galleryStartIndex + 1) % availableMedia.length],
+          availableMedia[(galleryStartIndex + 2) % availableMedia.length]
+        ];
+        featuredGallery = galleryImages;
+      }
+      
       const created = await strapi.entityService.create('api::volunteer-day.volunteer-day', {
         data: {
           ...dayData,
           garden: gardens[0].id, // Assign to first garden
           confirmed: users.map(user => user.id), // Both users confirmed
+          hero_image: heroImage,
+          featured_gallery: featuredGallery,
           publishedAt: new Date()
         }
       });

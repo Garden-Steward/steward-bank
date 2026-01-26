@@ -35,7 +35,6 @@ module.exports = createCoreController('api::garden.garden', ({ strapi }) => ({
       const { data, meta } = await super.find(ctx);
       return { data, meta };
     }
-
     // Handle authenticated non-administrator users
     if (ctx.state.user.role.type !== 'administrator') {
       // Extract populate from query params
@@ -62,10 +61,14 @@ module.exports = createCoreController('api::garden.garden', ({ strapi }) => ({
         }
       }
       
+      // Determine filter based on manage query parameter
+      // Only filter if manage=true, otherwise show all gardens
+      const whereClause = ctx.query.manage === 'true' || ctx.query.manage === true
+        ? { managers: ctx.state.user.id }
+        : {};
+      
       const gardens = await strapi.db.query('api::garden.garden').findMany({
-        where: {
-          volunteers: ctx.state.user.id
-        },
+        where: whereClause,
         populate: populate
       });
 

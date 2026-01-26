@@ -1,7 +1,55 @@
 /**
  * Seed file for creating monthly volunteer day events
  * Creates 17 events, one for each month, on the 3rd Sunday of each month
+ * Uses varied hero images and featured galleries from the media library
  */
+
+/**
+ * Get available media images from media library
+ */
+async function getAvailableMedia(strapi) {
+  try {
+    // Known media IDs from the API response (hero images and featured gallery images)
+    const knownMediaIds = [237, 24, 249, 250, 252, 253, 251, 247, 245];
+    
+    const availableImages = [];
+    
+    // Check which ones exist in the database
+    for (const imageId of knownMediaIds) {
+      try {
+        const mediaFile = await strapi.entityService.findOne('plugin::upload.file', imageId);
+        if (mediaFile) {
+          availableImages.push(imageId);
+        }
+      } catch (err) {
+        // Skip if not found
+      }
+    }
+    
+    // Fallback: find any existing media files if our known IDs don't exist
+    if (availableImages.length === 0) {
+      console.warn('No known media images found, searching for any existing media...');
+      const allMedia = await strapi.entityService.findMany('plugin::upload.file', {
+        filters: {
+          mime: { $contains: 'image' }
+        },
+        limit: 10
+      });
+      availableImages.push(...allMedia.map(m => m.id));
+    }
+    
+    if (availableImages.length > 0) {
+      console.log(`Found ${availableImages.length} available media images`);
+      return availableImages;
+    } else {
+      console.warn('No media images found');
+      return [];
+    }
+  } catch (error) {
+    console.warn(`Error getting media images: ${error.message}`);
+    return [];
+  }
+}
 
 /**
  * Get the 3rd Sunday of a given month and year
@@ -44,21 +92,43 @@ async function seedEvents(strapi) {
   try {
     console.log('Starting event seeding...');
 
-    // Get the "Downtown Community Garden" specifically
+    // Get all seeded gardens
     const gardens = await strapi.entityService.findMany('api::garden.garden', {
       filters: {
-        title: 'Downtown Community Garden'
-      },
-      limit: 1
+        title: {
+          $in: ['Downtown Community Garden', 'Neighborhood Garden']
+        }
+      }
     });
 
     if (gardens.length === 0) {
-      console.error('Downtown Community Garden not found. Please seed gardens first.');
-      throw new Error('Downtown Community Garden not found');
+      console.error('No gardens found. Please seed gardens first.');
+      throw new Error('No gardens found');
     }
 
-    const garden = gardens[0];
-    console.log(`Using garden: ${garden.title} (ID: ${garden.id})`);
+    console.log(`Found ${gardens.length} gardens to seed events for`);
+
+    // Get available media images for hero images and featured galleries
+    const availableMedia = await getAvailableMedia(strapi);
+    
+    // Process each garden
+    const allEvents = [];
+    for (const garden of gardens) {
+      console.log(`\nSeeding events for garden: ${garden.title} (ID: ${garden.id})`);
+      const gardenEvents = await seedEventsForGarden(strapi, garden, availableMedia);
+      allEvents.push(...gardenEvents);
+    }
+
+    console.log(`\nSuccessfully created ${allEvents.length} total events across ${gardens.length} gardens`);
+    return allEvents;
+  } catch (error) {
+    console.error('Error seeding events:', error);
+    throw error;
+  }
+}
+
+async function seedEventsForGarden(strapi, garden, availableMedia) {
+  try {
 
     // Get current date
     const now = new Date();
@@ -92,7 +162,24 @@ async function seedEvents(strapi) {
       
       const monthName = getMonthName(monthIndex);
       const title = `${monthName} 3rd Sunday`;
-      const slug = `${monthName.toLowerCase()}-3rd-sunday-${year}`.replace(/\s+/g, '-');
+      const slug = `${garden.slug || garden.id}-${monthName.toLowerCase()}-3rd-sunday-${year}`.replace(/\s+/g, '-');
+
+      // Vary hero images and featured galleries across events
+      const heroImageIndex = i % availableMedia.length;
+      const heroImage = availableMedia.length > 0 ? availableMedia[heroImageIndex] : null;
+      
+      // Add featured gallery to some events (every 3rd event)
+      let featuredGallery = null;
+      if (i % 3 === 0 && availableMedia.length >= 3) {
+        // Use a different set of images for featured gallery
+        const galleryStartIndex = (i + 1) % availableMedia.length;
+        const galleryImages = [
+          availableMedia[galleryStartIndex % availableMedia.length],
+          availableMedia[(galleryStartIndex + 1) % availableMedia.length],
+          availableMedia[(galleryStartIndex + 2) % availableMedia.length]
+        ];
+        featuredGallery = galleryImages;
+      }
 
       const eventData = {
         title,
@@ -106,6 +193,8 @@ async function seedEvents(strapi) {
         accessibility: 'Public',
         smsLink: true,
         garden: garden.id,
+        hero_image: heroImage,
+        featured_gallery: featuredGallery,
         publishedAt: new Date()
       };
 
@@ -142,7 +231,25 @@ async function seedEvents(strapi) {
       
       const monthName = getMonthName(monthIndex);
       const title = `${monthName} 3rd Sunday`;
-      const slug = `${monthName.toLowerCase()}-3rd-sunday-${year}`.replace(/\s+/g, '-');
+      const slug = `${garden.slug || garden.id}-${monthName.toLowerCase()}-3rd-sunday-${year}`.replace(/\s+/g, '-');
+
+      // Vary hero images and featured galleries across events
+      const eventIndex = 15 + i; // Offset by 15 for future events
+      const heroImageIndex = eventIndex % availableMedia.length;
+      const heroImage = availableMedia.length > 0 ? availableMedia[heroImageIndex] : null;
+      
+      // Add featured gallery to some events (every 3rd event)
+      let featuredGallery = null;
+      if (eventIndex % 3 === 0 && availableMedia.length >= 3) {
+        // Use a different set of images for featured gallery
+        const galleryStartIndex = (eventIndex + 1) % availableMedia.length;
+        const galleryImages = [
+          availableMedia[galleryStartIndex % availableMedia.length],
+          availableMedia[(galleryStartIndex + 1) % availableMedia.length],
+          availableMedia[(galleryStartIndex + 2) % availableMedia.length]
+        ];
+        featuredGallery = galleryImages;
+      }
 
       const eventData = {
         title,
@@ -156,6 +263,8 @@ async function seedEvents(strapi) {
         accessibility: 'Public',
         smsLink: true,
         garden: garden.id,
+        hero_image: heroImage,
+        featured_gallery: featuredGallery,
         publishedAt: new Date()
       };
 
@@ -178,10 +287,10 @@ async function seedEvents(strapi) {
       console.log(`Created event: ${title} on ${thirdSunday.toLocaleDateString()}`);
     }
 
-    console.log(`Successfully created ${events.length} events (15 past, 2 future)`);
+    console.log(`Successfully created ${events.length} events (15 past, 2 future) for ${garden.title}`);
     return events;
   } catch (error) {
-    console.error('Error seeding events:', error);
+    console.error(`Error seeding events for garden ${garden.title}:`, error);
     throw error;
   }
 }
