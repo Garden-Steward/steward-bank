@@ -584,6 +584,11 @@ export interface ApiGardenGarden extends Schema.CollectionType {
       'api::project.project'
     >;
     publishedAt: Attribute.DateTime;
+    recurring_event_templates: Attribute.Relation<
+      'api::garden.garden',
+      'oneToMany',
+      'api::recurring-event-template.recurring-event-template'
+    >;
     recurring_tasks: Attribute.Relation<
       'api::garden.garden',
       'oneToMany',
@@ -966,6 +971,100 @@ export interface ApiProjectProject extends Schema.CollectionType {
   };
 }
 
+export interface ApiRecurringEventTemplateRecurringEventTemplate
+  extends Schema.CollectionType {
+  collectionName: 'recurring_event_templates';
+  info: {
+    description: 'Templates for auto-generating monthly recurring volunteer events';
+    displayName: 'Recurring Event Template';
+    pluralName: 'recurring-event-templates';
+    singularName: 'recurring-event-template';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    accessibility: Attribute.Enumeration<
+      ['Public', 'Garden Members', 'Invite Only']
+    > &
+      Attribute.DefaultTo<'Public'>;
+    blurb: Attribute.Text;
+    content: Attribute.RichText;
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::recurring-event-template.recurring-event-template',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    day_of_month: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          max: 31;
+          min: 1;
+        },
+        number
+      >;
+    end_text: Attribute.String;
+    first_occurrence_date: Attribute.Date & Attribute.Required;
+    garden: Attribute.Relation<
+      'api::recurring-event-template.recurring-event-template',
+      'manyToOne',
+      'api::garden.garden'
+    >;
+    generated_events: Attribute.Relation<
+      'api::recurring-event-template.recurring-event-template',
+      'oneToMany',
+      'api::volunteer-day.volunteer-day'
+    >;
+    hero_image: Attribute.Media<'images'>;
+    interest: Attribute.String & Attribute.DefaultTo<'Everyone'>;
+    is_active: Attribute.Boolean & Attribute.DefaultTo<true>;
+    max_future_instances: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          max: 12;
+          min: 1;
+        },
+        number
+      > &
+      Attribute.DefaultTo<3>;
+    naming_convention: Attribute.Enumeration<
+      ['title_only', 'title_month', 'title_day_of_month', 'title_nth_weekday']
+    > &
+      Attribute.DefaultTo<'title_only'>;
+    nth_occurrence: Attribute.Enumeration<
+      ['first', 'second', 'third', 'fourth', 'last']
+    >;
+    publishedAt: Attribute.DateTime;
+    recurrence_type: Attribute.Enumeration<['day_of_month', 'nth_weekday']> &
+      Attribute.Required;
+    start_time: Attribute.Time;
+    title_template: Attribute.String & Attribute.Required;
+    type: Attribute.Enumeration<
+      ['general', 'land_work', 'cleanup', 'art', 'workshop']
+    >;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::recurring-event-template.recurring-event-template',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    weekday: Attribute.Enumeration<
+      [
+        'Sunday',
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday'
+      ]
+    >;
+  };
+}
+
 export interface ApiRecurringTaskRecurringTask extends Schema.CollectionType {
   collectionName: 'recurring_tasks';
   info: {
@@ -1255,6 +1354,7 @@ export interface ApiVolunteerDayVolunteerDay extends Schema.CollectionType {
     >;
     hero_image: Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     interest: Attribute.String & Attribute.DefaultTo<'Everyone'>;
+    is_recurring_instance: Attribute.Boolean & Attribute.DefaultTo<false>;
     messages: Attribute.Relation<
       'api::volunteer-day.volunteer-day',
       'oneToMany',
@@ -1265,6 +1365,11 @@ export interface ApiVolunteerDayVolunteerDay extends Schema.CollectionType {
     photo_album_url: Attribute.String;
     planting: Attribute.Component<'plants.planting', true>;
     publishedAt: Attribute.DateTime;
+    recurring_template: Attribute.Relation<
+      'api::volunteer-day.volunteer-day',
+      'manyToOne',
+      'api::recurring-event-template.recurring-event-template'
+    >;
     slug: Attribute.String;
     sms_campaigns: Attribute.Relation<
       'api::volunteer-day.volunteer-day',
@@ -1892,6 +1997,7 @@ declare module '@strapi/types' {
       'api::organization.organization': ApiOrganizationOrganization;
       'api::plant.plant': ApiPlantPlant;
       'api::project.project': ApiProjectProject;
+      'api::recurring-event-template.recurring-event-template': ApiRecurringEventTemplateRecurringEventTemplate;
       'api::recurring-task.recurring-task': ApiRecurringTaskRecurringTask;
       'api::scheduler.scheduler': ApiSchedulerScheduler;
       'api::sms-campaign.sms-campaign': ApiSmsCampaignSmsCampaign;

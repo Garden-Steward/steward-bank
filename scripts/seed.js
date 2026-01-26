@@ -4,6 +4,7 @@ const seedBasicData = require('./seed-data');
 const seedGardenTasks = require('./seed-garden-tasks');
 const seedMessages = require('./seed-messages');
 const seedEvents = require('./seed-events');
+const seedRecurringEventTemplates = require('./seed-recurring-event-templates');
 
 async function runSeeds() {
   try {
@@ -15,6 +16,7 @@ async function runSeeds() {
     await seedMedia(strapi);
     await seedBasicData(strapi);
     await seedEvents(strapi);
+    await seedRecurringEventTemplates(strapi);
     await seedGardenTasks(strapi);
     await seedMessages(strapi);
 
