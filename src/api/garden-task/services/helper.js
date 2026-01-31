@@ -18,10 +18,10 @@ taskHelper.inviteUserTask = async (data) => {
 
   let replyInstruction;
   if (slugMatchesTitle) {
-    replyInstruction = `reply with ${garden.sms_slug.toUpperCase()}`;
+    replyInstruction = `reply with ${garden.title}`;
   } else {
     // If slug doesn't match title start, be explicit about what to reply
-    replyInstruction = `reply with ${garden.sms_slug.toUpperCase()} (the garden code)`;
+    replyInstruction = `reply with ${garden.sms_slug.toUpperCase()}`;
   }
 
   const body = `Hello! Interested in helping with "${data.task.title}" at ${garden.title}? To get started, ${replyInstruction}. We'll walk you through a quick registration.`;
