@@ -136,7 +136,7 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
       };
 
       // Always populate hero_image (volunteer-day's) and garden with its hero_image
-      const populate = ['hero_image', 'garden', 'garden.hero_image'];
+      const populate = ['hero_image', 'garden', 'garden.hero_image', 'garden.organization'];
 
       let entries;
       let paginationMeta = null;

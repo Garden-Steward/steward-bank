@@ -81,6 +81,11 @@ module.exports = createCoreController('api::recurring-event-template.recurring-e
       const existingInstances = await strapi.service('api::recurring-event-template.recurring-event-template')
         .getFutureInstances(template);
 
+      // Build set of existing dates (YYYY-MM-DD) to exclude from previews
+      const existingDates = new Set(
+        existingInstances.map(i => i.startDatetime.slice(0, 10))
+      );
+
       ctx.body = {
         success: true,
         data: {
@@ -94,9 +99,10 @@ module.exports = createCoreController('api::recurring-event-template.recurring-e
           existing_instances: existingInstances.map(instance => ({
             id: instance.id,
             title: instance.title,
-            date: instance.startDatetime
+            date: instance.startDatetime,
+            slug: instance.slug
           })),
-          upcoming_previews: previews
+          upcoming_previews: previews.filter(p => !existingDates.has(p.date))
         }
       };
     } catch (error) {
