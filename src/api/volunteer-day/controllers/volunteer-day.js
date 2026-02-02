@@ -215,13 +215,22 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
               slug: ctx.params.slug,
             }
           },
-          populate: ['garden_tasks', 'garden_tasks.primary_image'],
+          populate: ['hero_image', 'garden', 'garden.hero_image', 'recurring_template', 'recurring_template.garden', 'recurring_template.hero_image', 'garden_tasks', 'garden_tasks.primary_image'],
           page,
           pageSize,
         });
-        
+
+        // Prefer volunteer-day's hero_image over garden's hero_image (same as getPublic)
+        const entries = results.map(entry => {
+          const hasVolunteerDayHeroImage = entry.hero_image && entry.hero_image.id;
+          if (!hasVolunteerDayHeroImage && entry.garden && entry.garden.hero_image && entry.garden.hero_image.id) {
+            entry.hero_image = entry.garden.hero_image;
+          }
+          return entry;
+        });
+
         ctx.body = {
-          data: results,
+          data: entries,
           meta: {
             pagination: paginationMeta
           }
@@ -233,33 +242,57 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
 
     rsvpEvent: async ctx => {
       console.log("rsvp: ", ctx.params, ctx.request.body);
-      const { data } = ctx.request.body;
-      const userQuery = data.userId ? {id: data.userId} : {phoneNumber: `+1${data.phoneNumber}`};
-      const user = await strapi.db.query("plugin::users-permissions.user").findOne({where:userQuery, populate: ['gardens']});
-      const event = await strapi.db.query("api::volunteer-day.volunteer-day")
-      .findOne({
-        where:{id: ctx.params.id},
+      const authUser = ctx.state.user;
+      const body = ctx.request.body || {};
+      const data = body.data || {};
+
+      // Authenticated user: use ctx.state.user (no need for userId in body)
+      const userId = data.userId ?? authUser?.id;
+      const phoneNumber = data.phoneNumber;
+
+      if (!userId && !phoneNumber) {
+        return ctx.badRequest(authUser
+          ? 'Authenticated request: no user context (ensure JWT is sent)'
+          : 'Must provide either userId or phoneNumber in data');
+      }
+
+      const userQuery = userId ? { id: userId } : { phoneNumber: `+1${phoneNumber}` };
+      const user = await strapi.db.query("plugin::users-permissions.user").findOne({
+        where: userQuery,
+        populate: ['gardens']
+      });
+
+      if (userId && !user) {
+        return ctx.notFound("User not found");
+      }
+
+      const event = await strapi.db.query("api::volunteer-day.volunteer-day").findOne({
+        where: { id: ctx.params.id },
         populate: ["garden"]
       });
-      if (!event) {
-        return {error: "Event not found"}
-      }
-      data.event = event;
-      data.user = user;
-      const alreadyMember = user?.gardens?.find(g => g.id === event.garden.id);
 
-      if (data.userId) {
-        return await eventHelper.rsvpEvent(ctx.params.id, data);
-      } else if (data.phoneNumber) {
-        if (!user || !alreadyMember) {
-          console.log("inviting user");
-          return await eventHelper.inviteUserEvent(data);
-        } else {
-          // user is already a member of the garden - SAFE RSVP!
-          data.userId = user.id;
-          return await eventHelper.rsvpEvent(ctx.params.id, data);
-        }
+      if (!event) {
+        return ctx.notFound("Event not found");
       }
+
+      if (!event.garden) {
+        return ctx.badRequest("Event has no associated garden");
+      }
+
+      const rsvpData = { event, user, userId: user?.id };
+
+      if (userId) {
+        return await eventHelper.rsvpEvent(ctx.params.id, rsvpData);
+      }
+
+      const alreadyMember = user?.gardens?.some(g => g.id === event.garden.id);
+      if (!user || !alreadyMember) {
+        console.log("inviting user");
+        return await eventHelper.inviteUserEvent({ ...data, ...rsvpData });
+      }
+
+      rsvpData.userId = user.id;
+      return await eventHelper.rsvpEvent(ctx.params.id, rsvpData);
     },
 
     testSms: async ctx => {
