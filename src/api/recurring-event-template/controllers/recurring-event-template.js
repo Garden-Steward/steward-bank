@@ -21,13 +21,10 @@ module.exports = createCoreController('api::recurring-event-template.recurring-e
 
     try {
       // Fetch the template with required relations
-      const template = await strapi.entityService.findOne(
-        'api::recurring-event-template.recurring-event-template',
-        id,
-        {
-          populate: ['garden', 'hero_image']
-        }
-      );
+      const template = await strapi.db.query('api::recurring-event-template.recurring-event-template').findOne({
+        where: { id },
+        populate: ['garden', 'hero_image']
+      });
 
       if (!template) {
         return ctx.notFound('Template not found');
@@ -61,13 +58,10 @@ module.exports = createCoreController('api::recurring-event-template.recurring-e
 
     try {
       // Fetch the template
-      const template = await strapi.entityService.findOne(
-        'api::recurring-event-template.recurring-event-template',
-        id,
-        {
-          populate: ['garden']
-        }
-      );
+      const template = await strapi.db.query('api::recurring-event-template.recurring-event-template').findOne({
+        where: { id },
+        populate: ['garden']
+      });
 
       if (!template) {
         return ctx.notFound('Template not found');

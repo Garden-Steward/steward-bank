@@ -242,7 +242,7 @@ module.exports = createCoreService('api::recurring-event-template.recurring-even
     strapi.log.info(`Creating recurring instance: "${title}" for ${format(occurrenceDate, 'yyyy-MM-dd HH:mm')}`);
 
     try {
-      const newEvent = await strapi.entityService.create('api::volunteer-day.volunteer-day', {
+      const newEvent = await strapi.db.query('api::volunteer-day.volunteer-day').create({
         data: {
           title,
           slug,
@@ -278,13 +278,13 @@ module.exports = createCoreService('api::recurring-event-template.recurring-even
   async getFutureInstances(template) {
     const now = new Date();
 
-    const instances = await strapi.entityService.findMany('api::volunteer-day.volunteer-day', {
-      filters: {
+    const instances = await strapi.db.query('api::volunteer-day.volunteer-day').findMany({
+      where: {
         recurring_template: template.id,
         is_recurring_instance: true,
         startDatetime: { $gt: now.toISOString() }
       },
-      sort: { startDatetime: 'asc' }
+      orderBy: { startDatetime: 'asc' }
     });
 
     return instances;
@@ -356,8 +356,8 @@ module.exports = createCoreService('api::recurring-event-template.recurring-even
         }
 
         // Check if an instance already exists for this date
-        const existingForDate = await strapi.entityService.findMany('api::volunteer-day.volunteer-day', {
-          filters: {
+        const existingForDate = await strapi.db.query('api::volunteer-day.volunteer-day').findMany({
+          where: {
             recurring_template: template.id,
             startDatetime: {
               $gte: format(nextDate, "yyyy-MM-dd'T'00:00:00.000'Z'"),
@@ -406,16 +406,13 @@ module.exports = createCoreService('api::recurring-event-template.recurring-even
 
     try {
       // Find all published and active templates
-      const templates = await strapi.entityService.findMany(
-        'api::recurring-event-template.recurring-event-template',
-        {
-          filters: {
-            is_active: true,
-            publishedAt: { $notNull: true }
-          },
-          populate: ['garden', 'hero_image']
-        }
-      );
+      const templates = await strapi.db.query('api::recurring-event-template.recurring-event-template').findMany({
+        where: {
+          is_active: true,
+          publishedAt: { $notNull: true }
+        },
+        populate: ['garden', 'hero_image']
+      });
 
       summary.totalTemplates = templates.length;
       strapi.log.info(`Found ${templates.length} active templates to process`);

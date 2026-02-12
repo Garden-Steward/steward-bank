@@ -9,9 +9,9 @@ module.exports = createCoreController('api::sms-campaign.sms-campaign', ({strapi
 
   getByGarden: async ctx => {
     
-    const entries = await strapi.entityService.findMany('api::sms-campaign.sms-campaign', {
-      sort: {createdAt: 'desc'},
-      filters: {
+    const entries = await strapi.db.query('api::sms-campaign.sms-campaign').findMany({
+      orderBy: {createdAt: 'desc'},
+      where: {
         garden: {
           slug: ctx.params.slug,
         }

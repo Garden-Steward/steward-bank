@@ -25,7 +25,7 @@ module.exports = createCoreService('api::weekly-schedule.weekly-schedule', ({ st
     const weekTitle = format(new Date(), 'PPP')
 
     try {
-      return strapi.entityService.create('api::weekly-schedule.weekly-schedule', {
+      return strapi.db.query('api::weekly-schedule.weekly-schedule').create({
         data: {
           Week: `${title}: ${weekTitle}`,
           recurring_task: id,

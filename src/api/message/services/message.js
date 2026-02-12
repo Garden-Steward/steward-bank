@@ -8,10 +8,10 @@ const { createCoreService } = require('@strapi/strapi').factories;
 
 module.exports = createCoreService('api::message.message', ({ strapi }) =>  ({
   async validateQuestion(user) {
-    const latestMessage = await strapi.entityService.findMany('api::message.message', {
-      sort: {'id': 'desc'},
-      filters: {
-        user: user.id, 
+    const latestMessage = await strapi.db.query('api::message.message').findMany({
+      orderBy: {'id': 'desc'},
+      where: {
+        user: user.id,
         type: {$in:['question','complete','registration']},
       },
       populate: ['garden_task', 'garden_task.recurring_task', 'garden_task.volunteers'],

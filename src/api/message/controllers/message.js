@@ -15,8 +15,10 @@ module.exports = {
   requestEmail: async (ctx, next) => {
     console.log(ctx.params.id);
     // const user = await strapi.service('plugin::users-permissions.user').findOne(ctx.params);
-    const user = await strapi.entityService.findOne('plugin::users-permissions.user',ctx.params.id,
-    { populate: ['activeGarden'] });
+    const user = await strapi.db.query('plugin::users-permissions.user').findOne({
+      where: { id: ctx.params.id },
+      populate: ['activeGarden']
+    });
     
     let smsBody = null
     if (user.email == "test@test.com") {
@@ -35,11 +37,11 @@ module.exports = {
   },
 
   fetchTaskMessages: async (ctx, next) => {
-    const messages = await strapi.entityService.findMany('api::message.message', {
-      filters: {
+    const messages = await strapi.db.query('api::message.message').findMany({
+      where: {
         garden: ctx.params.id,
       },
-      sort: { id: 'desc' },
+      orderBy: { id: 'desc' },
       populate: ['garden_task', 'garden_task.recurring_task', 'garden_task.volunteers'],
     });
     return {messages: messages, status: 'success'}

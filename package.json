@@ -1,6 +1,6 @@
 {
   "name": "steward-bank",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "A comprehensive community garden management system built with Strapi",
   "scripts": {
     "develop": "strapi develop",
@@ -13,28 +13,24 @@
   },
   "devDependencies": {
     "jest": "^29.7.0",
-    "sqlite3": "^5.1.7",
+    "better-sqlite3": "^11.0.0",
     "supertest": "^7.0.0"
   },
   "dependencies": {
     "@mailchimp/mailchimp_marketing": "^3.0.80",
-    "@radix-ui/react-focus-guards": "^1.0.3",
     "@strapi-community/strapi-provider-upload-google-cloud-storage": "^4.10.5",
-    "@strapi/plugin-i18n": "4.26.1",
-    "@strapi/plugin-users-permissions": "4.26.1",
-    "@strapi/provider-email-sendgrid": "^4.26.1",
-    "@strapi/strapi": "4.26.1",
+    "@strapi/plugin-users-permissions": "5.36.0",
+    "@strapi/provider-email-sendgrid": "^5.0.0",
+    "@strapi/strapi": "5.36.0",
     "axios": "^1.7.2",
-    "better-sqlite3": "^7.4.6",
     "date-fns-tz": "^2.0.0",
     "googleapis": "^166.0.0",
     "pg": "^8.8.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
-    "react-router-dom": "5.3.4",
-    "strapi-plugin-oembed": "^1.2.1",
-    "strapi-plugin-slugify": "^2.3.8",
-    "styled-components": "5.3.3",
+    "react-router-dom": "^6.0.0",
+    "slugify": "^1.6.6",
+    "styled-components": "^6.0.0",
     "twilio": "^3.84.1"
   },
   "author": "Garden Steward Contributors",
@@ -54,7 +50,7 @@
     "uuid": "757717ab-e70e-4ac0-932e-abe0a0a0884e"
   },
   "engines": {
-    "node": ">=16 <=20.x.x",
+    "node": ">=18.0.0 <=22.x.x",
     "npm": ">=6.0.0"
   },
   "jest": {

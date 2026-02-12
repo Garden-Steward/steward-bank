@@ -12,8 +12,9 @@ const instructionHelper = {}
 instructionHelper.approveInstruction = async ({ user, instruction, question }) => {
 
   try {
-    await strapi.entityService.update('plugin::users-permissions.user', user.id, {
-      data: {"instructions" : {"connect": [instruction.id]}}
+    await strapi.db.query('plugin::users-permissions.user').update({
+      where: { id: user.id },
+      data: { instructions: { connect: [{ id: instruction.id }] } }
     });
   } catch (err) {
     console.warn(err);
@@ -87,7 +88,7 @@ instructionHelper.requestApproval = async ({ phoneNumber, userId, instruction })
       }
     });
   } else if (userId) {
-    user = await strapi.entityService.findOne('plugin::users-permissions.user', userId);
+    user = await strapi.db.query('plugin::users-permissions.user').findOne({ where: { id: userId } });
   }
 
   if (user) {

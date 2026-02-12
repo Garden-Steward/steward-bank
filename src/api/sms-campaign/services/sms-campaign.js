@@ -54,7 +54,8 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
     } else {
       lastCampaign.confirmed.push(user.id)
       try {
-        await strapi.entityService.update('api::sms-campaign.sms-campaign', lastCampaign.id, {
+        await strapi.db.query('api::sms-campaign.sms-campaign').update({
+          where: { id: lastCampaign.id },
           data: {
             confirmed: lastCampaign.confirmed
           }

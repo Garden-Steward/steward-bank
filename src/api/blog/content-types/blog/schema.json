@@ -8,8 +8,7 @@
     "description": ""
   },
   "options": {
-    "draftAndPublish": true,
-    "populateCreatorFields": true
+    "draftAndPublish": true
   },
   "pluginOptions": {},
   "attributes": {
@@ -28,8 +27,7 @@
       ]
     },
     "slug": {
-      "type": "string",
-      "targetField": "title"
+      "type": "string"
     },
     "content": {
       "type": "blocks"
@@ -56,10 +54,6 @@
       "type": "relation",
       "relation": "oneToMany",
       "target": "api::plant.plant"
-    },
-    "oembed": {
-      "type": "customField",
-      "customField": "plugin::oembed.oembed"
     }
   }
 }

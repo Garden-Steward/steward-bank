@@ -40,13 +40,13 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
           };
         }
 
-        const existingEvent = await strapi.entityService.findMany('api::volunteer-day.volunteer-day', {
-          filters: duplicateFilters,
+        const existingEvent = await strapi.db.query('api::volunteer-day.volunteer-day').findMany({
+          where: duplicateFilters,
           limit: 1,
         });
 
         if (existingEvent && existingEvent.length > 0) {
-          return ctx.badRequest('A volunteer day with the same start date/time already exists' + 
+          return ctx.badRequest('A volunteer day with the same start date/time already exists' +
             (gardenId ? ' for this garden' : '') + '.');
         }
       }
@@ -57,16 +57,17 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
 
     getByUser: async ctx => {
       const authUser = ctx.state.user;
-      let fullUser = await strapi.entityService.findOne('plugin::users-permissions.user', authUser.id, {
+      let fullUser = await strapi.db.query('plugin::users-permissions.user').findOne({
+        where: { id: authUser.id },
         populate: ['gardens']
       });
       if (!authUser) {
         return ctx.unauthorized('You must be logged in to access this resource');
       }
-      
+
       // Extract populate from query params
       let populate = null;
-      
+
       if (ctx.query.populate) {
         // Handle different populate formats from Strapi query string
         if (typeof ctx.query.populate === 'string') {
@@ -85,10 +86,10 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
           populate = Object.keys(ctx.query.populate);
         }
       }
-      
+
       const gardenIds = fullUser.gardens.map(garden => garden.id);
       const queryOptions = {
-        filters: {
+        where: {
           garden: {
             id: {
               $in: gardenIds
@@ -99,13 +100,13 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
           }
         }
       };
-      
+
       // Only add populate if it was provided
       if (populate !== null) {
         queryOptions.populate = populate;
       }
-      
-      const entries = await strapi.entityService.findMany('api::volunteer-day.volunteer-day', queryOptions);
+
+      const entries = await strapi.db.query('api::volunteer-day.volunteer-day').findMany(queryOptions);
 
       return entries;
 
@@ -115,19 +116,19 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
       // Extract pagination parameters from query string
       let page = null;
       let pageSize = null;
-      
+
       // Try nested object access first (most common)
       if (ctx.query.pagination) {
         page = parseInt(ctx.query.pagination.page) || null;
         pageSize = parseInt(ctx.query.pagination.pageSize) || null;
-      } 
+      }
       // Fallback to bracket notation (if Koa parses as string keys)
       else if (ctx.query['pagination[page]']) {
         page = parseInt(ctx.query['pagination[page]']) || null;
         pageSize = parseInt(ctx.query['pagination[pageSize]']) || null;
       }
 
-      const filters = {
+      const where = {
         accessibility: 'Public',
         startDatetime: {
           // 3 months historic
@@ -141,21 +142,30 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
       let entries;
       let paginationMeta = null;
 
-      // Use findPage if pagination is requested
+      // Use manual pagination if pagination is requested
       if (page !== null && pageSize !== null) {
-        const result = await strapi.entityService.findPage('api::volunteer-day.volunteer-day', {
-          sort: {startDatetime: 'desc'},
-          filters,
-          populate,
+        const offset = (page - 1) * pageSize;
+        const [results, total] = await Promise.all([
+          strapi.db.query('api::volunteer-day.volunteer-day').findMany({
+            where,
+            orderBy: { startDatetime: 'desc' },
+            populate,
+            offset,
+            limit: pageSize,
+          }),
+          strapi.db.query('api::volunteer-day.volunteer-day').count({ where })
+        ]);
+        entries = results;
+        paginationMeta = {
           page,
           pageSize,
-        });
-        entries = result.results;
-        paginationMeta = result.pagination;
+          pageCount: Math.ceil(total / pageSize),
+          total
+        };
       } else {
-        entries = await strapi.entityService.findMany('api::volunteer-day.volunteer-day', {
-          sort: {startDatetime: 'desc'},
-          filters,
+        entries = await strapi.db.query('api::volunteer-day.volunteer-day').findMany({
+          where,
+          orderBy: { startDatetime: 'desc' },
           populate,
         });
       }
@@ -164,7 +174,7 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
       entries = entries.map(entry => {
         // Check if volunteer-day has a valid hero_image (has id property)
         const hasVolunteerDayHeroImage = entry.hero_image && entry.hero_image.id;
-        
+
         // Only use garden's hero_image if volunteer-day doesn't have one
         if (!hasVolunteerDayHeroImage && entry.garden && entry.garden.hero_image && entry.garden.hero_image.id) {
           entry.hero_image = entry.garden.hero_image;
@@ -191,34 +201,47 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
       // Try multiple access patterns to be safe
       let page = 1;
       let pageSize = 15;
-      
+
       // Try nested object access first (most common)
       if (ctx.query.pagination) {
         page = parseInt(ctx.query.pagination.page) || 1;
         pageSize = parseInt(ctx.query.pagination.pageSize) || 15;
-      } 
+      }
       // Fallback to bracket notation (if Koa parses as string keys)
       else if (ctx.query['pagination[page]']) {
         page = parseInt(ctx.query['pagination[page]']) || 1;
         pageSize = parseInt(ctx.query['pagination[pageSize]']) || 15;
       }
-      
+
       console.log("ctx.query:", JSON.stringify(ctx.query, null, 2));
       console.log("Extracted - page:", page, "pageSize:", pageSize);
-      
+
       try {
-        // findPage supports page and pageSize directly (no need to convert to start/limit)
-        const { results, pagination: paginationMeta } = await strapi.entityService.findPage('api::volunteer-day.volunteer-day', {
-          sort: {startDatetime: 'desc'},
-          filters: {
-            garden: {
-              slug: ctx.params.slug,
-            }
-          },
-          populate: ['hero_image', 'garden', 'garden.hero_image', 'recurring_template', 'recurring_template.garden', 'recurring_template.hero_image', 'garden_tasks', 'garden_tasks.primary_image'],
+        const where = {
+          garden: {
+            slug: ctx.params.slug,
+          }
+        };
+        const populate = ['hero_image', 'garden', 'garden.hero_image', 'recurring_template', 'recurring_template.garden', 'recurring_template.hero_image', 'garden_tasks', 'garden_tasks.primary_image'];
+        const offset = (page - 1) * pageSize;
+
+        const [results, total] = await Promise.all([
+          strapi.db.query('api::volunteer-day.volunteer-day').findMany({
+            where,
+            orderBy: { startDatetime: 'desc' },
+            populate,
+            offset,
+            limit: pageSize,
+          }),
+          strapi.db.query('api::volunteer-day.volunteer-day').count({ where })
+        ]);
+
+        const paginationMeta = {
           page,
           pageSize,
-        });
+          pageCount: Math.ceil(total / pageSize),
+          total
+        };
 
         // Prefer volunteer-day's hero_image over garden's hero_image (same as getPublic)
         const entries = results.map(entry => {
@@ -321,7 +344,7 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
 
       const copy = VdayHelper.buildUpcomingDayCopy(vDay);
       const sentInfo = strapi.service('api::volunteer-day.volunteer-day').sendGroupMsg(vDay,copy);
-    
+
       return  sentInfo;
     },
 
@@ -330,14 +353,14 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
         const { gardenId } = ctx.params;
 
         // Fetch all volunteer-days for the garden with hero_image and featured_gallery populated
-        const volunteerDays = await strapi.entityService.findMany('api::volunteer-day.volunteer-day', {
-          filters: {
+        const volunteerDays = await strapi.db.query('api::volunteer-day.volunteer-day').findMany({
+          where: {
             garden: {
               id: gardenId
             }
           },
           populate: ['hero_image', 'featured_gallery'],
-          sort: { updatedAt: 'desc' }
+          orderBy: { updatedAt: 'desc' }
         });
 
         // Extract unique media IDs and track most recent usage
@@ -351,7 +374,7 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
             const mediaId = vDay.hero_image.id;
 
             // If we haven't seen this media, or this usage is more recent, update it
-            if (!mediaMap.has(mediaId) || 
+            if (!mediaMap.has(mediaId) ||
                 new Date(lastUsed) > new Date(mediaMap.get(mediaId).lastUsed)) {
               mediaMap.set(mediaId, {
                 media: vDay.hero_image,
@@ -367,7 +390,7 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
                 const mediaId = galleryMedia.id;
 
                 // If we haven't seen this media, or this usage is more recent, update it
-                if (!mediaMap.has(mediaId) || 
+                if (!mediaMap.has(mediaId) ||
                     new Date(lastUsed) > new Date(mediaMap.get(mediaId).lastUsed)) {
                   mediaMap.set(mediaId, {
                     media: galleryMedia,
@@ -393,5 +416,3 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
       }
     }
 }));
-
-

@@ -131,7 +131,7 @@ SmsHelper.checkEmail = ( user, smsText ) => {
 SmsHelper.getUser = async(phoneNumber)  => {
 
   try {
-    return strapi
+    return strapi.db
       .query("plugin::users-permissions.user")
       .findOne({
         where:{
@@ -251,8 +251,8 @@ SmsHelper.getSchedulerFromTask = async(task) => {
     'default', {weekday: 'long'}
   );
   try {
-    const taskSchedulers = await await strapi.entityService.findMany('api::scheduler.scheduler', {
-      filters: {
+    const taskSchedulers = await strapi.db.query('api::scheduler.scheduler').findMany({
+      where: {
         recurring_task: task.recurring_task.id
       },
       populate: ['backup_volunteers'],
