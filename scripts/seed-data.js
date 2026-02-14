@@ -80,6 +80,106 @@ const basicData = {
       sun_detail: "Full sun, well-draining soil",
       slug: "lavender",
       latin: "Lavandula"
+    },
+    // Common garden plants from user's gardens
+    {
+      title: "Apple",
+      description: "Fruit tree providing apples in season",
+      type: "perennial",
+      water_detail: "Regular deep watering, especially in first years",
+      sun_detail: "Full sun, 6-8 hours daily",
+      slug: "apple",
+      latin: "Malus domestica"
+    },
+    {
+      title: "Lemon",
+      description: "Citrus tree producing lemons",
+      type: "perennial",
+      water_detail: "Regular watering, allow soil to dry slightly between waterings",
+      sun_detail: "Full sun, at least 6 hours daily",
+      slug: "lemon",
+      latin: "Citrus limon"
+    },
+    {
+      title: "Mint",
+      description: " Vigorous aromatic herb, great for teas and cooking",
+      type: "herb",
+      water_detail: "Likes consistently moist soil",
+      sun_detail: "Partial shade to full sun",
+      slug: "mint",
+      latin: "Mentha"
+    },
+    {
+      title: "Yerba Santa",
+      description: "Native California plant, medicinal and ornamental",
+      type: "shrub",
+      water_detail: "Low water needs once established",
+      sun_detail: "Full sun to partial shade",
+      slug: "yerba-santa",
+      latin: "Eriodictyon californicum"
+    },
+    {
+      title: "Buena Nettle",
+      description: "Native nettle plant, edible and medicinal",
+      type: "perennial",
+      water_detail: "Regular moisture",
+      sun_detail: "Partial shade to full sun",
+      slug: "buena-nettle",
+      latin: "Urtica dioica"
+    },
+    {
+      title: "Lemon Balm",
+      description: "Lemon-scented herb in the mint family",
+      type: "herb",
+      water_detail: "Keep soil moderately moist",
+      sun_detail: "Full sun to partial shade",
+      slug: "lemon-balm",
+      latin: "Melissa officinalis"
+    },
+    {
+      title: "Passion Fruit",
+      description: "Vining plant producing tropical fruit",
+      type: "perennial",
+      water_detail: "Regular watering during growing season",
+      sun_detail: "Full sun to partial shade",
+      slug: "passion-fruit",
+      latin: "Passiflora"
+    },
+    {
+      title: "Broccoli",
+      description: "Cool-season vegetable, high nutrition",
+      type: "annual",
+      water_detail: "Consistent moisture, 1-2 inches per week",
+      sun_detail: "Full sun, 6+ hours daily",
+      slug: "broccoli",
+      latin: "Brassica oleracea"
+    },
+    {
+      title: "Cauliflower",
+      description: "Cool-season cruciferous vegetable",
+      type: "annual",
+      water_detail: "Consistent moisture, avoid stress",
+      sun_detail: "Full sun, 6+ hours daily",
+      slug: "cauliflower",
+      latin: "Brassica oleracea"
+    },
+    {
+      title: "Collard",
+      description: "Hardy leafy green, very nutritious",
+      type: "annual",
+      water_detail: "Regular watering",
+      sun_detail: "Full sun to partial shade",
+      slug: "collard",
+      latin: "Brassica oleracea"
+    },
+    {
+      title: "Kale",
+      description: "Nutrient-dense leafy green, cold hardy",
+      type: "annual",
+      water_detail: "Regular watering for tender leaves",
+      sun_detail: "Full sun to partial shade",
+      slug: "kale",
+      latin: "Brassica oleracea"
     }
   ],
 
@@ -572,13 +672,27 @@ async function seedBasicData(strapi) {
       });
     }
 
-    // Seed plants
+    // Seed plants and link to gardens
     console.log('Seeding plants...');
+    const plants = [];
     for (const plant of basicData.plants) {
-      await strapi.entityService.create('api::plant.plant', {
+      const created = await strapi.entityService.create('api::plant.plant', {
         data: {
           ...plant,
           publishedAt: new Date()
+        }
+      });
+      plants.push(created);
+    }
+
+    // Link plants to all gardens
+    console.log('Linking plants to gardens...');
+    for (const plant of plants) {
+      await strapi.entityService.update('api::plant.plant', plant.id, {
+        data: {
+          gardens: {
+            connect: gardens.map(garden => garden.id)
+          }
         }
       });
     }
