@@ -118,7 +118,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
     
     // Build the tasks URL for the garden
     if (activeGarden?.slug) {
-      const tasksUrl = `https://steward.garden/${activeGarden.slug}/tasks`;
+      const tasksUrl = `https://steward.garden/gardens/${activeGarden.slug}/tasks`;
       return {
         body: `Here's the link to your garden tasks:\n\n${tasksUrl}`,
         type: 'reply'
