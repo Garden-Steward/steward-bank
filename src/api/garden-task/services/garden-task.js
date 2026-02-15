@@ -16,20 +16,20 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
    */
   async updateTaskStatus(task, status) {
     // Get current task to check if status is INITIALIZED
-    const currentTask = await strapi.documents('api::garden-task.garden-task').findOne({
-      documentId: "__TODO__"
+    const currentTask = await strapi.db.query('api::garden-task.garden-task').findOne({
+      where: { id: task.id }
     });
-    
+
     // Prepare update data
     const updateData = { status };
-    
+
     // If status is changing from INITIALIZED to anything else (except PENDING), publish the task
     if (currentTask.status === 'INITIALIZED' && status !== 'INITIALIZED' && status !== 'PENDING') {
       updateData.publishedAt = new Date();
     }
-    
-    const tasks = await strapi.documents('api::garden-task.garden-task').update({
-      documentId: "__TODO__",
+
+    const tasks = await strapi.db.query('api::garden-task.garden-task').update({
+      where: { id: task.id },
       data: updateData
     });
     return tasks;
@@ -37,11 +37,11 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
 
   async addUserToTask(task, user) {
     // First get the current task to access existing volunteers
-    const currentTask = await strapi.documents('api::garden-task.garden-task').findOne({
-      documentId: "__TODO__",
+    const currentTask = await strapi.db.query('api::garden-task.garden-task').findOne({
+      where: { id: task.id },
       populate: ['volunteers', 'primary_image']
     });
-    
+
     // Create array of existing volunteer IDs plus the new user
     const volunteerIds = [
       ...(currentTask.volunteers?.map(v => v.id) || []),
@@ -49,9 +49,8 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
     ];
 
     // Update the task with the combined volunteer array
-    const tasks = await strapi.documents('api::garden-task.garden-task').update({
-      documentId: "__TODO__",
-
+    const tasks = await strapi.db.query('api::garden-task.garden-task').update({
+      where: { id: task.id },
       data: {
         volunteers: volunteerIds
       }
@@ -254,15 +253,13 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
   },
 
   getTypeTasks(garden, type, limit) {
-    return strapi.documents('api::garden-task.garden-task').findMany({
+    return strapi.db.query('api::garden-task.garden-task').findMany({
       where: {
         garden,
         type
       },
       limit,
-      sort: {
-        updatedAt: 'desc'
-      },
+      orderBy: { updatedAt: 'desc' },
       populate: ['volunteers', 'primary_image']
     });
 
