@@ -90,7 +90,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
           $in: statusArr
         }
       },
-      populate: ['instruction', 'recurring_task','recurring_task.instruction','volunteers', 'primary_image']
+      populate: ['instruction', 'instruction.card', 'recurring_task','recurring_task.instruction', 'recurring_task.instruction.card', 'volunteers', 'primary_image']
     });
     return tasks;
 
@@ -141,7 +141,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
           $in: statusArr
         }
       },
-      populate: ['volunteers', 'instruction', 'recurring_task', 'recurring_task.instruction', 'primary_image']
+      populate: ['volunteers', 'instruction', 'instruction.card', 'recurring_task', 'recurring_task.instruction', 'recurring_task.instruction.card', 'primary_image']
     });
 
     // Filter out tasks where user is already a volunteer
@@ -168,7 +168,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
           $in: statusArr
         }
       },
-      populate: ['volunteers', 'instruction', 'recurring_task', 'recurring_task.instruction', 'primary_image']
+      populate: ['volunteers', 'instruction', 'instruction.card', 'recurring_task', 'recurring_task.instruction', 'recurring_task.instruction.card', 'primary_image']
     });
     return tasks[Math.floor(Math.random() * tasks.length)];
   },
@@ -195,7 +195,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
         id: task.id
       }, 
       data: updateData,
-      populate: ['volunteers','volunteers.instructions', 'instruction', 'recurring_task','recurring_task.instruction', 'primary_image']
+      populate: ['volunteers','volunteers.instructions', 'instruction', 'instruction.card', 'recurring_task','recurring_task.instruction', 'recurring_task.instruction.card', 'primary_image']
     });
   },
 
@@ -207,7 +207,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
         recurring_task: recTask.id, 
         garden:recTask.garden
       },
-      populate: { recurring_task: true, volunteers:true, primary_image: true, instruction: true }
+      populate: { recurring_task: { populate: { instruction: { populate: ['card'] } } }, volunteers: true, primary_image: true, instruction: { populate: ['card'] } }
     });
 
   },

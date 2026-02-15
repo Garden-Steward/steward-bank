@@ -61,7 +61,7 @@ taskHelper.inviteUserTask = async (data) => {
  */
 taskHelper.rsvpTask = async (taskId, data) => {
   let task = await strapi.db.query('api::garden-task.garden-task').findOne({
-    populate: ['volunteers', 'instruction', 'recurring_task', 'recurring_task.instruction', 'garden', 'primary_image'],
+    populate: ['volunteers', 'instruction', 'instruction.card', 'recurring_task', 'recurring_task.instruction', 'recurring_task.instruction.card', 'garden', 'primary_image'],
     where: { id: taskId }
   });
 
