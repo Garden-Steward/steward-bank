@@ -61,7 +61,7 @@ taskHelper.inviteUserTask = async (data) => {
  */
 taskHelper.rsvpTask = async (taskId, data) => {
   let task = await strapi.db.query('api::garden-task.garden-task').findOne({
-    populate: ['volunteers', 'recurring_task', 'recurring_task.instruction', 'garden', 'primary_image'],
+    populate: ['volunteers', 'instruction', 'recurring_task', 'recurring_task.instruction', 'garden', 'primary_image'],
     where: { id: taskId }
   });
 
@@ -116,11 +116,12 @@ taskHelper.rsvpTask = async (taskId, data) => {
   const needsInstruction = strapi.service('api::instruction.instruction').checkInstruction(taskForCheck);
 
   let instruction = false;
-  if (task.recurring_task?.instruction) {
+  const taskInstruction = task.instruction || task.recurring_task?.instruction;
+  if (taskInstruction) {
     instruction = {
-      id: task.recurring_task.instruction.id,
-      slug: task.recurring_task.instruction.slug,
-      url: strapi.service('api::instruction.instruction').getInstructionUrl(task.recurring_task.instruction, user),
+      id: taskInstruction.id,
+      slug: taskInstruction.slug,
+      url: strapi.service('api::instruction.instruction').getInstructionUrl(taskInstruction, user),
       needsAgreement: needsInstruction
     };
   }

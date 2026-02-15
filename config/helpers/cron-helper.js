@@ -24,7 +24,7 @@ Helper.handleInitialTasks = async() => {
       status: {$in:['INITIALIZED','PENDING']},
       volunteers: { $not:null },
     },
-    populate: ["garden", "volunteers", "recurring_task", "recurring_task.instruction", "volunteers.instructions"]
+    populate: ["garden", "volunteers", "instruction", "recurring_task", "recurring_task.instruction", "volunteers.instructions"]
   });
 
   console.log("init tasks # ", initTasks.length);
@@ -70,10 +70,11 @@ Helper.handleInitialTasks = async() => {
       }
     }
 
-    if (initTask.recurring_task?.instruction) {
-      if (!initTask.volunteers[0].instructions.find(i=> i.id == initTask.recurring_task.instruction.id)) {
+    const taskInstruction = initTask.instruction || initTask.recurring_task?.instruction;
+    if (taskInstruction) {
+      if (!initTask.volunteers[0].instructions.find(i=> i.id == taskInstruction.id)) {
 
-        return strapi.service('api::instruction.instruction').managePendingTask(initTask.volunteers[0], initTask.recurring_task.instruction, initTask);
+        return strapi.service('api::instruction.instruction').managePendingTask(initTask.volunteers[0], taskInstruction, initTask);
       } else {
         console.log('already have instruction')
       }

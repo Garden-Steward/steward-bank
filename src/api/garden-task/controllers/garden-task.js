@@ -51,7 +51,7 @@ module.exports = createCoreController('api::garden-task.garden-task', ({ strapi 
     // Fetch the task with garden info
     const task = await strapi.db.query("api::garden-task.garden-task").findOne({
       where: { id: ctx.params.id },
-      populate: ['garden', 'volunteers', 'recurring_task', 'recurring_task.instruction', 'primary_image']
+      populate: ['garden', 'volunteers', 'instruction', 'recurring_task', 'recurring_task.instruction', 'primary_image']
     });
 
     if (!task) {
