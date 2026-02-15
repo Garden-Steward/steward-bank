@@ -16,7 +16,7 @@ module.exports = createCoreService('api::recurring-task.recurring-task', ({ stra
   async getRecurringTaskGarden() {
     const tasks = await strapi.entityService.findMany('api::recurring-task.recurring-task', {
       sort: {'id': 'desc'},
-      populate: ["garden", "schedulers", "schedulers.volunteer", "schedulers.backup_volunteers"],
+      populate: ["garden", "schedulers", "schedulers.volunteer", "schedulers.backup_volunteers", "instruction"],
     });
     return tasks;
   },

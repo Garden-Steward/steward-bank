@@ -252,7 +252,8 @@ Helper.buildSchedulerTask = async(curTask, recTask, scheduledUser) => {
         overview:recTask.overview,
         recurring_task:recTask.id,
         type:recTask.type,
-        volunteers: scheduledUser
+        volunteers: scheduledUser,
+        instruction: recTask.instruction?.id || null
       }
     });
     console.log('newtask added: ',newTask.title, newTask.id);
