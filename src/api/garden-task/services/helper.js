@@ -6,7 +6,7 @@ const taskHelper = {};
  * Invites an unknown user to join a garden and then RSVPs them to a task
  * Similar to volunteer-day inviteUserEvent
  * @param {object} data - { phoneNumber, task }
- * @returns {object} - { success, body, needsRegistration }
+ * @returns {object} - { success, message, needsRegistration, garden }
  */
 taskHelper.inviteUserTask = async (data) => {
   const garden = data.task.garden;
@@ -40,13 +40,9 @@ taskHelper.inviteUserTask = async (data) => {
 
   return {
     success: true,
-    body,
+    message: "You've been sent a message to confirm. Thanks for volunteering!",
     needsRegistration: true,
-    garden: {
-      id: garden.id,
-      title: garden.title,
-      sms_slug: garden.sms_slug
-    }
+    garden: garden.sms_slug
   };
 };
 
