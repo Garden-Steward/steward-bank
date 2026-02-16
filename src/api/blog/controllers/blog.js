@@ -13,14 +13,24 @@ module.exports = createCoreController('api::blog.blog', ({ strapi }) => ({
     console.log('running blog slug: ', ctx.params.slug)
     const entity = await strapi.db.query('api::blog.blog').findOne({
       where: {slug: ctx.params.slug},
-      populate: ["category", "hero", "createdBy"]
+      populate: ["category", "hero", "author", "createdBy"]
     });
 
     if (entity) {
-      let author = await strapi.db.query('plugin::users-permissions.user').findOne({
-        where: {email: entity.createdBy.email},
-        populate: ["profilePhoto"]
-      });
+      let author = null;
+      
+      // Priority 1: Use the new author field (relation to admin user)
+      if (entity.author) {
+        author = entity.author;
+      }
+      // Priority 2: Fall back to createdBy (old system)
+      else if (entity.createdBy) {
+        author = await strapi.db.query('plugin::users-permissions.user').findOne({
+          where: {email: entity.createdBy.email},
+          populate: ["profilePhoto"]
+        });
+      }
+      
       entity.author = author;
       const allBlogs = await strapi.db.query('api::blog.blog').findMany({
         orderBy: { createdAt: 'asc' },
