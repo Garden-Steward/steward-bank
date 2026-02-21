@@ -65,6 +65,9 @@
       "type": "relation",
       "relation": "oneToOne",
       "target": "admin::user"
+    },
+    "article_date": {
+      "type": "date"
     }
   }
 }
