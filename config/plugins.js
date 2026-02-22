@@ -1,3 +1,5 @@
+const path = require('path');
+
 module.exports = ({ env }) => ({
   "users-permissions": {
     config: {
@@ -19,9 +21,9 @@ module.exports = ({ env }) => ({
   },
   email: {
     config: {
-      provider: 'sendgrid',
+      provider: path.resolve(__dirname, '..', 'src', 'providers', 'email-resend'),
       providerOptions: {
-        apiKey: env('SENDGRID_API_KEY'),
+        apiKey: env('RESEND_API_KEY'),
       },
       settings: {
         defaultFrom: 'no-reply@steward.garden',

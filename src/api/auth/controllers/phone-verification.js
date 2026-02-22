@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('crypto');
+const { normalizePhoneNumber } = require('../../../utils/phone');
 
 /**
  * Phone number verification controller
@@ -19,10 +20,14 @@ module.exports = {
       return ctx.badRequest('Phone number is required');
     }
 
+    const normalized = normalizePhoneNumber(phoneNumber);
+    if (!normalized.valid) {
+      return ctx.badRequest(normalized.message);
+    }
+
     try {
-      // Look up user by phone number
       const user = await strapi.entityService.findMany('plugin::users-permissions.user', {
-        filters: { phone_number: phoneNumber }
+        filters: { phoneNumber: { $eq: normalized.phoneNumber } }
       });
 
       if (!user || user.length === 0) {
@@ -44,7 +49,7 @@ module.exports = {
       });
 
       // Generate verification link
-      const verificationLink = `${process.env.FRONTEND_URL || 'https://steward.garden'}/verify-email?token=${verificationToken}&userId=${targetUser.id}`;
+      const verificationLink = `${process.env.GARDENVUE_URL}/verify-email?token=${verificationToken}&userId=${targetUser.id}`;
 
       // Send verification email
       try {
@@ -64,11 +69,22 @@ module.exports = {
         });
       } catch (emailError) {
         strapi.log.error('Email send failed:', emailError);
+
+        const resendErr = emailError.resendError;
+        if (resendErr && (resendErr.name === 'validation_error' || resendErr.name === 'not_found')) {
+          return ctx.badRequest('You signed up with an invalid email and can\'t register at this time');
+        }
+
         return ctx.internalServerError('Failed to send verification email');
       }
 
+      const maskedEmail = targetUser.email.replace(/^(.)(.*)(@.*)$/, (_, first, middle, domain) =>
+        first + '*'.repeat(middle.length) + domain
+      );
+
       ctx.send({
-        message: 'Verification email sent. Check your inbox for the verification link.',
+        message: `Verification email sent to ${maskedEmail}. Check your inbox for the verification link.`,
+        email: maskedEmail,
         userId: targetUser.id,
         success: true
       });
@@ -97,7 +113,8 @@ module.exports = {
         return ctx.notFound('User not found');
       }
 
-      // Verify token
+      strapi.log.debug(`verifyEmail: userId=${userId}, stored_token=${user.email_verification_token}, incoming_token=${token}`);
+
       if (user.email_verification_token !== token) {
         return ctx.forbidden('Invalid verification token');
       }
@@ -158,12 +175,15 @@ module.exports = {
         return ctx.forbidden('Email must be verified before setting password');
       }
 
-      // Hash password using Strapi's built-in method
-      const hashedPassword = await strapi.plugins['users-permissions'].services.user.hashPassword(password);
+      const authenticatedRole = await strapi.db.query('plugin::users-permissions.role').findOne({
+        where: { type: 'authenticated' }
+      });
 
       await strapi.entityService.update('plugin::users-permissions.user', userId, {
         data: {
-          password: hashedPassword
+          password,
+          confirmed: true,
+          role: authenticatedRole.id,
         }
       });
 

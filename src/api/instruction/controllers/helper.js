@@ -1,3 +1,5 @@
+const { normalizePhoneNumber } = require('../../../utils/phone');
+
 const instructionHelper = {}
 
 /**
@@ -62,28 +64,14 @@ instructionHelper.requestApproval = async ({ phoneNumber, userId, instruction })
   // Ensure phoneNumber is a string
   let user;
   if (phoneNumber) {
-    let cleanedNumber = `${phoneNumber}`;
-  
-    // Remove any non-digit characters from the phone number
-    cleanedNumber = cleanedNumber.replace(/[^\d]/g, '');
-  
-    // Validate phone number using a regex for 10-digit or 11-digit (with country code) US phone numbers
-    const phoneRegex = /^(1?[2-9]\d{9})$/;
-    if (!phoneRegex.test(cleanedNumber)) {
-      return {
-        success: false,
-        message: 'Invalid US phone number format. Please provide a 10-digit number with or without the country code.'
-      };
+    const normalized = normalizePhoneNumber(phoneNumber);
+    if (!normalized.valid) {
+      return { success: false, message: normalized.message };
     }
-  
-    // Format the phone number to include country code without hyphens
-    const formattedPhoneNumber = cleanedNumber.length === 10
-      ? `+1${cleanedNumber}`
-      : `+${cleanedNumber}`;
 
     user = await strapi.db.query('plugin::users-permissions.user').findOne({
       where: {
-        phoneNumber: formattedPhoneNumber
+        phoneNumber: normalized.phoneNumber
       }
     });
   } else if (userId) {

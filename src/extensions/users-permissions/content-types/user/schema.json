@@ -138,6 +138,18 @@
     },
     "chatId": {
       "type": "biginteger"
+    },
+    "email_verification_token": {
+      "type": "string",
+      "private": true
+    },
+    "email_verification_expires": {
+      "type": "datetime",
+      "private": true
+    },
+    "email_confirmed": {
+      "type": "boolean",
+      "default": false
     }
   }
 }
