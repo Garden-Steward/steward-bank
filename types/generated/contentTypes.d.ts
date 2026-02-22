@@ -412,6 +412,8 @@ export interface ApiBlogBlog extends Schema.CollectionType {
     populateCreatorFields: true;
   };
   attributes: {
+    article_date: Attribute.Date;
+    author: Attribute.Relation<'api::blog.blog', 'oneToOne', 'admin::user'>;
     category: Attribute.Relation<
       'api::blog.blog',
       'oneToOne',
@@ -495,6 +497,11 @@ export interface ApiGardenTaskGardenTask extends Schema.CollectionType {
       'api::garden-task.garden-task',
       'oneToOne',
       'api::garden.garden'
+    >;
+    instruction: Attribute.Relation<
+      'api::garden-task.garden-task',
+      'oneToOne',
+      'api::instruction.instruction'
     >;
     max_volunteers: Attribute.Integer;
     overview: Attribute.Text;
@@ -1924,6 +1931,9 @@ export interface PluginUsersPermissionsUser extends Schema.CollectionType {
       Attribute.SetMinMaxLength<{
         minLength: 6;
       }>;
+    email_confirmed: Attribute.Boolean & Attribute.DefaultTo<false>;
+    email_verification_expires: Attribute.DateTime & Attribute.Private;
+    email_verification_token: Attribute.String & Attribute.Private;
     firstName: Attribute.String;
     gardens: Attribute.Relation<
       'plugin::users-permissions.user',
