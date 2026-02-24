@@ -85,21 +85,39 @@ SmsHelper.handleGardenTask = async(smsText, user, question) => {
 
 }
 
-SmsHelper.checkGarden = async( smsText ) => {
-  let gardenSmsSlug = null
-  smsText = (smsText.startsWith('elder')) ? (gardenSmsSlug = 'elder') : smsText;
-  smsText = (smsText.startsWith('volunt')) ? (gardenSmsSlug = 'gravity') : smsText;
-  smsText = (smsText.startsWith('grav')) ? (gardenSmsSlug = 'gravity') : smsText;
-  smsText = (smsText.startsWith('ehsm')) ? (gardenSmsSlug = 'ehsm') : smsText;
-  smsText = (smsText.startsWith('parkway')) ? (gardenSmsSlug = 'parkway') : smsText;
-  smsText = (smsText.startsWith('smith')) ? (gardenSmsSlug = 'smith') : smsText;
-  smsText = (smsText.startsWith('fm smith')) ? (gardenSmsSlug = 'smith') : smsText;
-  if (gardenSmsSlug) {
-    return strapi.db.query("api::garden.garden").findOne({where:{sms_slug: gardenSmsSlug}});
-  } else {
-    return false;
+SmsHelper.checkGarden = async(smsText) => {
+  /**
+   * Smart garden lookup using SMS slug matching
+   * Uses cached garden service for fast in-memory lookups (no DB hit)
+   * Automatically matches new gardens without code changes
+   */
+  
+  const input = smsText.toLowerCase().trim();
+  
+  // Get all cached gardens (instant, in-memory)
+  const cachedGardens = await strapi.service('api::garden.garden').getCachedGardens();
+  
+  // Check for exact or prefix match on sms_slug
+  for (const garden of cachedGardens) {
+    const smsSlug = garden.sms_slug.toLowerCase();
+    // Exact match or starts-with match
+    if (input === smsSlug || input.startsWith(smsSlug)) {
+      console.log(`✅ Garden found: ${garden.title} (sms_slug: ${garden.sms_slug})`);
+      return garden;
+    }
   }
-
+  
+  // Check for partial matches (first 4+ characters)
+  for (const garden of cachedGardens) {
+    const smsSlug = garden.sms_slug.toLowerCase();
+    if (smsSlug.length >= 4 && input.startsWith(smsSlug.substring(0, 4))) {
+      console.log(`✅ Garden found (partial): ${garden.title} (sms_slug: ${garden.sms_slug})`);
+      return garden;
+    }
+  }
+  
+  console.log(`⚠️  No garden found for input: "${smsText}"`);
+  return false;
 }
 
 SmsHelper.simplifySms = ( smsText, garden ) => {
