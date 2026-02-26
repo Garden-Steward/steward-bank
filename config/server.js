@@ -9,5 +9,14 @@ module.exports = ({ env }) => ({
   cron: {
     enabled: true,
     tasks: cronTasks,
+  },
+  // Initialize garden cache on startup
+  bootstrap: async ({ strapi }) => {
+    console.log('\n🌱 Initializing Garden Steward SMS services...');
+    try {
+      await strapi.service('api::garden.garden').initializeCache();
+    } catch (err) {
+      console.error('⚠️  Garden cache initialization failed:', err.message);
+    }
   }
 });
