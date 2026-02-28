@@ -550,9 +550,22 @@ SmsHelper.findBackupUsers = async(user) => {
 SmsHelper.applyVacation = async(user) => {
   try {
     const currentState = user.paused; // Assuming 'paused' is a boolean attribute of user
+    
+    const updateData = {
+      paused: !currentState // Toggle the paused state
+    };
+    
+    // If transitioning to paused, set paused_at timestamp
+    if (!currentState) {
+      updateData.paused_at = new Date();
+    } else {
+      // If unpausing, clear the paused_at timestamp
+      updateData.paused_at = null;
+    }
+    
     await strapi.db.query("plugin::users-permissions.user").update({
       where: { id: user.id },
-      data: { paused: !currentState } // Toggle the paused state
+      data: updateData
     });
 
     if (currentState) {
