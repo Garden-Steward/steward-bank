@@ -39,7 +39,7 @@ module.exports = {
           console.log(`[VacationCheckIn] Sending check-in to ${user.firstName} (paused ${daysPaused} days)`);
           
           // Send SMS via sendSms service
-          const smsBody = `Hi ${user.firstName}! 👋 Welcome back to Garden Steward!\n\nWe notice you've been on vacation for ${daysPaused} days. Are you ready to jump back into volunteering?\n\nJust text BACK when you're ready to resume your tasks! (or text VACATION if you need more time)`;
+          const smsBody = `Hi ${user.firstName}! Just checking in...\n\nWe noticed you've been on vacation for ${daysPaused} days.\n\nText BACK or VACATION to update your status. If you're still on vacation, just ignore this message!`;
           
           try {
             await strapi.service('api::sms.sms').sendSms(user.phone_number, smsBody);
