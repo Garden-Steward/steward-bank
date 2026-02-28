@@ -66,6 +66,14 @@
       "type": "boolean",
       "default": false
     },
+    "paused_at": {
+      "type": "datetime",
+      "description": "Timestamp when user marked themselves as on vacation"
+    },
+    "last_vacation_check_sent": {
+      "type": "datetime",
+      "description": "Timestamp of last weekly vacation check-in message sent"
+    },
     "status": {
       "type": "enumeration",
       "enum": [
