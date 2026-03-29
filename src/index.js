@@ -1,5 +1,9 @@
 'use strict';
 
+const { sentryEnabled } = require('../instrument.js');
+
+const Sentry = require('@sentry/node');
+
 module.exports = {
   /**
    * An asynchronous register function that runs before
@@ -16,5 +20,9 @@ module.exports = {
    * This gives you an opportunity to set up your data model,
    * run jobs, or perform some special logic.
    */
-  bootstrap(/*{ strapi }*/) {},
+  bootstrap({ strapi }) {
+    if (sentryEnabled) {
+      Sentry.setupKoaErrorHandler(strapi.server);
+    }
+  },
 };
