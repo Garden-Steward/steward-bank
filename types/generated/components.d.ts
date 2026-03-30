@@ -23,6 +23,7 @@ export interface PlantsBenefits extends Schema.Component {
     potency: Attribute.Enumeration<
       ['minimal', 'mild', 'moderate', 'strong', 'profound']
     >;
+    source_type: Attribute.JSON;
     title: Attribute.String;
   };
 }

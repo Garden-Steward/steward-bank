@@ -1945,6 +1945,7 @@ export interface PluginUsersPermissionsUser extends Schema.CollectionType {
       'oneToMany',
       'api::instruction.instruction'
     >;
+    last_vacation_check_sent: Attribute.DateTime;
     lastName: Attribute.String;
     password: Attribute.Password &
       Attribute.Private &
@@ -1952,6 +1953,7 @@ export interface PluginUsersPermissionsUser extends Schema.CollectionType {
         minLength: 6;
       }>;
     paused: Attribute.Boolean & Attribute.DefaultTo<false>;
+    paused_at: Attribute.DateTime;
     phoneNumber: Attribute.String;
     profilePhoto: Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     provider: Attribute.String;
