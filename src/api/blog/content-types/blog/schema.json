@@ -60,6 +60,11 @@
     "oembed": {
       "type": "customField",
       "customField": "plugin::oembed.oembed"
+    },
+    "co_author": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
     }
   }
 }
