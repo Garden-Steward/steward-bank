@@ -2,6 +2,7 @@
 // const { sanitizeOutput } = require('@strapi/utils');
 // const utils = require('@strapi/utils');
 const eventHelper = require('../services/helper');
+const { normalizePhoneNumber } = require('../../../utils/phone');
 /**
  * volunteer-day controller
  */
@@ -256,7 +257,16 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
           : 'Must provide either userId or phoneNumber in data');
       }
 
-      const userQuery = userId ? { id: userId } : { phoneNumber: `+1${phoneNumber}` };
+      let userQuery;
+      if (userId) {
+        userQuery = { id: userId };
+      } else {
+        const normalized = normalizePhoneNumber(phoneNumber);
+        if (!normalized.valid) {
+          return ctx.badRequest(normalized.message);
+        }
+        userQuery = { phoneNumber: normalized.phoneNumber };
+      }
       const user = await strapi.db.query("plugin::users-permissions.user").findOne({
         where: userQuery,
         populate: ['gardens']

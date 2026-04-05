@@ -22,6 +22,10 @@ const {
   getDaysInMonth,
   lastDayOfMonth
 } = require('date-fns');
+const { zonedTimeToUtc } = require('date-fns-tz');
+
+// All recurring event times are in Pacific timezone
+const TIMEZONE = 'America/Los_Angeles';
 
 // Weekday name to number mapping (0 = Sunday, 6 = Saturday)
 const WEEKDAY_MAP = {
@@ -235,11 +239,32 @@ module.exports = createCoreService('api::recurring-event-template.recurring-even
    * @param {Date} occurrenceDate - The date for the instance
    * @returns {Object} The created volunteer-day entry
    */
+  /**
+   * Convert a "Pacific-naive" date (where hours represent Pacific time)
+   * to a proper UTC Date for database storage.
+   *
+   * When we call setHours(9) on a Date, it sets 9:00 UTC on the server.
+   * But we mean 9:00 Pacific. This method re-interprets the date values
+   * as Pacific time and returns the correct UTC equivalent.
+   *
+   * @param {Date} naiveDate - Date where hour/minute represent Pacific time
+   * @returns {Date} Proper UTC Date
+   */
+  toPacificUTC(naiveDate) {
+    // Build a string from the naive date's values (which represent Pacific time)
+    const dateStr = format(naiveDate, 'yyyy-MM-dd HH:mm:ss');
+    // zonedTimeToUtc interprets the string as Pacific time and returns UTC
+    return zonedTimeToUtc(dateStr, TIMEZONE);
+  },
+
   async createInstance(template, occurrenceDate) {
     const title = this.generateInstanceTitle(template, occurrenceDate);
     const slug = this.generateInstanceSlug(template, occurrenceDate);
 
-    strapi.log.info(`Creating recurring instance: "${title}" for ${format(occurrenceDate, 'yyyy-MM-dd HH:mm')}`);
+    // Convert Pacific-naive date to proper UTC for storage
+    const utcDate = this.toPacificUTC(occurrenceDate);
+
+    strapi.log.info(`Creating recurring instance: "${title}" for ${format(occurrenceDate, 'yyyy-MM-dd HH:mm')} Pacific (UTC: ${utcDate.toISOString()})`);
 
     try {
       const newEvent = await strapi.entityService.create('api::volunteer-day.volunteer-day', {
@@ -248,7 +273,7 @@ module.exports = createCoreService('api::recurring-event-template.recurring-even
           slug,
           blurb: template.blurb,
           content: template.content,
-          startDatetime: occurrenceDate.toISOString(),
+          startDatetime: utcDate.toISOString(),
           endText: template.end_text,
           garden: template.garden?.id || template.garden,
           interest: template.interest || 'Everyone',
@@ -356,12 +381,18 @@ module.exports = createCoreService('api::recurring-event-template.recurring-even
         }
 
         // Check if an instance already exists for this date
+        // Convert day boundaries from Pacific to UTC for the DB query
+        const dayStartPacific = new Date(nextDate);
+        dayStartPacific.setHours(0, 0, 0, 0);
+        const dayEndPacific = new Date(nextDate);
+        dayEndPacific.setHours(23, 59, 59, 999);
+
         const existingForDate = await strapi.entityService.findMany('api::volunteer-day.volunteer-day', {
           filters: {
             recurring_template: template.id,
             startDatetime: {
-              $gte: format(nextDate, "yyyy-MM-dd'T'00:00:00.000'Z'"),
-              $lte: format(nextDate, "yyyy-MM-dd'T'23:59:59.999'Z'")
+              $gte: this.toPacificUTC(dayStartPacific).toISOString(),
+              $lte: this.toPacificUTC(dayEndPacific).toISOString()
             }
           }
         });

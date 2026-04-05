@@ -61,6 +61,14 @@
       "type": "customField",
       "customField": "plugin::oembed.oembed"
     },
+    "author": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "admin::user"
+    },
+    "article_date": {
+      "type": "date"
+    },
     "co_author": {
       "type": "relation",
       "relation": "oneToOne",
