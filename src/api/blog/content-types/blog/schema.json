@@ -68,6 +68,11 @@
     },
     "article_date": {
       "type": "date"
+    },
+    "co_author": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
     }
   }
 }
