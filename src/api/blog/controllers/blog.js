@@ -13,7 +13,17 @@ module.exports = createCoreController('api::blog.blog', ({ strapi }) => ({
     console.log('running blog slug: ', ctx.params.slug)
     const entity = await strapi.db.query('api::blog.blog').findOne({
       where: {slug: ctx.params.slug},
-      populate: ["category", "hero", "author", "createdBy"]
+      populate: {
+        category: true,
+        hero: true,
+        createdBy: true,
+        author: {
+          populate: ['profilePhoto'],
+        },
+        co_author: {
+          populate: ['profilePhoto'],
+        },
+      },
     });
 
     if (entity) {

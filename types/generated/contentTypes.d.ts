@@ -409,19 +409,28 @@ export interface ApiBlogBlog extends Schema.CollectionType {
   };
   options: {
     draftAndPublish: true;
-    populateCreatorFields: true;
   };
   attributes: {
     article_date: Attribute.Date;
-    author: Attribute.Relation<'api::blog.blog', 'oneToOne', 'admin::user'>;
+    author: Attribute.Relation<
+      'api::blog.blog',
+      'oneToOne',
+      'plugin::users-permissions.user'
+    >;
     category: Attribute.Relation<
       'api::blog.blog',
       'oneToOne',
       'api::category.category'
     >;
+    co_author: Attribute.Relation<
+      'api::blog.blog',
+      'oneToOne',
+      'plugin::users-permissions.user'
+    >;
     content: Attribute.Blocks;
     createdAt: Attribute.DateTime;
-    createdBy: Attribute.Relation<'api::blog.blog', 'oneToOne', 'admin::user'>;
+    createdBy: Attribute.Relation<'api::blog.blog', 'oneToOne', 'admin::user'> &
+      Attribute.Private;
     excerpt: Attribute.Text;
     hero: Attribute.Media<'images'>;
     hero_display: Attribute.Boolean & Attribute.DefaultTo<true>;
@@ -437,7 +446,8 @@ export interface ApiBlogBlog extends Schema.CollectionType {
     subtitle: Attribute.String;
     title: Attribute.String;
     updatedAt: Attribute.DateTime;
-    updatedBy: Attribute.Relation<'api::blog.blog', 'oneToOne', 'admin::user'>;
+    updatedBy: Attribute.Relation<'api::blog.blog', 'oneToOne', 'admin::user'> &
+      Attribute.Private;
   };
 }
 
