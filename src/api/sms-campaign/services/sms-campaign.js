@@ -66,7 +66,7 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
         console.error(err);
       }
 
-      return {body: "Thanks for RSVPing! We've got you confirmed", type: "complete"}
+      return {body: "Yes! Glad you're coming!", type: "complete"}
     }
   },
 
