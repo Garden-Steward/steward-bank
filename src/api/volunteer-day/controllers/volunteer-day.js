@@ -204,11 +204,21 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
         pageSize = parseInt(ctx.query['pagination[pageSize]']) || 15;
       }
       
-      console.log("ctx.query:", JSON.stringify(ctx.query, null, 2));
-      console.log("Extracted - page:", page, "pageSize:", pageSize);
-      
       try {
-        // findPage supports page and pageSize directly (no need to convert to start/limit)
+        const getByGardenPopulate = {
+          hero_image: true,
+          garden: {
+            fields: ['id'],
+            populate: { hero_image: true },
+          },
+          recurring_template: {
+            populate: { hero_image: true },
+          },
+          garden_tasks: {
+            populate: { primary_image: true },
+          },
+        };
+
         const { results, pagination: paginationMeta } = await strapi.entityService.findPage('api::volunteer-day.volunteer-day', {
           sort: {startDatetime: 'desc'},
           filters: {
@@ -216,7 +226,7 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
               slug: ctx.params.slug,
             }
           },
-          populate: ['hero_image', 'garden', 'garden.hero_image', 'recurring_template', 'recurring_template.garden', 'recurring_template.hero_image', 'garden_tasks', 'garden_tasks.primary_image'],
+          populate: getByGardenPopulate,
           page,
           pageSize,
         });

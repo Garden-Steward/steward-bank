@@ -73,6 +73,67 @@ module.exports = createCoreService('api::garden.garden', ({ strapi }) =>  ({
     user.gardens = [];
     user.activeGarden = null;
     return strapi.db.query("plugin::users-permissions.user").update({where:{id: user.id}, data: user});
-  }
+  },
+
+  /**
+   * If an interest with tag "Temporary" exists, attach this garden to it and
+   * give all current managers/volunteers a matching user-garden-interest so
+   * Temporary-targeted SMS and volunteer-day logic applies until cleartemp runs.
+   */
+  async ensureTemporaryInterestForNewGarden(gardenId) {
+    const temporary = await strapi.db.query('api::interest.interest').findOne({
+      where: { tag: 'Temporary' },
+      populate: ['gardens'],
+    });
+    if (!temporary) {
+      return;
+    }
+
+    const alreadyLinked = (temporary.gardens || []).some((g) => g.id === gardenId);
+    if (!alreadyLinked) {
+      await strapi.entityService.update('api::interest.interest', temporary.id, {
+        data: {
+          gardens: { connect: [gardenId] },
+        },
+      });
+    }
+
+    const garden = await strapi.db.query('api::garden.garden').findOne({
+      where: { id: gardenId },
+      populate: ['managers', 'volunteers'],
+    });
+    if (!garden) {
+      return;
+    }
+
+    const userIds = new Set();
+    for (const u of garden.managers || []) {
+      userIds.add(u.id);
+    }
+    for (const u of garden.volunteers || []) {
+      userIds.add(u.id);
+    }
+
+    for (const userId of userIds) {
+      const existing = await strapi.db.query('api::user-garden-interest.user-garden-interest').findOne({
+        where: {
+          garden: gardenId,
+          user: userId,
+          interest: temporary.id,
+        },
+      });
+      if (existing) {
+        continue;
+      }
+      await strapi.entityService.create('api::user-garden-interest.user-garden-interest', {
+        data: {
+          user: userId,
+          garden: gardenId,
+          interest: temporary.id,
+          publishedAt: new Date(),
+        },
+      });
+    }
+  },
 }));
 

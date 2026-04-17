@@ -7,6 +7,11 @@ module.exports = {
   async afterCreate(event) {
     const { result } = event;
     console.log(`✅ Garden created: ${result.title} (${result.sms_slug})`);
+    try {
+      await strapi.service('api::garden.garden').ensureTemporaryInterestForNewGarden(result.id);
+    } catch (err) {
+      console.error('⚠️  Failed to attach Temporary interest after create:', err.message);
+    }
     // Refresh cache
     try {
       await strapi.service('api::garden.garden').refreshCache();
