@@ -174,6 +174,8 @@ const messagesData = [
   },
 ];
 
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
 async function seedMessages(strapi) {
   try {
     console.log('Starting messages seeding...');
@@ -215,7 +217,31 @@ async function seedMessages(strapi) {
       });
     }
 
-    console.log(`Messages seeding completed — ${messagesData.length} messages created`);
+    // 5 identical watering messages on the same task — test data for the
+    // duplicate-message-grouping UI feature. Delays ensure distinct createdAt.
+    const waterTask = gardenTasks.find(gt => gt.type?.toLowerCase().includes('water'));
+    if (waterTask) {
+      console.log(`Creating 5 duplicate watering messages on task "${waterTask.title}"...`);
+      for (let i = 0; i < 5; i++) {
+        await strapi.entityService.create('api::message.message', {
+          data: {
+            body: "Chris it's your watering day, can you water?",
+            type: 'question',
+            previous: null,
+            meta_data: null,
+            garden_task: waterTask.id,
+            garden: waterTask.garden?.id ?? null,
+            publishedAt: new Date(),
+          }
+        });
+        if (i < 4) await sleep(300);
+      }
+    } else {
+      console.warn('No water-type task found — skipping duplicate watering messages');
+    }
+
+    const total = messagesData.length + (waterTask ? 5 : 0);
+    console.log(`Messages seeding completed — ${total} messages created`);
   } catch (error) {
     console.error('Error seeding messages:', error);
     throw error;
