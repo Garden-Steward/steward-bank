@@ -487,7 +487,8 @@ async function setupPermissions(strapi) {
     'api::sms-campaign.sms-campaign': ['find', 'findOne', 'getByGarden', 'groupSms', 'testSms'],
     'api::interest.interest': ['find', 'findOne'],
     'api::blog.blog': ['find', 'findOne', 'fullSlug'],
-    'api::plant.plant': ['find', 'findOne', 'update'],
+    'api::plant.plant': ['find', 'findOne', 'create', 'update', 'delete'],
+    'api::project.project': ['find', 'findOne', 'create', 'update', 'delete', 'findByGarden'],
     'api::organization.organization': ['find', 'findOne'],
     'api::category.category': ['find', 'findOne', 'create', 'update', 'delete'],
     'api::message.message': ['fetchSms', 'fetchTaskMessages', 'requestEmail'],
@@ -520,6 +521,33 @@ async function setupPermissions(strapi) {
           enabled: true
         }
       });
+    }
+  }
+}
+
+async function setupPublicPermissions(strapi) {
+  console.log('Setting up public role permissions...');
+
+  const publicRole = await strapi.query('plugin::users-permissions.role').findOne({
+    where: { type: 'public' }
+  });
+
+  const publicPermissions = {
+    'api::plant.plant': ['find', 'findOne'],
+    'api::project.project': ['find', 'findOne', 'findByGarden'],
+  };
+
+  for (const [contentType, actions] of Object.entries(publicPermissions)) {
+    for (const action of actions) {
+      const key = `${contentType}.${action}`;
+      const existing = await strapi.query('plugin::users-permissions.permission').findOne({
+        where: { action: key, role: publicRole.id }
+      });
+      if (!existing) {
+        await strapi.query('plugin::users-permissions.permission').create({
+          data: { action: key, role: publicRole.id, enabled: true }
+        });
+      }
     }
   }
 }
@@ -574,6 +602,7 @@ async function seedBasicData(strapi) {
     
     // Set up permissions first
     await setupPermissions(strapi);
+    await setupPublicPermissions(strapi);
     
     console.log('Starting basic data seeding...');
 

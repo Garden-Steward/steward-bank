@@ -13,6 +13,7 @@
     "seed:manager": "node scripts/seed-cameron-manager.js",
     "seed:permissions": "node scripts/seed-auth-permissions.js",
     "seed:duplicate-messages": "node scripts/seed-duplicate-messages.js",
+    "seed:content-permissions": "node scripts/seed-content-permissions.js",
     "sentry:test": "node scripts/sentry-test.js"
   },
   "devDependencies": {
