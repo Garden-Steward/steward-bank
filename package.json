@@ -10,6 +10,9 @@
     "deploy": "flyctl deploy --remote-only",
     "test": "NODE_ENV=test jest --forceExit --detectOpenHandles",
     "seed": "node scripts/seed.js",
+    "seed:manager": "node scripts/seed-cameron-manager.js",
+    "seed:permissions": "node scripts/seed-auth-permissions.js",
+    "seed:duplicate-messages": "node scripts/seed-duplicate-messages.js",
     "sentry:test": "node scripts/sentry-test.js"
   },
   "devDependencies": {
