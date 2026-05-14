@@ -7,10 +7,12 @@ const DESIRED = {
   public: {
     'api::plant.plant': ['find', 'findOne'],
     'api::project.project': ['find', 'findOne', 'findByGarden'],
+    'api::location-tracking.location-tracking': ['find', 'findOne'],
   },
   authenticated: {
     'api::plant.plant': ['find', 'findOne', 'create', 'update', 'delete'],
     'api::project.project': ['find', 'findOne', 'create', 'update', 'delete', 'findByGarden'],
+    'api::location-tracking.location-tracking': ['find', 'findOne', 'create', 'update', 'delete'],
   },
 };
 

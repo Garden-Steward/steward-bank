@@ -489,6 +489,7 @@ async function setupPermissions(strapi) {
     'api::blog.blog': ['find', 'findOne', 'fullSlug'],
     'api::plant.plant': ['find', 'findOne', 'create', 'update', 'delete'],
     'api::project.project': ['find', 'findOne', 'create', 'update', 'delete', 'findByGarden'],
+    'api::location-tracking.location-tracking': ['find', 'findOne', 'create', 'update', 'delete'],
     'api::organization.organization': ['find', 'findOne'],
     'api::category.category': ['find', 'findOne', 'create', 'update', 'delete'],
     'api::message.message': ['fetchSms', 'fetchTaskMessages', 'requestEmail'],
@@ -535,6 +536,7 @@ async function setupPublicPermissions(strapi) {
   const publicPermissions = {
     'api::plant.plant': ['find', 'findOne'],
     'api::project.project': ['find', 'findOne', 'findByGarden'],
+    'api::location-tracking.location-tracking': ['find', 'findOne'],
   };
 
   for (const [contentType, actions] of Object.entries(publicPermissions)) {

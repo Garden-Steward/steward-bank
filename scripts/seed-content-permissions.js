@@ -1,7 +1,7 @@
 /**
- * Grants read access to plants and projects on the Public role, and full
- * CRUD access on the Authenticated role. Safe to run against a live instance —
- * it only enables permissions, never disables anything.
+ * Grants read access to plants, projects, and location-trackings on the Public
+ * role, and full CRUD access on the Authenticated role. Safe to run against a
+ * live instance — it only enables permissions, never disables anything.
  *
  * Usage: API_URL=... ADMIN_EMAIL=... ADMIN_PASSWORD=... node scripts/seed-content-permissions.js
  */
@@ -16,10 +16,12 @@ const DESIRED = {
   public: {
     'api::plant.plant': ['find', 'findOne'],
     'api::project.project': ['find', 'findOne', 'findByGarden'],
+    'api::location-tracking.location-tracking': ['find', 'findOne'],
   },
   authenticated: {
     'api::plant.plant': ['find', 'findOne', 'create', 'update', 'delete'],
     'api::project.project': ['find', 'findOne', 'create', 'update', 'delete', 'findByGarden'],
+    'api::location-tracking.location-tracking': ['find', 'findOne', 'create', 'update', 'delete'],
   },
 };
 
