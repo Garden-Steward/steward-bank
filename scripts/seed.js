@@ -5,6 +5,7 @@ const seedGardenTasks = require('./seed-garden-tasks');
 const seedMessages = require('./seed-messages');
 const seedEvents = require('./seed-events');
 const seedRecurringEventTemplates = require('./seed-recurring-event-templates');
+const seedContentPermissionsInternal = require('./seed-content-permissions-internal');
 
 async function runSeeds() {
   try {
@@ -19,6 +20,7 @@ async function runSeeds() {
     await seedRecurringEventTemplates(strapi);
     await seedGardenTasks(strapi);
     await seedMessages(strapi);
+    await seedContentPermissionsInternal(strapi);
 
     // Exit successfully
     console.log('All seeds completed successfully');
