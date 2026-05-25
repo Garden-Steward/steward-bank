@@ -5,9 +5,15 @@ let instance;
 
 async function setupStrapi() {
   if (!instance) {
+    // Delete stale test database so each run starts clean
+    const testDbPath = process.env.DATABASE_FILENAME || '.tmp/test.db';
+    if (fs.existsSync(testDbPath)) {
+      fs.unlinkSync(testDbPath);
+    }
+
     /** the following code in copied from `./node_modules/strapi/lib/Strapi.js` */
     instance = await Strapi().load();
-    
+
     // Mount the server
     await instance.server.mount();
   }

@@ -88,6 +88,13 @@ module.exports = {
         smsInfo = await SmsHelper.transferTask(user, responseText);
         break;
 
+      case 'a':
+      case 'b':
+      case 'c':
+      case 'd':
+        smsInfo = await SmsHelper.handlePollResponse(user, responseText);
+        break;
+
       case 'yes':
       case 'rsvp':
         smsInfo = await SmsHelper.handleYesResponse(responseText, user);
@@ -107,6 +114,14 @@ module.exports = {
       
       case 'no':
         smsInfo = await SmsHelper.findBackupUsers(user);
+        break;
+
+      case 'pass':
+        smsInfo = await SmsHelper.passToNextVolunteer(user);
+        break;
+
+      case 'pick':
+        smsInfo = await SmsHelper.pickVolunteer(user);
         break;
           
       case 'stop':

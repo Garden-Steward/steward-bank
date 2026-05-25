@@ -1227,6 +1227,7 @@ export interface ApiSmsCampaignSmsCampaign extends Schema.CollectionType {
   attributes: {
     alert: Attribute.Boolean;
     body: Attribute.Text;
+    closes_at: Attribute.DateTime;
     confirmed: Attribute.Relation<
       'api::sms-campaign.sms-campaign',
       'oneToMany',
@@ -1249,6 +1250,27 @@ export interface ApiSmsCampaignSmsCampaign extends Schema.CollectionType {
       'oneToOne',
       'api::garden.garden'
     >;
+    option_a: Attribute.Relation<
+      'api::sms-campaign.sms-campaign',
+      'oneToMany',
+      'plugin::users-permissions.user'
+    >;
+    option_b: Attribute.Relation<
+      'api::sms-campaign.sms-campaign',
+      'oneToMany',
+      'plugin::users-permissions.user'
+    >;
+    option_c: Attribute.Relation<
+      'api::sms-campaign.sms-campaign',
+      'oneToMany',
+      'plugin::users-permissions.user'
+    >;
+    option_d: Attribute.Relation<
+      'api::sms-campaign.sms-campaign',
+      'oneToMany',
+      'plugin::users-permissions.user'
+    >;
+    poll_options: Attribute.JSON;
     publishedAt: Attribute.DateTime;
     sender: Attribute.Relation<
       'api::sms-campaign.sms-campaign',
@@ -1261,7 +1283,7 @@ export interface ApiSmsCampaignSmsCampaign extends Schema.CollectionType {
       'plugin::users-permissions.user'
     >;
     type: Attribute.Enumeration<
-      ['basic', 'rsvp', 'survey', 'volunteer-day', 'recurring-task']
+      ['basic', 'rsvp', 'survey', 'volunteer-day', 'recurring-task', 'poll']
     >;
     updatedAt: Attribute.DateTime;
     updatedBy: Attribute.Relation<

@@ -4,7 +4,7 @@ const authToken = process.env.TWILIO_AUTH_TOKEN  ;
 const twilioNum =process.env.TWILIONUM;
 const client = require('twilio')(accountSid, authToken);
 
-const { addHours } = require('date-fns');
+const { addHours, differenceInDays } = require('date-fns');
 
 /**
  * sms-campaign service
@@ -31,7 +31,7 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
       },
       limit: 1,
       orderBy: {createdAt: 'desc'},
-      populate: {sent: true, confirmed: true, volunteer_day: true, sender: true},
+      populate: {sent: true, confirmed: true, volunteer_day: true, sender: true, option_a: true, option_b: true, option_c: true, option_d: true},
     });
     return lastCampaigns[0];
 
@@ -70,6 +70,81 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
     }
   },
 
+  /**
+   * Record or change a user's vote on the latest poll campaign sent to them.
+   * @param {obj} user
+   * @param {string} letter - 'a' | 'b' | 'c' | 'd'
+   */
+  async recordPollVote(user, letter) {
+    const lastCampaign = await strapi.service('api::sms-campaign.sms-campaign').getLatestCampaign(user, ['poll']);
+
+    if (!lastCampaign) {
+      return {body: "No active poll found for you.", type: "reply"};
+    }
+
+    // Respect closes_at if set; otherwise allow 30-day window
+    if (lastCampaign.closes_at) {
+      if (new Date() > new Date(lastCampaign.closes_at)) {
+        return {body: "Sorry, that poll has already closed!", type: "reply"};
+      }
+    } else {
+      const daysDiff = differenceInDays(new Date(), new Date(lastCampaign.createdAt));
+      if (daysDiff > 30) {
+        return {body: "No active poll found for you.", type: "reply"};
+      }
+    }
+
+    // Validate the letter maps to a real option
+    const option = (lastCampaign.poll_options || []).find(
+      o => o.label?.toLowerCase() === letter
+    );
+    if (!option) {
+      const validLabels = (lastCampaign.poll_options || [])
+        .map(o => o.label?.toUpperCase())
+        .join(', ');
+      return {body: `That's not a valid option. Reply with: ${validLabels}`, type: "reply"};
+    }
+
+    const targetField = `option_${letter}`;
+    const allOptionFields = ['option_a', 'option_b', 'option_c', 'option_d'];
+    const updateData = {};
+
+    // Check if already voting for this exact option
+    const alreadyVoted = (lastCampaign[targetField] || []).some(u => u.id === user.id);
+    if (alreadyVoted) {
+      const dateStr  = option.date     ? ` — ${option.date}`        : '';
+      const timeStr  = option.time     ? ` at ${option.time}`       : '';
+      const locStr   = option.location ? ` @ ${option.location}`    : '';
+      return {body: `You're already voting for ${letter.toUpperCase()}${dateStr}${timeStr}${locStr}!`, type: "reply"};
+    }
+
+    // Remove user from any other option they previously voted for
+    for (const field of allOptionFields) {
+      if (field === targetField) continue;
+      const existing = lastCampaign[field] || [];
+      if (existing.some(u => u.id === user.id)) {
+        updateData[field] = existing.filter(u => u.id !== user.id).map(u => u.id);
+      }
+    }
+
+    // Add user to the chosen option
+    updateData[targetField] = [...(lastCampaign[targetField] || []).map(u => u.id), user.id];
+
+    try {
+      await strapi.entityService.update('api::sms-campaign.sms-campaign', lastCampaign.id, {
+        data: updateData
+      });
+    } catch (err) {
+      console.error('recordPollVote error:', err);
+      return {body: "Sorry, there was an issue recording your vote.", type: "reply"};
+    }
+
+    const dateStr  = option.date     ? ` — ${option.date}`     : '';
+    const timeStr  = option.time     ? ` at ${option.time}`    : '';
+    const locStr   = option.location ? ` @ ${option.location}` : '';
+    return {body: `Vote recorded for ${letter.toUpperCase()}${dateStr}${timeStr}${locStr}. Thanks!`, type: "complete"};
+  },
+
   sendGroupMsg: async (volGroup, copy, gardenObj, params) => {
 
     console.log("sendGroupMsg on SMS Campaign: \n", copy);
@@ -96,13 +171,15 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
     try {
       await strapi.db.query('api::sms-campaign.sms-campaign').create({
         data: {
-          publishedAt: null, 
-          sent: volGroup, 
-          body: copy, 
-          garden: gardenObj.id, 
-          type: params.type, 
-          sender: params.sender, 
-          alert: params.alert
+          publishedAt: null,
+          sent: volGroup,
+          body: copy,
+          garden: gardenObj.id,
+          type: params.type,
+          sender: params.sender,
+          alert: params.alert,
+          ...(params.poll_options && { poll_options: params.poll_options }),
+          ...(params.closes_at   && { closes_at:    params.closes_at }),
         }
       });
     } catch (err) {

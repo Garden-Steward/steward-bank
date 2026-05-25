@@ -30,6 +30,16 @@ SmsHelper.handleYesResponse = async(smsText, user) => {
   return {body: "Can't find anything for you to say yes to!? Sorry!", type: "reply"}
 }
 
+/**
+ * Routes A/B/C/D replies to the latest poll campaign sent to the user.
+ */
+SmsHelper.handlePollResponse = async(user, letter) => {
+  if (!user) {
+    return {body: "Sorry you have to be registered to use this service", type: "reply"};
+  }
+  return strapi.service('api::sms-campaign.sms-campaign').recordPollVote(user, letter);
+};
+
 SmsHelper.handleGardenTask = async(smsText, user, question) => {
   try {
     console.log("updating task yes start")
@@ -522,28 +532,125 @@ SmsHelper.findBackupUsers = async(user) => {
       task = latestQuestion.garden_task;
     }
     if (!task) {
-      return {body: 'Looks like you don\'t have a task to manage. Tell Cameron if it\s unexpected.', type: 'reply'};
+      return {body: 'Looks like you don\'t have a task to manage. Tell Cameron if it\'s unexpected.', type: 'reply'};
     }
     if (!task.recurring_task) {
       return {body: 'Sorry this isn\'t a task that can be transferred. Only Scheduled Tasks can transfer.', type: 'reply', task, success: false};
     }
 
     const scheduler = await SmsHelper.getSchedulerFromTask(task);
-    let smsExtra = '';
-    let backupVolunteers = await SmsHelper.getBackupVolunteers(user, scheduler);
+    const backupVolunteers = SmsHelper.getBackupVolunteers(user, scheduler);
     if (backupVolunteers?.length) {
-      let smsBody = 'We found some help for you. Respond with ';
-      for (const idx in backupVolunteers) {
-        let num = parseInt(idx) + 1;
-        smsExtra = `${smsExtra} ${num} for ${backupVolunteers[idx].firstName},`;
-      }
-      smsBody = smsBody + smsExtra.slice(0,smsExtra.length-1) + '. Once you do we will transfer the task to them.';
-      return {body: smsBody, task, type: 'followup'};
+      return {
+        body: 'No problem! Should we PASS it to the next person in line? Reply PICK to choose someone specific, SKIP if watering isn\'t needed today, or PASS to go to the next person.',
+        task,
+        type: 'question'
+      };
     } else if (!scheduler) {
       return {body: `There is no schedule today for ${task.title}`, type: 'reply', task};
     } else {
       return {body: 'There are no backup volunteers set for this task yet. You\'re on your own to find some help!', type: 'reply', task};
     }
+  }
+};
+
+SmsHelper.passToNextVolunteer = async(user) => {
+  const latestQuestion = await strapi.service('api::message.message').validateQuestion(user);
+  let task = latestQuestion?.garden_task;
+  if (!task) {
+    task = await strapi.service('api::garden-task.garden-task').findTaskFromUser(user);
+  }
+  if (!task) {
+    return {body: 'No task to pass right now!', type: 'reply'};
+  }
+  if (!task.recurring_task) {
+    return {body: 'Only scheduled tasks can be passed to the next person.', type: 'reply'};
+  }
+
+  const scheduler = await SmsHelper.getSchedulerFromTask(task);
+  if (!scheduler) {
+    return {body: `No schedule found for today for ${task.title}`, type: 'reply', task};
+  }
+
+  const allBackups = scheduler.backup_volunteers;
+  if (!allBackups || allBackups.length === 0) {
+    return {body: 'No backup volunteers are set for this task yet.', type: 'reply', task};
+  }
+
+  const currentIdx = allBackups.findIndex(v => v.id === user.id);
+  const startIdx = currentIdx >= 0 ? currentIdx : 0;
+
+  let nextUser = null;
+  for (let i = 1; i <= allBackups.length; i++) {
+    const candidate = allBackups[(startIdx + i) % allBackups.length];
+    if (!candidate.paused && candidate.id !== user.id) {
+      nextUser = candidate;
+      break;
+    }
+  }
+
+  if (!nextUser) {
+    return {body: 'No available backup volunteers to pass to right now.', type: 'reply', task};
+  }
+
+  let updatedTask;
+  try {
+    updatedTask = await strapi.service('api::garden-task.garden-task').updateGardenTaskUser(task, 'INITIALIZED', nextUser);
+  } catch (err) {
+    console.log('Error passing task:', err);
+    return {body: 'Technical error when passing the task.', type: 'reply', task};
+  }
+
+  const needsInstruction = strapi.service('api::instruction.instruction').checkInstruction(updatedTask);
+  let smsNewGuy;
+  try {
+    if (!needsInstruction) {
+      smsNewGuy = `Hello! ${user.firstName} just passed you the task of ${task.title}. Reply YES or NO if you can manage this today.`;
+    } else {
+      const instructionUrl = strapi.service('api::instruction.instruction').getInstructionUrl(updatedTask.recurring_task.instruction, nextUser);
+      await strapi.service('api::garden-task.garden-task').updateTaskStatus(task, 'PENDING');
+      smsNewGuy = `Hello! ${user.firstName} just passed you the task of ${task.title}. First you need to agree to the instructions, then reply YES or NO if you can manage this today.\n\n${instructionUrl}`;
+    }
+    await strapi.service('api::sms.sms').handleSms({
+      task: updatedTask,
+      body: smsNewGuy,
+      type: 'question',
+      previous: latestQuestion?.body,
+      user: nextUser
+    });
+    const bodyExtra = needsInstruction ? ' They will first need to agree to the instructions.' : '';
+    return {body: `Passed to ${nextUser.firstName}!${bodyExtra} They'll get a message now.`, type: 'complete', task: updatedTask};
+  } catch (err) {
+    console.log('Error notifying next volunteer:', err);
+    return {body: 'Task was transferred but there was an issue sending the SMS.', type: 'reply', task: updatedTask};
+  }
+};
+
+SmsHelper.pickVolunteer = async(user) => {
+  const latestQuestion = await strapi.service('api::message.message').validateQuestion(user);
+  let task = latestQuestion?.garden_task;
+  if (!task) {
+    task = await strapi.service('api::garden-task.garden-task').findTaskFromUser(user);
+  }
+  if (!task || !task.recurring_task) {
+    return {body: 'No schedulable task to pick a volunteer for.', type: 'reply'};
+  }
+
+  const scheduler = await SmsHelper.getSchedulerFromTask(task);
+  const backupVolunteers = SmsHelper.getBackupVolunteers(user, scheduler);
+  if (backupVolunteers?.length) {
+    let smsExtra = '';
+    let smsBody = 'Pick someone to take over. Respond with ';
+    for (const idx in backupVolunteers) {
+      const num = parseInt(idx) + 1;
+      smsExtra = `${smsExtra} ${num} for ${backupVolunteers[idx].firstName},`;
+    }
+    smsBody = smsBody + smsExtra.slice(0, smsExtra.length - 1) + '. Once you do we will transfer the task to them.';
+    return {body: smsBody, task, type: 'followup'};
+  } else if (!scheduler) {
+    return {body: `There is no schedule today for ${task.title}`, type: 'reply', task};
+  } else {
+    return {body: 'There are no backup volunteers available to pick from.', type: 'reply', task};
   }
 };
 
