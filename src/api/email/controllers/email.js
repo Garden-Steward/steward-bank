@@ -79,7 +79,7 @@ module.exports = {
     try {
       const result = await strapi.plugins['email'].services.email.send({
         to: targetUser.email,
-        from: FROM_ADDRESS,
+        from: `${senderName} <${FROM_ADDRESS}>`,
         replyTo: sender.email,
         subject,
         html,
