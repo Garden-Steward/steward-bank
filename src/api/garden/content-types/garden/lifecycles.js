@@ -3,7 +3,20 @@
  * Refreshes the garden cache when gardens are created/updated
  */
 
+const { WELCOME_EMAIL } = require('../../../email/defaultTemplates');
+
 module.exports = {
+  async beforeCreate(event) {
+    const { data } = event.params;
+    // Seed default welcome email template if not already set
+    if (!data.welcome_email_subject) {
+      data.welcome_email_subject = WELCOME_EMAIL.subject;
+    }
+    if (!data.welcome_email_body) {
+      data.welcome_email_body = WELCOME_EMAIL.body;
+    }
+  },
+
   async afterCreate(event) {
     const { result } = event;
     console.log(`✅ Garden created: ${result.title} (${result.sms_slug})`);

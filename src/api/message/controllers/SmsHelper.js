@@ -31,13 +31,16 @@ SmsHelper.handleYesResponse = async(smsText, user) => {
 }
 
 /**
- * Routes A/B/C/D replies to the latest poll campaign sent to the user.
+ * Routes A/B/C/D (or multi-letter AB, A B, A,B) replies to the latest poll campaign.
+ * Normalises capitalisation and separators before delegating to recordPollVote.
  */
-SmsHelper.handlePollResponse = async(user, letter) => {
+SmsHelper.handlePollResponse = async(user, input) => {
   if (!user) {
     return {body: "Sorry you have to be registered to use this service", type: "reply"};
   }
-  return strapi.service('api::sms-campaign.sms-campaign').recordPollVote(user, letter);
+  // Normalise: "A B", "A,B", "AB", "ab" → pass through as-is (service handles it)
+  const normalised = input.replace(/[\s,]+/g, '').toLowerCase();
+  return strapi.service('api::sms-campaign.sms-campaign').recordPollVote(user, normalised);
 };
 
 SmsHelper.handleGardenTask = async(smsText, user, question) => {

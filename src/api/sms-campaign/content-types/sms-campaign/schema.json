@@ -85,6 +85,17 @@
       "type": "relation",
       "relation": "oneToMany",
       "target": "plugin::users-permissions.user"
+    },
+    "winner": {
+      "type": "string"
+    },
+    "send_reminder": {
+      "type": "boolean",
+      "default": true
+    },
+    "reminder_sent": {
+      "type": "boolean",
+      "default": false
     }
   }
 }

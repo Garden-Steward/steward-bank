@@ -595,6 +595,12 @@ async function cleanup(strapi) {
   await strapi.db.query('api::recurring-event-template.recurring-event-template').deleteMany({
     where: {}
   });
+  await strapi.db.query('api::project.project').deleteMany({
+    where: {}
+  });
+  await strapi.db.query('api::sms-campaign.sms-campaign').deleteMany({
+    where: {}
+  });
 }
 
 async function seedBasicData(strapi) {

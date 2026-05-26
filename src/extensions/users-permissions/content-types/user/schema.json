@@ -158,6 +158,10 @@
     "email_confirmed": {
       "type": "boolean",
       "default": false
+    },
+    "automated_emails_sent": {
+      "type": "json",
+      "description": "Array of automated emails sent to this user: [{type, sent_at, sender_email, garden_id, resend_message_id}]"
     }
   }
 }

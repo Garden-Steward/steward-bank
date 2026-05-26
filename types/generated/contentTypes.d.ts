@@ -626,6 +626,8 @@ export interface ApiGardenGarden extends Schema.CollectionType {
       'manyToMany',
       'plugin::users-permissions.user'
     >;
+    welcome_email_body: Attribute.RichText;
+    welcome_email_subject: Attribute.String;
     welcome_text: Attribute.Text;
   };
 }
@@ -1272,6 +1274,8 @@ export interface ApiSmsCampaignSmsCampaign extends Schema.CollectionType {
     >;
     poll_options: Attribute.JSON;
     publishedAt: Attribute.DateTime;
+    reminder_sent: Attribute.Boolean & Attribute.DefaultTo<false>;
+    send_reminder: Attribute.Boolean & Attribute.DefaultTo<true>;
     sender: Attribute.Relation<
       'api::sms-campaign.sms-campaign',
       'oneToOne',
@@ -1297,6 +1301,7 @@ export interface ApiSmsCampaignSmsCampaign extends Schema.CollectionType {
       'manyToOne',
       'api::volunteer-day.volunteer-day'
     >;
+    winner: Attribute.String;
   };
 }
 
@@ -1931,6 +1936,7 @@ export interface PluginUsersPermissionsUser extends Schema.CollectionType {
       'oneToOne',
       'api::garden.garden'
     >;
+    automated_emails_sent: Attribute.JSON;
     bio: Attribute.Text;
     blocked: Attribute.Boolean & Attribute.DefaultTo<false>;
     chatId: Attribute.BigInteger;

@@ -163,8 +163,13 @@ module.exports = {
         smsInfo = await SmsHelper.applyVacation(user);
         break;
 
-      default: 
-        smsBody = 'I don\'t understand. You can always try OPTIONS to find out more things to do with our service.';
+      default:
+        // Multi-option poll vote: "ab", "a b", "a,b", "abc", etc.
+        if (/^[a-d]{2,4}$/.test(responseText.replace(/[\s,]+/g, ''))) {
+          smsInfo = await SmsHelper.handlePollResponse(user, responseText);
+        } else {
+          smsBody = 'I don\'t understand. You can always try OPTIONS to find out more things to do with our service.';
+        }
         break;
     }
     

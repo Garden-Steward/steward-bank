@@ -13,6 +13,7 @@ const DESIRED = {
     'api::plant.plant': ['find', 'findOne', 'create', 'update', 'delete'],
     'api::project.project': ['find', 'findOne', 'create', 'update', 'delete', 'findByGarden'],
     'api::location-tracking.location-tracking': ['find', 'findOne', 'create', 'update', 'delete'],
+    'api::email.email': ['sendWelcome'],
   },
 };
 

@@ -87,6 +87,47 @@ module.exports = {
   },
 
   /**
+   * Send 24-hour poll reminders to non-voters when a poll closes within the next 24-25 hours.
+   * Runs every hour; a 2-hour window prevents double-sending.
+   */
+  pollReminders: {
+    task: async ({ strapi }) => {
+      strapi.log.info('triggering pollReminders cron');
+      try {
+        const result = await strapi.service('api::sms-campaign.sms-campaign').sendPollReminders();
+        strapi.log.info(`pollReminders: processed ${result.remindersProcessed} campaign(s)`);
+      } catch (err) {
+        console.error('ERR pollReminders:', err);
+      }
+    },
+    options: {
+      rule: '0 * * * *',           // every hour on the hour
+      tz: 'America/Los_Angeles',
+    },
+  },
+
+  /**
+   * Auto-close polls whose closes_at has passed.
+   * Runs at :31 past the hour — offset from pollReminders to avoid racing.
+   * closePoll is idempotent so overlap is safe.
+   */
+  pollAutoClose: {
+    task: async ({ strapi }) => {
+      strapi.log.info('triggering pollAutoClose cron');
+      try {
+        const result = await strapi.service('api::sms-campaign.sms-campaign').autoCloseExpiredPolls();
+        strapi.log.info(`pollAutoClose: closed ${result.closed} poll(s)`);
+      } catch (err) {
+        console.error('ERR pollAutoClose:', err);
+      }
+    },
+    options: {
+      rule: '31 * * * *',          // :31 past every hour
+      tz: 'America/Los_Angeles',
+    },
+  },
+
+  /**
    * Process Recurring Event Templates
    * Runs daily at 2am Pacific time to maintain future event instances.
    * Creates new volunteer-day entries from active recurring templates
