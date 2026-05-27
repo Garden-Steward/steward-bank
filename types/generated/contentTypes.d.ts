@@ -932,6 +932,11 @@ export interface ApiProjectProject extends Schema.CollectionType {
       ['Infrastructure', 'Art', 'Event', 'Education', 'Planting', 'Community']
     > &
       Attribute.DefaultTo<'Community'>;
+    created_by: Attribute.Relation<
+      'api::project.project',
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
     createdAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
       'api::project.project',
@@ -958,6 +963,18 @@ export interface ApiProjectProject extends Schema.CollectionType {
         number
       >;
     impact_metrics: Attribute.Component<'projects.impact-metric', true>;
+    interested: Attribute.Relation<
+      'api::project.project',
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    latitude: Attribute.Float;
+    longitude: Attribute.Float;
+    managers: Attribute.Relation<
+      'api::project.project',
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
     photo_album_id: Attribute.String;
     photo_album_url: Attribute.String;
     publishedAt: Attribute.DateTime;
@@ -971,7 +988,12 @@ export interface ApiProjectProject extends Schema.CollectionType {
       Attribute.SetMinMaxLength<{
         maxLength: 350;
       }>;
-    slug: Attribute.String & Attribute.Required & Attribute.Unique;
+    slug: Attribute.String & Attribute.Unique;
+    status: Attribute.Enumeration<
+      ['CREATED', 'APPROVED', 'REJECTED', 'COMPLETED', 'ARCHIVED']
+    > &
+      Attribute.Required &
+      Attribute.DefaultTo<'CREATED'>;
     title: Attribute.String & Attribute.Required;
     updatedAt: Attribute.DateTime;
     updatedBy: Attribute.Relation<
