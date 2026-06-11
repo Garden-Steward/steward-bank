@@ -3,11 +3,24 @@
  * Refreshes the garden cache when gardens are created/updated
  */
 
+const { errors } = require('@strapi/utils');
+const Geo = require('../../../../../config/helpers/geo');
 const { WELCOME_EMAIL } = require('../../../email/defaultTemplates');
+
+function assertValidBoundary(data) {
+  if (data.boundary === undefined) {
+    return;
+  }
+  const result = Geo.validateBoundary(data.boundary);
+  if (!result.valid) {
+    throw new errors.ApplicationError(`Invalid garden boundary: ${result.error}`);
+  }
+}
 
 module.exports = {
   async beforeCreate(event) {
     const { data } = event.params;
+    assertValidBoundary(data);
     // Seed default welcome email template if not already set
     if (!data.welcome_email_subject) {
       data.welcome_email_subject = WELCOME_EMAIL.subject;
@@ -15,6 +28,11 @@ module.exports = {
     if (!data.welcome_email_body) {
       data.welcome_email_body = WELCOME_EMAIL.body;
     }
+  },
+
+  async beforeUpdate(event) {
+    const { data } = event.params;
+    assertValidBoundary(data);
   },
 
   async afterCreate(event) {

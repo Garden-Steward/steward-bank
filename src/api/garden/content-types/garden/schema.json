@@ -95,6 +95,16 @@
     "welcome_email_body": {
       "type": "richtext",
       "description": "HTML body for the welcome email. Supports {{firstName}}, {{gardenName}}, {{senderName}} placeholders."
+    },
+    "boundary": {
+      "type": "json",
+      "description": "GeoJSON Polygon defining the garden footprint ([lng, lat] coordinate order)"
+    },
+    "location_trackings": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::location-tracking.location-tracking",
+      "mappedBy": "garden"
     }
   }
 }

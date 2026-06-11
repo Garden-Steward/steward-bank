@@ -573,6 +573,7 @@ export interface ApiGardenGarden extends Schema.CollectionType {
   };
   attributes: {
     blurb: Attribute.Text;
+    boundary: Attribute.JSON;
     createdAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
       'api::garden.garden',
@@ -583,6 +584,11 @@ export interface ApiGardenGarden extends Schema.CollectionType {
     description: Attribute.RichText;
     hero_image: Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     latitude: Attribute.Float;
+    location_trackings: Attribute.Relation<
+      'api::garden.garden',
+      'oneToMany',
+      'api::location-tracking.location-tracking'
+    >;
     longitude: Attribute.Float;
     managers: Attribute.Relation<
       'api::garden.garden',
@@ -738,6 +744,15 @@ export interface ApiLocationTrackingLocationTracking
       'admin::user'
     > &
       Attribute.Private;
+    garden: Attribute.Relation<
+      'api::location-tracking.location-tracking',
+      'manyToOne',
+      'api::garden.garden'
+    >;
+    garden_assignment_status: Attribute.Enumeration<
+      ['unassigned', 'pending_confirmation', 'confirmed', 'declined']
+    > &
+      Attribute.DefaultTo<'unassigned'>;
     is_plant: Attribute.Boolean;
     label: Attribute.String;
     last_verified: Attribute.DateTime;
@@ -751,6 +766,10 @@ export interface ApiLocationTrackingLocationTracking
       'api::location-tracking.location-tracking',
       'oneToOne',
       'api::plant.plant'
+    >;
+    suggested_distance_meters: Attribute.Float;
+    suggested_match_method: Attribute.Enumeration<
+      ['inside_polygon', 'within_radius']
     >;
     plant_image: Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     planted_date: Attribute.Date;

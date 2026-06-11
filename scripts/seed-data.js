@@ -48,7 +48,17 @@ const basicData = {
       longitude: -122.3321,
       latitude: 47.6062,
       sms_slug: "gravity",
-      welcome_text: "Welcome to our downtown garden community!"
+      welcome_text: "Welcome to our downtown garden community!",
+      boundary: {
+        type: "Polygon",
+        coordinates: [[
+          [-122.3326, 47.6057],
+          [-122.3316, 47.6057],
+          [-122.3316, 47.6067],
+          [-122.3326, 47.6067],
+          [-122.3326, 47.6057]
+        ]]
+      }
     },
     {
       title: "Neighborhood Garden",
@@ -57,7 +67,17 @@ const basicData = {
       longitude: -122.3340,
       latitude: 47.6085,
       sms_slug: "elder",
-      welcome_text: "Welcome to our neighborhood garden!"
+      welcome_text: "Welcome to our neighborhood garden!",
+      boundary: {
+        type: "Polygon",
+        coordinates: [[
+          [-122.3345, 47.6080],
+          [-122.3335, 47.6080],
+          [-122.3335, 47.6090],
+          [-122.3345, 47.6090],
+          [-122.3345, 47.6080]
+        ]]
+      }
     }
   ],
 
@@ -709,27 +729,13 @@ async function seedBasicData(strapi) {
       });
     }
 
-    // Seed plants and link to gardens
+    // Seed plants (catalog entries; garden linkage is via location-tracking)
     console.log('Seeding plants...');
-    const plants = [];
     for (const plant of basicData.plants) {
-      const created = await strapi.entityService.create('api::plant.plant', {
+      await strapi.entityService.create('api::plant.plant', {
         data: {
           ...plant,
           publishedAt: new Date()
-        }
-      });
-      plants.push(created);
-    }
-
-    // Link plants to all gardens
-    console.log('Linking plants to gardens...');
-    for (const plant of plants) {
-      await strapi.entityService.update('api::plant.plant', plant.id, {
-        data: {
-          gardens: {
-            connect: gardens.map(garden => garden.id)
-          }
         }
       });
     }
