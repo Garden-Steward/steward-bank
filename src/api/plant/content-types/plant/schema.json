@@ -21,12 +21,13 @@
     "type": {
       "type": "enumeration",
       "enum": [
-        "annual",
-        "perennial",
-        "herb",
-        "tree",
-        "shrub"
-      ]
+              "annual",
+              "perennial",
+              "herb",
+              "tree",
+              "shrub",
+              "wildflower"
+            ]
     },
     "water_detail": {
       "type": "text"
