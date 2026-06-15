@@ -60,6 +60,14 @@
     },
     "magic": {
       "type": "richtext"
+    },
+    "clipart": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
     }
   }
 }
