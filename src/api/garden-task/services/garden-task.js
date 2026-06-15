@@ -265,18 +265,22 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
 
   },
 
-  sendTask(task) {
+  sendTask(task, skipWindow = false) {
 
-    if (!skipWindow && !Helper.sendingWindow(task)) { return }
-    strapi.service('api::sms.sms').handleSms({
-      task: task, 
-      body: `Hi ${task.volunteers[0].firstName}, your task ${task.title} is ready to be done today! Are you able to do it? You have some OPTIONS.`, 
-      type: 'question'
+      if (task.volunteers?.length === 0) {
+        console.log(`sendTask: Task ${task.id} has no volunteers, skipping`);
+        return;
+      }
+      if (!skipWindow && !Helper.sendingWindow(task)) { return }
+      strapi.service('api::sms.sms').handleSms({
+        task: task, 
+        body: `Hi ${task.volunteers[0].firstName}, your task ${task.title} is ready to be done today! Are you able to do it? You have some OPTIONS.`, 
+        type: 'question'
+      }
+      );
+      return {success: true, message: 'Sent task reminder for ' + task.volunteers[0].username, task: task};
+
     }
-    );
-    return {success: true, message: 'Sent task reminder for ' + task.volunteers[0].username, task: task};
-
-  }
 
 }));
 

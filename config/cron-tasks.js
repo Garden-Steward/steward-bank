@@ -149,4 +149,70 @@ module.exports = {
       tz: 'America/Los_Angeles',
     },
   },
+
+  /**
+   * Weekly Vacation Check-in
+   * Runs every Sunday at 9am Pacific time.
+   * Sends check-in messages to users paused >14 days
+   */
+  weeklyVacationCheckIn: {
+    task: async ({ strapi }) => {
+      strapi.log.info('triggering weeklyVacationCheckIn cron');
+      try {
+        const { differenceInDays } = require('date-fns');
+        
+        // Find all paused users
+        const pausedUsers = await strapi.db.query("plugin::users-permissions.user").findMany({
+          where: {
+            paused: true,
+            paused_at: { $ne: null }
+          },
+          select: ['id', 'firstName', 'phone_number', 'paused_at', 'last_vacation_check_sent']
+        });
+        
+        strapi.log.info(`[VacationCheckIn] Found ${pausedUsers.length} paused users`);
+        
+        const now = new Date();
+        let messagesCount = 0;
+        
+        for (const user of pausedUsers) {
+          const daysPaused = differenceInDays(now, new Date(user.paused_at));
+          const lastCheckSent = user.last_vacation_check_sent ? new Date(user.last_vacation_check_sent) : null;
+          const daysSinceLastCheck = lastCheckSent ? differenceInDays(now, lastCheckSent) : null;
+          
+          // Check if paused >14 days AND (never been sent check OR sent >7 days ago)
+          if (daysPaused > 14 && (!lastCheckSent || daysSinceLastCheck >= 7)) {
+            strapi.log.info(`[VacationCheckIn] Sending check-in to ${user.firstName} (paused ${daysPaused} days)`);
+            
+            // Send SMS via sendSms service
+            const smsBody = `Hi ${user.firstName}! Just checking in...\n\nWe noticed you've been on vacation for ${daysPaused} days.\n\nText BACK or VACATION to update your status. If you're still on vacation, just ignore this message!`;
+            
+            try {
+              await strapi.service('api::sms.sms').sendSms(user.phone_number, smsBody);
+              
+              // Update last_vacation_check_sent timestamp
+              await strapi.db.query("plugin::users-permissions.user").update({
+                where: { id: user.id },
+                data: { last_vacation_check_sent: now }
+              });
+              
+              messagesCount++;
+              strapi.log.info(`[VacationCheckIn] ✅ Check-in sent to ${user.phone_number}`);
+            } catch (err) {
+              strapi.log.error(`[VacationCheckIn] Error sending SMS to ${user.phone_number}:`, err);
+            }
+          }
+        }
+        
+        strapi.log.info(`[VacationCheckIn] ✅ Weekly check-in complete. Sent ${messagesCount} messages.`);
+      } catch (err) {
+        strapi.log.error('ERR weeklyVacationCheckIn: ', err);
+      }
+    },
+    options: {
+      // Run every Sunday at 9am Pacific time
+      rule: '0 9 * * 0',
+      tz: 'America/Los_Angeles',
+    },
+  },
 };

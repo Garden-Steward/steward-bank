@@ -34,10 +34,16 @@ Helper.handleInitialTasks = async() => {
     console.log(`Processing task ${initTask.id} (${initTask.title}) - Status: ${initTask.status}, Recurring Task: ${initTask.recurring_task?.id || 'none'}`);
     let abandoned = await Helper.validateAbandon(initTask);
     if (abandoned) {
-      continue;
-    }
+          continue;
+        }
 
-    // FIX: Check if there's already a FINISHED task for this recurring task
+        // Guard: skip if no volunteers assigned to this task
+        if (!initTask.volunteers?.length) {
+          console.log(`handleInitialTasks: Task ${initTask.id} has no volunteers, skipping`);
+          continue;
+        }
+
+        // FIX: Check if there's already a FINISHED task for this recurring task
     // If so, skip sending SMS for this INITIALIZED/PENDING task (it's likely a duplicate)
     if (initTask.recurring_task) {
       const gardenId = initTask.garden?.id || initTask.garden;
@@ -147,6 +153,11 @@ Helper.sendingWindow = (task) => {
  * @returns {obj} {success: true, message: 'Sent water reminder for ' + waterTask.volunteers[0].username, task: waterTask}
  */
 Helper.sendWaterSms = async(waterTask, skipWindow) => {
+
+  if (!waterTask.volunteers?.length) {
+    console.log('sendWaterSms: No volunteers for task', waterTask.id);
+    return {success: false, message: 'No volunteers assigned', task: waterTask};
+  }
 
   if (!waterTask.volunteers[0].phoneNumber) {
     console.log('Missing phone number for ',waterTask.volunteers[0].username);
@@ -349,6 +360,12 @@ Helper.handleStartedTasks = async() => {
   for (let task of started) {
     let abandoned = await Helper.validateAbandon(task);
     if (abandoned) {
+      continue;
+    }
+
+    // Guard: skip if no volunteers assigned to this task
+    if (!task.volunteers?.length) {
+      console.log(`handleStartedTasks: Task ${task.id} has no volunteers, skipping`);
       continue;
     }
 
