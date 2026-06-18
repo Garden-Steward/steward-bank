@@ -33,8 +33,13 @@ async function addClipartField() {
 
   // First, get the current content type schema to find the UID
   console.log('Fetching current content types...');
-  const ctRes = await axios.get(`${API_URL}/admin/content-type-builder/content-types`, { headers });
-  const contentTypes = ctRes.data.data;
+  const ctRes = await axios.get(`${API_URL}/content-type-builder/content-types`, { headers });
+  const contentTypes = ctRes.data?.data;
+  if (!Array.isArray(contentTypes)) {
+    console.error('ERROR: Unexpected response from content-type-builder API');
+    console.error('Expected JSON with a data array; got:', typeof ctRes.data);
+    process.exit(1);
+  }
 
   const plantCT = contentTypes.find(ct => ct.schema.singularName === 'plant');
   if (!plantCT) {
@@ -53,8 +58,8 @@ async function addClipartField() {
 
   // Add the clipart field via Content-Type Builder API
   console.log('Adding clipart media field...');
-  await axios.post(
-    `${API_URL}/admin/content-type-builder/content-types/${plantUID}`,
+  await axios.put(
+    `${API_URL}/content-type-builder/content-types/${plantUID}`,
     {
       contentType: {
         ...plantCT.schema,

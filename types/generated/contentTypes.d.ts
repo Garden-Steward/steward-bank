@@ -767,13 +767,13 @@ export interface ApiLocationTrackingLocationTracking
       'oneToOne',
       'api::plant.plant'
     >;
+    plant_image: Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
+    planted_date: Attribute.Date;
+    publishedAt: Attribute.DateTime;
     suggested_distance_meters: Attribute.Float;
     suggested_match_method: Attribute.Enumeration<
       ['inside_polygon', 'within_radius']
     >;
-    plant_image: Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
-    planted_date: Attribute.Date;
-    publishedAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     updatedBy: Attribute.Relation<
       'api::location-tracking.location-tracking',
@@ -906,6 +906,7 @@ export interface ApiPlantPlant extends Schema.CollectionType {
   };
   attributes: {
     Benefits: Attribute.Component<'plants.benefits', true>;
+    clipart: Attribute.Media<'images'>;
     createdAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
       'api::plant.plant',
