@@ -4,8 +4,8 @@ module.exports = {
   async beforeCreate(event) {
     const { data } = event.params;
 
-    // Skip duplicate check during v5 discard-drafts migration
-    if (data.document_id) {
+    // Skip duplicate check during v5 database migrations (server not yet listening)
+    if (!strapi.isLoaded) {
       return;
     }
 
