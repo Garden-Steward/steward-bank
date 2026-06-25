@@ -3,7 +3,12 @@
 module.exports = {
   async beforeCreate(event) {
     const { data } = event.params;
-    
+
+    // Skip duplicate check during v5 discard-drafts migration
+    if (data.document_id) {
+      return;
+    }
+
     // Check for duplicate volunteer day with same startDatetime and garden
     if (data.startDatetime) {
       const duplicateFilters = {
