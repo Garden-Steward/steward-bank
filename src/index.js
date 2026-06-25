@@ -13,7 +13,9 @@ const SLUG_CONTENT_TYPES = {
 };
 
 module.exports = {
-  register({ strapi }) {
+  register(/*{ strapi }*/) {},
+
+  bootstrap({ strapi }) {
     strapi.documents.use(async (context, next) => {
       const config = SLUG_CONTENT_TYPES[context.uid];
       if (config && ['create', 'update'].includes(context.action)) {
@@ -24,9 +26,7 @@ module.exports = {
       }
       return next();
     });
-  },
 
-  bootstrap({ strapi }) {
     if (sentryEnabled) {
       Sentry.setupKoaErrorHandler(strapi.server);
     }
