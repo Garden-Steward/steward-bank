@@ -12,7 +12,11 @@ const VdayHelper = require('./VdayHelper');
 module.exports = createCoreController('api::volunteer-day.volunteer-day', ({strapi}) => ({
 
     async create(ctx) {
-      const { data } = ctx.request.body;
+      const { data } = ctx.request.body || {};
+
+      if (!data) {
+        return await super.create(ctx);
+      }
 
       // Check for duplicate volunteer day with same startDatetime and garden
       if (data.startDatetime) {
