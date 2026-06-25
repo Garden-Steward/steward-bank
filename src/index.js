@@ -30,5 +30,12 @@ module.exports = {
     if (sentryEnabled) {
       Sentry.setupKoaErrorHandler(strapi.server);
     }
+
+    console.log('\n🌱 Initializing Garden Steward SMS services...');
+    try {
+      await strapi.service('api::garden.garden').initializeCache();
+    } catch (err) {
+      console.error('⚠️  Garden cache initialization failed:', err.message);
+    }
   },
 };
