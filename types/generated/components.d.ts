@@ -1,6 +1,6 @@
-import type { Attribute, Schema } from '@strapi/strapi';
+import type { Schema, Struct } from '@strapi/strapi';
 
-export interface EducationCard extends Schema.Component {
+export interface EducationCard extends Struct.ComponentSchema {
   collectionName: 'components_education_cards';
   info: {
     description: '';
@@ -8,11 +8,11 @@ export interface EducationCard extends Schema.Component {
     icon: 'store';
   };
   attributes: {
-    content: Attribute.Blocks;
+    content: Schema.Attribute.Blocks;
   };
 }
 
-export interface PlantsBenefits extends Schema.Component {
+export interface PlantsBenefits extends Struct.ComponentSchema {
   collectionName: 'components_plants_benefits';
   info: {
     description: '';
@@ -20,50 +20,49 @@ export interface PlantsBenefits extends Schema.Component {
     icon: 'handHeart';
   };
   attributes: {
-    potency: Attribute.Enumeration<
+    potency: Schema.Attribute.Enumeration<
       ['minimal', 'mild', 'moderate', 'strong', 'profound']
     >;
-    source_type: Attribute.JSON;
-    title: Attribute.String;
+    source_type: Schema.Attribute.JSON;
+    title: Schema.Attribute.String;
   };
 }
 
-export interface PlantsPlanting extends Schema.Component {
+export interface PlantsPlanting extends Struct.ComponentSchema {
   collectionName: 'components_plants_plantings';
   info: {
     displayName: 'planting';
     icon: 'seed';
   };
   attributes: {
-    plant_name: Attribute.String;
+    plant_name: Schema.Attribute.String;
   };
 }
 
-export interface ProjectsImpactMetric extends Schema.Component {
+export interface ProjectsImpactMetric extends Struct.ComponentSchema {
   collectionName: 'components_projects_impact_metrics';
   info: {
     description: 'Measurable impact from a project';
     displayName: 'Impact Metric';
   };
   attributes: {
-    icon: Attribute.String;
-    label: Attribute.String & Attribute.Required;
-    value: Attribute.String & Attribute.Required;
+    icon: Schema.Attribute.String;
+    label: Schema.Attribute.String & Schema.Attribute.Required;
+    value: Schema.Attribute.String & Schema.Attribute.Required;
   };
 }
 
-export interface SchedulingScheduleAssignee extends Schema.Component {
+export interface SchedulingScheduleAssignee extends Struct.ComponentSchema {
   collectionName: 'components_scheduling_schedule_assignees';
   info: {
     displayName: 'Schedule Assignee';
   };
   attributes: {
-    assignee: Attribute.Relation<
-      'scheduling.schedule-assignee',
+    assignee: Schema.Attribute.Relation<
       'oneToOne',
       'plugin::users-permissions.user'
     >;
-    day: Attribute.Enumeration<
+    day: Schema.Attribute.Enumeration<
       [
         'Sunday',
         'Monday',
@@ -71,13 +70,13 @@ export interface SchedulingScheduleAssignee extends Schema.Component {
         'Wednesday',
         'Thursday',
         'Friday',
-        'Saturday'
+        'Saturday',
       ]
     >;
   };
 }
 
-export interface SeoSeoInformation extends Schema.Component {
+export interface SeoSeoInformation extends Struct.ComponentSchema {
   collectionName: 'components_seo_seo_informations';
   info: {
     description: '';
@@ -85,14 +84,14 @@ export interface SeoSeoInformation extends Schema.Component {
     icon: 'collapse';
   };
   attributes: {
-    seodescription: Attribute.Text;
-    seotitle: Attribute.String;
+    seodescription: Schema.Attribute.Text;
+    seotitle: Schema.Attribute.String;
   };
 }
 
-declare module '@strapi/types' {
-  export module Shared {
-    export interface Components {
+declare module '@strapi/strapi' {
+  export module Public {
+    export interface ComponentSchemas {
       'education.card': EducationCard;
       'plants.benefits': PlantsBenefits;
       'plants.planting': PlantsPlanting;
