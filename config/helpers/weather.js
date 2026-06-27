@@ -9,7 +9,7 @@ Weather.runWeatherCron = async() => {
   const gardens = await strapi.db.query('api::garden.garden').findMany({});
   
   for (let garden of gardens) {
-    if (!garden.openweather_id || !garden.latitude || !garden.latitude) { continue; }
+    if (!garden.openweather_id || !garden.latitude || !garden.longitude) { continue; }
     // console.log('weather cron garden: ', garden.title);
     try {
       const weather = await strapi.db.query('api::weather.weather').findOne({
@@ -110,7 +110,7 @@ Weather.getOpenWeather = async(garden) => {
     return data;
   } catch (err) {
     if (err.data) {
-      console.error(data);
+      console.error(err.data);
     } else {
       console.error(err);
     }

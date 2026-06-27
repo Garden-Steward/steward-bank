@@ -16,20 +16,20 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
    */
   async updateTaskStatus(task, status) {
     // Get current task to check if status is INITIALIZED
-    const currentTask = await strapi.documents('api::garden-task.garden-task').findOne({
-      documentId: "__TODO__"
+    const currentTask = await strapi.db.query('api::garden-task.garden-task').findOne({
+      where: { id: task.id }
     });
-    
+
     // Prepare update data
     const updateData = { status };
-    
+
     // If status is changing from INITIALIZED to anything else (except PENDING), publish the task
     if (currentTask.status === 'INITIALIZED' && status !== 'INITIALIZED' && status !== 'PENDING') {
       updateData.publishedAt = new Date();
     }
-    
-    const tasks = await strapi.documents('api::garden-task.garden-task').update({
-      documentId: "__TODO__",
+
+    const tasks = await strapi.db.query('api::garden-task.garden-task').update({
+      where: { id: task.id },
       data: updateData
     });
     return tasks;
@@ -37,11 +37,11 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
 
   async addUserToTask(task, user) {
     // First get the current task to access existing volunteers
-    const currentTask = await strapi.documents('api::garden-task.garden-task').findOne({
-      documentId: "__TODO__",
+    const currentTask = await strapi.db.query('api::garden-task.garden-task').findOne({
+      where: { id: task.id },
       populate: ['volunteers', 'primary_image']
     });
-    
+
     // Create array of existing volunteer IDs plus the new user
     const volunteerIds = [
       ...(currentTask.volunteers?.map(v => v.id) || []),
@@ -49,9 +49,8 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
     ];
 
     // Update the task with the combined volunteer array
-    const tasks = await strapi.documents('api::garden-task.garden-task').update({
-      documentId: "__TODO__",
-
+    const tasks = await strapi.db.query('api::garden-task.garden-task').update({
+      where: { id: task.id },
       data: {
         volunteers: volunteerIds
       }
@@ -90,7 +89,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
           $in: statusArr
         }
       },
-      populate: ['recurring_task','recurring_task.instruction','volunteers', 'primary_image']
+      populate: ['instruction', 'instruction.card', 'recurring_task','recurring_task.instruction', 'recurring_task.instruction.card', 'volunteers', 'primary_image']
     });
     return tasks;
 
@@ -118,7 +117,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
     
     // Build the tasks URL for the garden
     if (activeGarden?.slug) {
-      const tasksUrl = `https://steward.garden/${activeGarden.slug}/tasks`;
+      const tasksUrl = `https://steward.garden/gardens/${activeGarden.slug}/tasks`;
       return {
         body: `Here's the link to your garden tasks:\n\n${tasksUrl}`,
         type: 'reply'
@@ -141,7 +140,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
           $in: statusArr
         }
       },
-      populate: ['volunteers','recurring_task', 'recurring_task.instruction', 'primary_image']
+      populate: ['volunteers', 'instruction', 'instruction.card', 'recurring_task', 'recurring_task.instruction', 'recurring_task.instruction.card', 'primary_image']
     });
 
     // Filter out tasks where user is already a volunteer
@@ -168,7 +167,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
           $in: statusArr
         }
       },
-      populate: ['volunteers','recurring_task', 'recurring_task.instruction', 'primary_image']
+      populate: ['volunteers', 'instruction', 'instruction.card', 'recurring_task', 'recurring_task.instruction', 'recurring_task.instruction.card', 'primary_image']
     });
     return tasks[Math.floor(Math.random() * tasks.length)];
   },
@@ -195,7 +194,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
         id: task.id
       }, 
       data: updateData,
-      populate: ['volunteers','volunteers.instructions','recurring_task','recurring_task.instruction', 'primary_image']
+      populate: ['volunteers','volunteers.instructions', 'instruction', 'instruction.card', 'recurring_task','recurring_task.instruction', 'recurring_task.instruction.card', 'primary_image']
     });
   },
 
@@ -207,7 +206,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
         recurring_task: recTask.id, 
         garden:recTask.garden
       },
-      populate: { recurring_task: true, volunteers:true, primary_image: true }
+      populate: { recurring_task: { populate: { instruction: { populate: ['card'] } } }, volunteers: true, primary_image: true, instruction: { populate: ['card'] } }
     });
 
   },
@@ -254,32 +253,34 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
   },
 
   getTypeTasks(garden, type, limit) {
-    return strapi.documents('api::garden-task.garden-task').findMany({
+    return strapi.db.query('api::garden-task.garden-task').findMany({
       where: {
         garden,
         type
       },
       limit,
-      sort: {
-        updatedAt: 'desc'
-      },
+      orderBy: { updatedAt: 'desc' },
       populate: ['volunteers', 'primary_image']
     });
 
   },
 
-  sendTask(task) {
+  sendTask(task, skipWindow = false) {
 
-    if (!skipWindow && !Helper.sendingWindow(task)) { return }
-    strapi.service('api::sms.sms').handleSms({
-      task: task, 
-      body: `Hi ${task.volunteers[0].firstName}, your task ${task.title} is ready to be done today! Are you able to do it? You have some OPTIONS.`, 
-      type: 'question'
+      if (task.volunteers?.length === 0) {
+        console.log(`sendTask: Task ${task.id} has no volunteers, skipping`);
+        return;
+      }
+      if (!skipWindow && !Helper.sendingWindow(task)) { return }
+      strapi.service('api::sms.sms').handleSms({
+        task: task, 
+        body: `Hi ${task.volunteers[0].firstName}, your task ${task.title} is ready to be done today! Are you able to do it? You have some OPTIONS.`, 
+        type: 'question'
+      }
+      );
+      return {success: true, message: 'Sent task reminder for ' + task.volunteers[0].username, task: task};
+
     }
-    );
-    return {success: true, message: 'Sent task reminder for ' + task.volunteers[0].username, task: task};
-
-  }
 
 }));
 

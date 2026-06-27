@@ -15,8 +15,10 @@ module.exports = {
   requestEmail: async (ctx, next) => {
     console.log(ctx.params.id);
     // const user = await strapi.service('plugin::users-permissions.user').findOne(ctx.params);
-    const user = await strapi.entityService.findOne('plugin::users-permissions.user',ctx.params.id,
-    { populate: ['activeGarden'] });
+    const user = await strapi.db.query('plugin::users-permissions.user').findOne({
+      where: { id: ctx.params.id },
+      populate: ['activeGarden']
+    });
     
     let smsBody = null
     if (user.email == "test@test.com") {
@@ -35,11 +37,11 @@ module.exports = {
   },
 
   fetchTaskMessages: async (ctx, next) => {
-    const messages = await strapi.entityService.findMany('api::message.message', {
-      filters: {
+    const messages = await strapi.db.query('api::message.message').findMany({
+      where: {
         garden: ctx.params.id,
       },
-      sort: { id: 'desc' },
+      orderBy: { id: 'desc' },
       populate: ['garden_task', 'garden_task.recurring_task', 'garden_task.volunteers'],
     });
     return {messages: messages, status: 'success'}
@@ -88,6 +90,13 @@ module.exports = {
         smsInfo = await SmsHelper.transferTask(user, responseText);
         break;
 
+      case 'a':
+      case 'b':
+      case 'c':
+      case 'd':
+        smsInfo = await SmsHelper.handlePollResponse(user, responseText);
+        break;
+
       case 'yes':
       case 'rsvp':
         smsInfo = await SmsHelper.handleYesResponse(responseText, user);
@@ -107,6 +116,14 @@ module.exports = {
       
       case 'no':
         smsInfo = await SmsHelper.findBackupUsers(user);
+        break;
+
+      case 'pass':
+        smsInfo = await SmsHelper.passToNextVolunteer(user);
+        break;
+
+      case 'pick':
+        smsInfo = await SmsHelper.pickVolunteer(user);
         break;
           
       case 'stop':
@@ -148,8 +165,13 @@ module.exports = {
         smsInfo = await SmsHelper.applyVacation(user);
         break;
 
-      default: 
-        smsBody = 'I don\'t understand. You can always try OPTIONS to find out more things to do with our service.';
+      default:
+        // Multi-option poll vote: "ab", "a b", "a,b", "abc", etc.
+        if (/^[a-d]{2,4}$/.test(responseText.replace(/[\s,]+/g, ''))) {
+          smsInfo = await SmsHelper.handlePollResponse(user, responseText);
+        } else {
+          smsBody = 'I don\'t understand. You can always try OPTIONS to find out more things to do with our service.';
+        }
         break;
     }
     

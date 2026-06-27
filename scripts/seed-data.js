@@ -48,7 +48,17 @@ const basicData = {
       longitude: -122.3321,
       latitude: 47.6062,
       sms_slug: "gravity",
-      welcome_text: "Welcome to our downtown garden community!"
+      welcome_text: "Welcome to our downtown garden community!",
+      boundary: {
+        type: "Polygon",
+        coordinates: [[
+          [-122.3326, 47.6057],
+          [-122.3316, 47.6057],
+          [-122.3316, 47.6067],
+          [-122.3326, 47.6067],
+          [-122.3326, 47.6057]
+        ]]
+      }
     },
     {
       title: "Neighborhood Garden",
@@ -57,7 +67,17 @@ const basicData = {
       longitude: -122.3340,
       latitude: 47.6085,
       sms_slug: "elder",
-      welcome_text: "Welcome to our neighborhood garden!"
+      welcome_text: "Welcome to our neighborhood garden!",
+      boundary: {
+        type: "Polygon",
+        coordinates: [[
+          [-122.3345, 47.6080],
+          [-122.3335, 47.6080],
+          [-122.3335, 47.6090],
+          [-122.3345, 47.6090],
+          [-122.3345, 47.6080]
+        ]]
+      }
     }
   ],
 
@@ -487,7 +507,9 @@ async function setupPermissions(strapi) {
     'api::sms-campaign.sms-campaign': ['find', 'findOne', 'getByGarden', 'groupSms', 'testSms'],
     'api::interest.interest': ['find', 'findOne'],
     'api::blog.blog': ['find', 'findOne', 'fullSlug'],
-    'api::plant.plant': ['find', 'findOne', 'update'],
+    'api::plant.plant': ['find', 'findOne', 'create', 'update', 'delete'],
+    'api::project.project': ['find', 'findOne', 'create', 'update', 'delete', 'findByGarden'],
+    'api::location-tracking.location-tracking': ['find', 'findOne', 'create', 'update', 'delete'],
     'api::organization.organization': ['find', 'findOne'],
     'api::category.category': ['find', 'findOne', 'create', 'update', 'delete'],
     'api::message.message': ['fetchSms', 'fetchTaskMessages', 'requestEmail'],
@@ -520,6 +542,34 @@ async function setupPermissions(strapi) {
           enabled: true
         }
       });
+    }
+  }
+}
+
+async function setupPublicPermissions(strapi) {
+  console.log('Setting up public role permissions...');
+
+  const publicRole = await strapi.query('plugin::users-permissions.role').findOne({
+    where: { type: 'public' }
+  });
+
+  const publicPermissions = {
+    'api::plant.plant': ['find', 'findOne'],
+    'api::project.project': ['find', 'findOne', 'findByGarden'],
+    'api::location-tracking.location-tracking': ['find', 'findOne'],
+  };
+
+  for (const [contentType, actions] of Object.entries(publicPermissions)) {
+    for (const action of actions) {
+      const key = `${contentType}.${action}`;
+      const existing = await strapi.query('plugin::users-permissions.permission').findOne({
+        where: { action: key, role: publicRole.id }
+      });
+      if (!existing) {
+        await strapi.query('plugin::users-permissions.permission').create({
+          data: { action: key, role: publicRole.id, enabled: true }
+        });
+      }
     }
   }
 }
@@ -565,6 +615,12 @@ async function cleanup(strapi) {
   await strapi.db.query('api::recurring-event-template.recurring-event-template').deleteMany({
     where: {}
   });
+  await strapi.db.query('api::project.project').deleteMany({
+    where: {}
+  });
+  await strapi.db.query('api::sms-campaign.sms-campaign').deleteMany({
+    where: {}
+  });
 }
 
 async function seedBasicData(strapi) {
@@ -574,6 +630,7 @@ async function seedBasicData(strapi) {
     
     // Set up permissions first
     await setupPermissions(strapi);
+    await setupPublicPermissions(strapi);
     
     console.log('Starting basic data seeding...');
 
@@ -672,27 +729,13 @@ async function seedBasicData(strapi) {
       });
     }
 
-    // Seed plants and link to gardens
+    // Seed plants (catalog entries; garden linkage is via location-tracking)
     console.log('Seeding plants...');
-    const plants = [];
     for (const plant of basicData.plants) {
-      const created = await strapi.entityService.create('api::plant.plant', {
+      await strapi.entityService.create('api::plant.plant', {
         data: {
           ...plant,
           publishedAt: new Date()
-        }
-      });
-      plants.push(created);
-    }
-
-    // Link plants to all gardens
-    console.log('Linking plants to gardens...');
-    for (const plant of plants) {
-      await strapi.entityService.update('api::plant.plant', plant.id, {
-        data: {
-          gardens: {
-            connect: gardens.map(garden => garden.id)
-          }
         }
       });
     }

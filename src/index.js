@@ -1,20 +1,41 @@
 'use strict';
 
+const slugify = require('slugify');
+const { sentryEnabled } = require('../instrument.js');
+const Sentry = require('@sentry/node');
+
+const SLUG_CONTENT_TYPES = {
+  'api::blog.blog': { field: 'slug', reference: 'title' },
+  'api::plant.plant': { field: 'slug', reference: 'title' },
+  'api::volunteer-day.volunteer-day': { field: 'slug', reference: 'title' },
+  'api::instruction.instruction': { field: 'slug', reference: 'title' },
+  'api::project.project': { field: 'slug', reference: 'title' },
+};
+
 module.exports = {
-  /**
-   * An asynchronous register function that runs before
-   * your application is initialized.
-   *
-   * This gives you an opportunity to extend code.
-   */
   register(/*{ strapi }*/) {},
 
-  /**
-   * An asynchronous bootstrap function that runs before
-   * your application gets started.
-   *
-   * This gives you an opportunity to set up your data model,
-   * run jobs, or perform some special logic.
-   */
-  bootstrap(/*{ strapi }*/) {},
+  async bootstrap({ strapi }) {
+    strapi.documents.use(async (context, next) => {
+      const config = SLUG_CONTENT_TYPES[context.uid];
+      if (config && ['create', 'update'].includes(context.action)) {
+        const data = context.params?.data;
+        if (data && data[config.reference] && !data[config.field]) {
+          data[config.field] = slugify(data[config.reference], { lower: true, strict: true });
+        }
+      }
+      return next();
+    });
+
+    if (sentryEnabled) {
+      Sentry.setupKoaErrorHandler(strapi.server);
+    }
+
+    console.log('\n🌱 Initializing Garden Steward SMS services...');
+    try {
+      await strapi.service('api::garden.garden').initializeCache();
+    } catch (err) {
+      console.error('⚠️  Garden cache initialization failed:', err.message);
+    }
+  },
 };

@@ -1,14 +1,18 @@
-const Strapi = require("@strapi/strapi");
+const { createStrapi } = require("@strapi/strapi");
 const fs = require("fs");
 
 let instance;
 
 async function setupStrapi() {
   if (!instance) {
-    /** the following code in copied from `./node_modules/strapi/lib/Strapi.js` */
-    instance = await Strapi().load();
-    
-    // Mount the server
+    // Delete stale test database so each run starts clean
+    const testDbPath = process.env.DATABASE_FILENAME || '.tmp/test.db';
+    if (fs.existsSync(testDbPath)) {
+      fs.unlinkSync(testDbPath);
+    }
+
+    instance = await createStrapi().load();
+
     await instance.server.mount();
   }
   return instance;

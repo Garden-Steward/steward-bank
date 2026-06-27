@@ -185,7 +185,7 @@ describe('Recurring Event Instance Generation', () => {
 
       // This is a validation check the service performs
       const isValid = template.recurrence_type !== 'day_of_month' || template.day_of_month;
-      expect(isValid).toBe(false);
+      expect(isValid).toBeFalsy();
     });
 
     it('should require nth_occurrence and weekday for nth_weekday type', () => {
@@ -197,7 +197,7 @@ describe('Recurring Event Instance Generation', () => {
 
       const isValid = template.recurrence_type !== 'nth_weekday' ||
         (template.nth_occurrence && template.weekday);
-      expect(isValid).toBe(false);
+      expect(isValid).toBeFalsy();
     });
 
     it('should pass validation with all required fields', () => {
@@ -209,7 +209,7 @@ describe('Recurring Event Instance Generation', () => {
 
       const isValid = template.recurrence_type !== 'nth_weekday' ||
         (template.nth_occurrence && template.weekday);
-      expect(isValid).toBe(true);
+      expect(isValid).toBeTruthy();
     });
   });
 });

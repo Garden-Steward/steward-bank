@@ -24,7 +24,7 @@ Mapping.updateGoogleMap = async () => {
       },
       properties: {
         title: loc.label || 'Unnamed Location',
-        plant_name: loc.plant?.plant_name || 'Unknown Plant'
+        plant_name: loc.plant?.title || 'Unknown Plant'
       }
     }));
 

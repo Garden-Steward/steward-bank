@@ -19,6 +19,9 @@
         "strong",
         "profound"
       ]
+    },
+    "source_type": {
+      "type": "json"
     }
   }
 }
