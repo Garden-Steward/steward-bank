@@ -23,6 +23,9 @@ module.exports = createCoreController('api::blog.blog', ({ strapi }) => ({
         co_author: {
           populate: ['profilePhoto'],
         },
+        plants: {
+          populate: ['clipart'],
+        },
       },
     });
 
