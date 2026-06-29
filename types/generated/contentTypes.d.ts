@@ -923,7 +923,7 @@ export interface ApiPlantPlant extends Schema.CollectionType {
     sun_detail: Attribute.Text;
     title: Attribute.String;
     type: Attribute.Enumeration<
-      ['annual', 'perennial', 'herb', 'tree', 'shrub', 'wildflower']
+      ['annual', 'perennial', 'herb', 'tree', 'shrub', 'wildflower', 'fungi']
     >;
     updatedAt: Attribute.DateTime;
     updatedBy: Attribute.Relation<
