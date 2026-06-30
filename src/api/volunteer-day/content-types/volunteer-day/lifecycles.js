@@ -10,10 +10,18 @@ module.exports = {
         startDatetime: data.startDatetime,
       };
 
+      // The garden relation arrives in several shapes depending on the code path:
+      //   - scalar id (e.g. data.garden = 5)
+      //   - { id }              (already-loaded relation)
+      //   - { connect: [{ id }] } (admin create/update)
+      //   - { set: [{ id }] }     (Strapi v5 publish clones the relation this way)
       let gardenId = null;
       if (data.garden) {
         if (typeof data.garden === 'object') {
-          gardenId = data.garden.id || (data.garden.connect && data.garden.connect[0]?.id);
+          gardenId =
+            data.garden.id ||
+            data.garden.connect?.[0]?.id ||
+            data.garden.set?.[0]?.id;
         } else {
           gardenId = data.garden;
         }
@@ -23,6 +31,15 @@ module.exports = {
         duplicateFilters.garden = {
           id: gardenId
         };
+      }
+
+      // In Strapi v5 draft & publish, draft and published versions are stored as
+      // separate rows sharing the same documentId. Editing/publishing an existing
+      // entry triggers a `createEntry` (and thus beforeCreate) for the other
+      // version, which would otherwise collide with itself here. Exclude any row
+      // belonging to the same document so an edit isn't flagged as a duplicate.
+      if (data.documentId) {
+        duplicateFilters.documentId = { $ne: data.documentId };
       }
 
       const existingEvent = await strapi.db.query('api::volunteer-day.volunteer-day').findOne({

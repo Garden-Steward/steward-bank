@@ -11,6 +11,27 @@ const VdayHelper = require('./VdayHelper');
 
 module.exports = createCoreController('api::volunteer-day.volunteer-day', ({strapi}) => ({
 
+    // Fetch a single event by NUMERIC id. v5's core findOne keys on documentId,
+    // but numeric /d/:id links are sent in SMS messages, so the frontend still
+    // resolves events by numeric id through here.
+    getById: async (ctx) => {
+      const { id } = ctx.params;
+      const entry = await strapi.db.query('api::volunteer-day.volunteer-day').findOne({
+        where: { id },
+        populate: {
+          recurring_template: true,
+          confirmed: true,
+          hero_image: true,
+          featured_gallery: true,
+          garden: { populate: { managers: true } },
+        },
+      });
+      if (!entry) {
+        return ctx.notFound('Volunteer day not found');
+      }
+      return { data: entry };
+    },
+
     async create(ctx) {
       const { data } = ctx.request.body || {};
 

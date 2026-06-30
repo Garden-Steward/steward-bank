@@ -48,10 +48,11 @@ eventHelper.rsvpEvent = async (eventId, data) => {
     user: data.user
   });
   
+  // v5: utils.sanitize.contentAPI was removed; use the content-API sanitizer
+  // (strips private fields like password on the populated `confirmed` users).
   const schema = strapi.getModel('api::volunteer-day.volunteer-day');
-  updatedEvent.confirmed = {data: updatedEvent.confirmed}
-  let eventSanitized = await utils.sanitize.contentAPI.output({data: {attributes: updatedEvent}}, schema);
+  const sanitized = await strapi.contentAPI.sanitize.output(updatedEvent, schema);
 
-  return eventSanitized;
+  return { data: sanitized };
 }
 module.exports = eventHelper;
