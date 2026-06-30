@@ -454,11 +454,14 @@ export interface ApiApplicationApplication extends Struct.CollectionTypeSchema {
       'api::application.application'
     > &
       Schema.Attribute.Private;
+    location: Schema.Attribute.String;
     name: Schema.Attribute.String;
     primary_image: Schema.Attribute.Media<
       'images' | 'files' | 'videos' | 'audios'
     >;
+    project_type: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
+    requires_maintenance: Schema.Attribute.String;
     state: Schema.Attribute.String;
     title: Schema.Attribute.String;
     updatedAt: Schema.Attribute.DateTime;
