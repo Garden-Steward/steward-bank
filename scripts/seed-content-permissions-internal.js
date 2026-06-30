@@ -21,7 +21,7 @@ async function seedContentPermissionsInternal(strapi) {
   console.log('Setting up plant and project permissions...');
 
   for (const [roleType, perms] of Object.entries(DESIRED)) {
-    const role = await strapi.query('plugin::users-permissions.role').findOne({
+    const role = await strapi.db.query('plugin::users-permissions.role').findOne({
       where: { type: roleType }
     });
 
@@ -33,11 +33,11 @@ async function seedContentPermissionsInternal(strapi) {
     for (const [contentType, actions] of Object.entries(perms)) {
       for (const action of actions) {
         const key = `${contentType}.${action}`;
-        const existing = await strapi.query('plugin::users-permissions.permission').findOne({
+        const existing = await strapi.db.query('plugin::users-permissions.permission').findOne({
           where: { action: key, role: role.id }
         });
         if (!existing) {
-          await strapi.query('plugin::users-permissions.permission').create({
+          await strapi.db.query('plugin::users-permissions.permission').create({
             data: { action: key, role: role.id, enabled: true }
           });
           console.log(`  [${roleType}] enabled ${key}`);

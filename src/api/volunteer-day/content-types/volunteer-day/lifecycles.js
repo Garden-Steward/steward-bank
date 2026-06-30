@@ -2,6 +2,11 @@
 
 module.exports = {
   async beforeCreate(event) {
+    // Skip during v5 schema sync / discard-drafts migration — it bulk-creates
+    // draft copies of published entries which would trigger false-positive
+    // duplicate detection. strapi.isLoaded is false until load() finishes.
+    if (!strapi.isLoaded) return;
+
     const { data } = event.params;
 
     // Check for duplicate volunteer day with same startDatetime and garden
