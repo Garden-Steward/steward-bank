@@ -34,6 +34,12 @@ const SCALAR_TYPES = {
   uid: 'varchar(255)',
 };
 
+function toSnakeCase(value) {
+  return value
+    .replace(/([A-Z])/g, '_$1')
+    .toLowerCase();
+}
+
 function findSchemaFiles(dir) {
   const results = [];
   if (!fs.existsSync(dir)) return results;
@@ -72,7 +78,7 @@ function loadDraftPublishScalars() {
       for (const [attributeName, attribute] of Object.entries(schema.attributes || {})) {
         const sqlType = SCALAR_TYPES[attribute.type];
         if (!sqlType) continue;
-        tables.get(table).push({ column: attributeName, sqlType });
+        tables.get(table).push({ column: toSnakeCase(attributeName), sqlType });
       }
     }
   }
