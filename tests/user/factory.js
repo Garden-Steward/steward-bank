@@ -40,7 +40,7 @@ const createUser = async (data) => {
   });
 
   const defaultRole = await strapi
-    .query("plugin::users-permissions.role")
+    .db.query("plugin::users-permissions.role")
     .findOne({ where: { type: settings.default_role } });
 
   /** Creates a new user and push to database */

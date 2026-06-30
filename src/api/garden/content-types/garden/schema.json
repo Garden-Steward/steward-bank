@@ -87,6 +87,24 @@
       "relation": "oneToMany",
       "target": "api::recurring-event-template.recurring-event-template",
       "mappedBy": "garden"
+    },
+    "welcome_email_subject": {
+      "type": "string",
+      "description": "Subject line for the welcome email sent to new volunteers"
+    },
+    "welcome_email_body": {
+      "type": "richtext",
+      "description": "HTML body for the welcome email. Supports {{firstName}}, {{gardenName}}, {{senderName}} placeholders."
+    },
+    "boundary": {
+      "type": "json",
+      "description": "GeoJSON Polygon defining the garden footprint ([lng, lat] coordinate order)"
+    },
+    "location_trackings": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::location-tracking.location-tracking",
+      "mappedBy": "garden"
     }
   }
 }

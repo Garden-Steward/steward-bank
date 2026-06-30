@@ -24,6 +24,7 @@ require('./general/twilio');
 require('./user/registration');
 require('./user/user.http');
 require('./tasks/transfer');
+require('./tasks/poll');
 require('./tasks/schedule');
 require('./tasks/crontest');
 require('./tasks/instruction');

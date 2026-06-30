@@ -1,6 +1,6 @@
 FROM debian:bullseye as builder
 
-ARG NODE_VERSION=18.13.0
+ARG NODE_VERSION=20.18.1
 ARG YARN_VERSION=1.22.22
 
 RUN apt-get update; apt install -y curl python-is-python3 pkg-config build-essential

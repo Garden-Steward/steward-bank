@@ -8,8 +8,7 @@
     "description": ""
   },
   "options": {
-    "draftAndPublish": true,
-    "populateCreatorFields": true
+    "draftAndPublish": true
   },
   "pluginOptions": {},
   "attributes": {
@@ -28,8 +27,7 @@
       ]
     },
     "slug": {
-      "type": "string",
-      "targetField": "title"
+      "type": "string"
     },
     "content": {
       "type": "blocks"
@@ -57,9 +55,18 @@
       "relation": "oneToMany",
       "target": "api::plant.plant"
     },
-    "oembed": {
-      "type": "customField",
-      "customField": "plugin::oembed.oembed"
+    "author": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "article_date": {
+      "type": "date"
+    },
+    "co_author": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
     }
   }
 }

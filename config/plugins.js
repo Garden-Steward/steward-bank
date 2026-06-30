@@ -1,3 +1,5 @@
+const path = require('path');
+
 module.exports = ({ env }) => ({
   "users-permissions": {
     config: {
@@ -19,36 +21,13 @@ module.exports = ({ env }) => ({
   },
   email: {
     config: {
-      provider: 'sendgrid',
+      provider: path.resolve(__dirname, '..', 'src', 'providers', 'email-resend'),
       providerOptions: {
-        apiKey: env('SENDGRID_API_KEY'),
+        apiKey: env('RESEND_API_KEY'),
       },
       settings: {
         defaultFrom: 'no-reply@steward.garden',
         defaultReplyTo: 'no-reply@steward.garden',
-      },
-    },
-  },
-  slugify: {
-    enabled: true,
-    config: {
-      contentTypes: {
-        blog: {
-          field: 'slug',
-          references: 'title',
-        },
-        plant: {
-          field: 'slug',
-          references: 'title',
-        },
-        'volunteer-day': {
-          field: 'slug',
-          references: 'title',
-        },
-        instruction: {
-          field: 'slug',
-          references: 'title',
-        },
       },
     },
   },

@@ -53,11 +53,49 @@
         "rsvp",
         "survey",
         "volunteer-day",
-        "recurring-task"
+        "recurring-task",
+        "poll"
       ]
     },
     "alert": {
       "type": "boolean"
+    },
+    "poll_options": {
+      "type": "json"
+    },
+    "closes_at": {
+      "type": "datetime"
+    },
+    "option_a": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "plugin::users-permissions.user"
+    },
+    "option_b": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "plugin::users-permissions.user"
+    },
+    "option_c": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "plugin::users-permissions.user"
+    },
+    "option_d": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "plugin::users-permissions.user"
+    },
+    "winner": {
+      "type": "string"
+    },
+    "send_reminder": {
+      "type": "boolean",
+      "default": true
+    },
+    "reminder_sent": {
+      "type": "boolean",
+      "default": false
     }
   }
 }

@@ -98,6 +98,11 @@
     "resources_section": {
       "type": "richtext",
       "description": "Resources including optional video link"
+    },
+    "instruction": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::instruction.instruction"
     }
   }
 }

@@ -13,9 +13,13 @@ module.exports = {
     },
     { // Path defined with an URL parameter
       method: 'GET',
-      path: '/sms-campaigns/garden/:slug', 
+      path: '/sms-campaigns/garden/:slug',
       handler: 'sms-campaign.getByGarden',
     },
-
+    {
+      method: 'POST',
+      path: '/sms-campaigns/:id/close',
+      handler: 'sms-campaign.closePoll',
+    },
   ]
 }

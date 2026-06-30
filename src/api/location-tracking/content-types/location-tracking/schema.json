@@ -82,6 +82,32 @@
       ],
       "type": "media",
       "multiple": false
+    },
+    "garden": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::garden.garden",
+      "inversedBy": "location_trackings"
+    },
+    "garden_assignment_status": {
+      "type": "enumeration",
+      "enum": [
+        "unassigned",
+        "pending_confirmation",
+        "confirmed",
+        "declined"
+      ],
+      "default": "unassigned"
+    },
+    "suggested_distance_meters": {
+      "type": "float"
+    },
+    "suggested_match_method": {
+      "type": "enumeration",
+      "enum": [
+        "inside_polygon",
+        "within_radius"
+      ]
     }
   }
 }

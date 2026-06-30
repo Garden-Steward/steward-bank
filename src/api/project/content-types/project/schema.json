@@ -18,8 +18,7 @@
     },
     "slug": {
       "type": "string",
-      "unique": true,
-      "required": true
+      "unique": true
     },
     "date_start": {
       "type": "date",
@@ -100,6 +99,39 @@
     "featured": {
       "type": "boolean",
       "default": false
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "CREATED",
+        "APPROVED",
+        "REJECTED",
+        "COMPLETED",
+        "ARCHIVED"
+      ],
+      "default": "CREATED",
+      "required": true
+    },
+    "latitude": {
+      "type": "float"
+    },
+    "longitude": {
+      "type": "float"
+    },
+    "created_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "managers": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    },
+    "interested": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
     }
   }
 }

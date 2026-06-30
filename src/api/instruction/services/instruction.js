@@ -20,7 +20,8 @@ module.exports = createCoreService('api::instruction.instruction', ({ strapi }) 
     const tasks = await strapi.service('api::garden-task.garden-task').getUserTasksByStatus(user, ['PENDING']);
     // if any tasks are pending, send them the initial Text of "Youve been assigned..."
     for (let task of tasks) {
-      if (task.recurring_task && task.recurring_task.instruction.id == instruction.id) {
+      const taskInstruction = task.instruction || task.recurring_task?.instruction;
+      if (taskInstruction && taskInstruction.id == instruction.id) {
         if (task.type === 'Water') {
           return await Helper.sendWaterSms(task, true);
         } else {
@@ -60,8 +61,9 @@ module.exports = createCoreService('api::instruction.instruction', ({ strapi }) 
 
   checkInstruction(task) {
     let needsInstruction = false;
-    if (task?.recurring_task?.instruction) {
-      needsInstruction = !task.volunteers[0]?.instructions?.find(i => i.id == task.recurring_task.instruction.id);
+    const instruction = task?.instruction || task?.recurring_task?.instruction;
+    if (instruction) {
+      needsInstruction = !task.volunteers[0]?.instructions?.find(i => i.id == instruction.id);
     }
     return needsInstruction;
   },

@@ -6,7 +6,7 @@ const taskHelper = {};
  * Invites an unknown user to join a garden and then RSVPs them to a task
  * Similar to volunteer-day inviteUserEvent
  * @param {object} data - { phoneNumber, task }
- * @returns {object} - { success, body, needsRegistration }
+ * @returns {object} - { success, message, needsRegistration, garden }
  */
 taskHelper.inviteUserTask = async (data) => {
   const garden = data.task.garden;
@@ -40,13 +40,9 @@ taskHelper.inviteUserTask = async (data) => {
 
   return {
     success: true,
-    body,
+    message: "You've been sent a message to confirm. Thanks for volunteering!",
     needsRegistration: true,
-    garden: {
-      id: garden.id,
-      title: garden.title,
-      sms_slug: garden.sms_slug
-    }
+    garden: garden.sms_slug
   };
 };
 
@@ -61,7 +57,7 @@ taskHelper.inviteUserTask = async (data) => {
  */
 taskHelper.rsvpTask = async (taskId, data) => {
   let task = await strapi.db.query('api::garden-task.garden-task').findOne({
-    populate: ['volunteers', 'recurring_task', 'recurring_task.instruction', 'garden', 'primary_image'],
+    populate: ['volunteers', 'instruction', 'instruction.card', 'recurring_task', 'recurring_task.instruction', 'recurring_task.instruction.card', 'garden', 'primary_image'],
     where: { id: taskId }
   });
 
@@ -116,11 +112,12 @@ taskHelper.rsvpTask = async (taskId, data) => {
   const needsInstruction = strapi.service('api::instruction.instruction').checkInstruction(taskForCheck);
 
   let instruction = false;
-  if (task.recurring_task?.instruction) {
+  const taskInstruction = task.instruction || task.recurring_task?.instruction;
+  if (taskInstruction) {
     instruction = {
-      id: task.recurring_task.instruction.id,
-      slug: task.recurring_task.instruction.slug,
-      url: strapi.service('api::instruction.instruction').getInstructionUrl(task.recurring_task.instruction, user),
+      id: taskInstruction.id,
+      slug: taskInstruction.slug,
+      url: strapi.service('api::instruction.instruction').getInstructionUrl(taskInstruction, user),
       needsAgreement: needsInstruction
     };
   }
