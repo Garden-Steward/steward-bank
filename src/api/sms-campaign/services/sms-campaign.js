@@ -70,7 +70,8 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
     } else {
       lastCampaign.confirmed.push(user.id)
       try {
-        await strapi.entityService.update('api::sms-campaign.sms-campaign', lastCampaign.id, {
+        await strapi.db.query('api::sms-campaign.sms-campaign').update({
+          where: { id: lastCampaign.id },
           data: {
             confirmed: lastCampaign.confirmed
           }
@@ -146,7 +147,8 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
 
     if (added.length > 0) {
       try {
-        await strapi.entityService.update('api::sms-campaign.sms-campaign', lastCampaign.id, {
+        await strapi.db.query('api::sms-campaign.sms-campaign').update({
+          where: { id: lastCampaign.id },
           data: updateData,
         });
       } catch (err) {
@@ -228,7 +230,8 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
         });
       }
 
-      await strapi.entityService.update('api::sms-campaign.sms-campaign', campaign.id, {
+      await strapi.db.query('api::sms-campaign.sms-campaign').update({
+        where: { id: campaign.id },
         data: { reminder_sent: true },
       });
     }
@@ -301,7 +304,8 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
       .sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 
     // Stamp closes_at and winner on the campaign
-    await strapi.entityService.update('api::sms-campaign.sms-campaign', campaignId, {
+    await strapi.db.query('api::sms-campaign.sms-campaign').update({
+      where: { id: campaignId },
       data: {
         closes_at: new Date(),
         winner: winnerLetter ? winnerLetter.toUpperCase() : null,

@@ -3,30 +3,43 @@
 module.exports = {
   async beforeCreate(event) {
     const { data } = event.params;
-    
+
     // Check for duplicate volunteer day with same startDatetime and garden
     if (data.startDatetime) {
       const duplicateFilters = {
         startDatetime: data.startDatetime,
       };
 
-      // Extract garden ID from various possible formats
+      // The garden relation arrives in several shapes depending on the code path:
+      //   - scalar id (e.g. data.garden = 5)
+      //   - { id }              (already-loaded relation)
+      //   - { connect: [{ id }] } (admin create/update)
+      //   - { set: [{ id }] }     (Strapi v5 publish clones the relation this way)
       let gardenId = null;
       if (data.garden) {
         if (typeof data.garden === 'object') {
-          // Handle {id: ...} or {connect: [{id: ...}]} formats
-          gardenId = data.garden.id || (data.garden.connect && data.garden.connect[0]?.id);
+          gardenId =
+            data.garden.id ||
+            data.garden.connect?.[0]?.id ||
+            data.garden.set?.[0]?.id;
         } else {
-          // Handle direct ID
           gardenId = data.garden;
         }
       }
 
-      // If garden is provided, also check for same garden
       if (gardenId) {
         duplicateFilters.garden = {
           id: gardenId
         };
+      }
+
+      // In Strapi v5 draft & publish, draft and published versions are stored as
+      // separate rows sharing the same documentId. Editing/publishing an existing
+      // entry triggers a `createEntry` (and thus beforeCreate) for the other
+      // version, which would otherwise collide with itself here. Exclude any row
+      // belonging to the same document so an edit isn't flagged as a duplicate.
+      if (data.documentId) {
+        duplicateFilters.documentId = { $ne: data.documentId };
       }
 
       const existingEvent = await strapi.db.query('api::volunteer-day.volunteer-day').findOne({
@@ -34,11 +47,11 @@ module.exports = {
       });
 
       if (existingEvent) {
-        throw new Error('A volunteer day with the same start date/time already exists' + 
+        throw new Error('A volunteer day with the same start date/time already exists' +
           (gardenId ? ' for this garden' : '') + '.');
       }
     }
-    
+
     // Auto-extract album ID from URL if provided
     if (data.photo_album_url && !data.photo_album_id) {
       const volunteerDayService = strapi.service('api::volunteer-day.volunteer-day');
@@ -48,7 +61,7 @@ module.exports = {
 
   async beforeUpdate(event) {
     const { data } = event.params;
-    
+
     // Auto-extract album ID from URL if changed
     if (data.photo_album_url) {
       const volunteerDayService = strapi.service('api::volunteer-day.volunteer-day');
@@ -56,4 +69,3 @@ module.exports = {
     }
   }
 };
-

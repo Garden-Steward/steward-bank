@@ -26,8 +26,8 @@ module.exports = {
     }
 
     try {
-      const user = await strapi.entityService.findMany('plugin::users-permissions.user', {
-        filters: { phoneNumber: { $eq: normalized.phoneNumber } }
+      const user = await strapi.db.query('plugin::users-permissions.user').findMany({
+        where: { phoneNumber: normalized.phoneNumber }
       });
 
       if (!user || user.length === 0) {
@@ -41,7 +41,8 @@ module.exports = {
       const tokenExpiry = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
       // Store token in user record temporarily
-      await strapi.entityService.update('plugin::users-permissions.user', targetUser.id, {
+      await strapi.db.query('plugin::users-permissions.user').update({
+        where: { id: targetUser.id },
         data: {
           email_verification_token: verificationToken,
           email_verification_expires: tokenExpiry
@@ -107,7 +108,7 @@ module.exports = {
     }
 
     try {
-      const user = await strapi.entityService.findOne('plugin::users-permissions.user', userId);
+      const user = await strapi.db.query('plugin::users-permissions.user').findOne({ where: { id: userId } });
 
       if (!user) {
         return ctx.notFound('User not found');
@@ -125,7 +126,8 @@ module.exports = {
       }
 
       // Mark email as verified
-      await strapi.entityService.update('plugin::users-permissions.user', userId, {
+      await strapi.db.query('plugin::users-permissions.user').update({
+        where: { id: userId },
         data: {
           email_confirmed: true,
           email_verification_token: null,
@@ -165,7 +167,7 @@ module.exports = {
     }
 
     try {
-      const user = await strapi.entityService.findOne('plugin::users-permissions.user', userId);
+      const user = await strapi.db.query('plugin::users-permissions.user').findOne({ where: { id: userId } });
 
       if (!user) {
         return ctx.notFound('User not found');
@@ -179,7 +181,8 @@ module.exports = {
         where: { type: 'authenticated' }
       });
 
-      await strapi.entityService.update('plugin::users-permissions.user', userId, {
+      await strapi.db.query('plugin::users-permissions.user').update({
+        where: { id: userId },
         data: {
           password,
           confirmed: true,
