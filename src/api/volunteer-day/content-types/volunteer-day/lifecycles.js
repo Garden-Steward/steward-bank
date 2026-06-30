@@ -44,11 +44,30 @@ module.exports = {
 
       const existingEvent = await strapi.db.query('api::volunteer-day.volunteer-day').findOne({
         where: duplicateFilters,
+        populate: ['garden'],
       });
 
       if (existingEvent) {
-        throw new Error('A volunteer day with the same start date/time already exists' +
-          (gardenId ? ' for this garden' : '') + '.');
+        const existingGardenId = existingEvent.garden?.id ?? existingEvent.garden;
+        const gardensMatch = !gardenId || existingGardenId === gardenId;
+
+        const sameDocument =
+          data.documentId &&
+          existingEvent.documentId &&
+          data.documentId === existingEvent.documentId;
+
+        // Strapi v5 discard-drafts migration clones published rows as drafts via
+        // beforeCreate without documentId on data — skip self-collision.
+        const draftCloneOfPublished =
+          gardensMatch &&
+          data.publishedAt == null &&
+          existingEvent.publishedAt != null &&
+          existingEvent.startDatetime === data.startDatetime;
+
+        if (!sameDocument && !draftCloneOfPublished) {
+          throw new Error('A volunteer day with the same start date/time already exists' +
+            (gardenId ? ' for this garden' : '') + '.');
+        }
       }
     }
 
