@@ -34,4 +34,4 @@ WORKDIR /app
 ENV NODE_ENV production
 ENV PATH /root/.volta/bin:$PATH
 
-CMD [ "yarn", "run", "start" ]
+CMD ["sh", "-c", "node scripts/pre-migrate-v5-columns.js && yarn run start"]
