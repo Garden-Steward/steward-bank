@@ -10,6 +10,9 @@ processes = []
 primary_region = "sjc"
 swap_size_mb = 512
 
+[deploy]
+  release_command = "node scripts/run-database-migrations.js"
+
 
 [env]
 
@@ -41,7 +44,7 @@ swap_size_mb = 512
     port = 443
 
   [[services.tcp_checks]]
-    grace_period = "1s"
+    grace_period = "300s"
     interval = "15s"
     restart_limit = 0
-    timeout = "2s"
+    timeout = "10s"
