@@ -15,15 +15,13 @@ module.exports = ({ env }) => ({
       ssl: false,
     },
     debug: false,
-    acquireConnectionTimeout: 1000000,
-    options: {
-      pool: {
-          min: 1,
-          max: 5,
-          acquireTimeoutMillis: 900000,
-          createTimeoutMillis: 900000,
-          destroyTimeoutMillis: 900000,
-      }
+    acquireConnectionTimeout: 60000,
+    pool: {
+      min: 1,
+      max: 10,
+      acquireTimeoutMillis: 60000,
+      createTimeoutMillis: 30000,
+      destroyTimeoutMillis: 5000,
     },
   },
 });
