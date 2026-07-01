@@ -920,6 +920,7 @@ export interface ApiPlantPlant extends Struct.CollectionTypeSchema {
     draftAndPublish: true;
   };
   attributes: {
+<<<<<<< HEAD
     Benefits: Schema.Attribute.Component<'plants.benefits', true>;
     clipart: Schema.Attribute.Media<'images'>;
     createdAt: Schema.Attribute.DateTime;
@@ -940,7 +941,7 @@ export interface ApiPlantPlant extends Struct.CollectionTypeSchema {
     sun_detail: Schema.Attribute.Text;
     title: Schema.Attribute.String;
     type: Schema.Attribute.Enumeration<
-      ['annual', 'perennial', 'herb', 'tree', 'shrub', 'wildflower']
+      ['annual', 'perennial', 'herb', 'tree', 'shrub', 'wildflower', 'fungi']
     >;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &

@@ -26,7 +26,8 @@
               "herb",
               "tree",
               "shrub",
-              "wildflower"
+              "wildflower",
+              "fungi"
             ]
     },
     "water_detail": {
