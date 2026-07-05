@@ -86,6 +86,12 @@
             "relation": "manyToMany",
             "target": "api::tag.tag",
             "mappedBy": "plants"
+        },
+        "sources": {
+            "displayName": "Sources",
+            "type": "component",
+            "repeatable": true,
+            "component": "plants.sources"
         }
     }
 }

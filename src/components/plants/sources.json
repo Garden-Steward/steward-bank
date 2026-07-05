@@ -1,0 +1,33 @@
+{
+  "collectionName": "components_plants_sources",
+  "info": {
+    "displayName": "Sources",
+    "icon": "bookOpen",
+    "description": "References and sources cited for plant data"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "url": {
+      "type": "string"
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "website",
+        "book",
+        "academic-paper",
+        "indigenous-knowledge",
+        "garden-observation",
+        "blog",
+        "other"
+      ]
+    },
+    "author": {
+      "type": "string"
+    }
+  }
+}
