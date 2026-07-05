@@ -1,74 +1,80 @@
 {
-  "kind": "collectionType",
-  "collectionName": "plants",
-  "info": {
-    "singularName": "plant",
-    "pluralName": "plants",
-    "displayName": "Plant",
-    "description": ""
-  },
-  "options": {
-    "draftAndPublish": true
-  },
-  "pluginOptions": {},
-  "attributes": {
-    "title": {
-      "type": "string"
+    "kind": "collectionType",
+    "collectionName": "plants",
+    "info": {
+        "singularName": "plant",
+        "pluralName": "plants",
+        "displayName": "Plant",
+        "description": ""
     },
-    "description": {
-      "type": "text"
+    "options": {
+        "draftAndPublish": true
     },
-    "type": {
-      "type": "enumeration",
-      "enum": [
-              "annual",
-              "perennial",
-              "herb",
-              "tree",
-              "shrub",
-              "wildflower",
-              "fungi"
+    "pluginOptions": {},
+    "attributes": {
+        "title": {
+            "type": "string"
+        },
+        "description": {
+            "type": "text"
+        },
+        "type": {
+            "type": "enumeration",
+            "enum": [
+                "annual",
+                "perennial",
+                "herb",
+                "tree",
+                "shrub",
+                "wildflower",
+                "fungi"
             ]
-    },
-    "water_detail": {
-      "type": "text"
-    },
-    "sun_detail": {
-      "type": "text"
-    },
-    "slug": {
-      "type": "string"
-    },
-    "latin": {
-      "type": "string"
-    },
-    "images": {
-      "type": "media",
-      "multiple": true,
-      "required": false,
-      "allowedTypes": [
-        "images",
-        "files",
-        "videos",
-        "audios"
-      ]
-    },
-    "Benefits": {
-      "displayName": "Benefits",
-      "type": "component",
-      "repeatable": true,
-      "component": "plants.benefits"
-    },
-    "magic": {
-      "type": "richtext"
-    },
-    "clipart": {
-      "type": "media",
-      "multiple": false,
-      "required": false,
-      "allowedTypes": [
-        "images"
-      ]
+        },
+        "water_detail": {
+            "type": "text"
+        },
+        "sun_detail": {
+            "type": "text"
+        },
+        "slug": {
+            "type": "string"
+        },
+        "latin": {
+            "type": "string"
+        },
+        "images": {
+            "type": "media",
+            "multiple": true,
+            "required": false,
+            "allowedTypes": [
+                "images",
+                "files",
+                "videos",
+                "audios"
+            ]
+        },
+        "Benefits": {
+            "displayName": "Benefits",
+            "type": "component",
+            "repeatable": true,
+            "component": "plants.benefits"
+        },
+        "magic": {
+            "type": "richtext"
+        },
+        "clipart": {
+            "type": "media",
+            "multiple": false,
+            "required": false,
+            "allowedTypes": [
+                "images"
+            ]
+        },
+        "tags": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::tag.tag",
+            "mappedBy": "plants"
+        }
     }
-  }
 }
