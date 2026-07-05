@@ -70,6 +70,17 @@
                 "images"
             ]
         },
+        "invasive_status": {
+            "type": "enumeration",
+            "enum": [
+                "native",
+                "non_native_benign",
+                "invasive_ca",
+                "invasive_na",
+                "caution"
+            ],
+            "default": "non_native_benign"
+        },
         "tags": {
             "type": "relation",
             "relation": "manyToMany",
