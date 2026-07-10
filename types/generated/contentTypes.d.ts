@@ -920,7 +920,6 @@ export interface ApiPlantPlant extends Struct.CollectionTypeSchema {
     draftAndPublish: true;
   };
   attributes: {
-<<<<<<< HEAD
     Benefits: Schema.Attribute.Component<'plants.benefits', true>;
     clipart: Schema.Attribute.Media<'images'>;
     createdAt: Schema.Attribute.DateTime;
@@ -931,6 +930,9 @@ export interface ApiPlantPlant extends Struct.CollectionTypeSchema {
       'images' | 'files' | 'videos' | 'audios',
       true
     >;
+    invasive_status: Schema.Attribute.Enumeration<
+      ['native', 'non_native_benign', 'invasive_ca', 'invasive_na', 'caution']
+    >;
     latin: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::plant.plant'> &
@@ -938,7 +940,9 @@ export interface ApiPlantPlant extends Struct.CollectionTypeSchema {
     magic: Schema.Attribute.RichText;
     publishedAt: Schema.Attribute.DateTime;
     slug: Schema.Attribute.String;
+    sources: Schema.Attribute.Component<'plants.sources', true>;
     sun_detail: Schema.Attribute.Text;
+    tags: Schema.Attribute.Relation<'manyToMany', 'api::tag.tag'>;
     title: Schema.Attribute.String;
     type: Schema.Attribute.Enumeration<
       ['annual', 'perennial', 'herb', 'tree', 'shrub', 'wildflower', 'fungi']
@@ -946,6 +950,7 @@ export interface ApiPlantPlant extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    uses: Schema.Attribute.RichText;
     water_detail: Schema.Attribute.Text;
   };
 }
