@@ -16,7 +16,7 @@
             "type": "string"
         },
         "description": {
-            "type": "text"
+            "type": "richtext"
         },
         "type": {
             "type": "enumeration",

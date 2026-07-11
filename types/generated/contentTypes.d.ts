@@ -925,12 +925,12 @@ export interface ApiPlantPlant extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    description: Schema.Attribute.Text;
-    images: Schema.Attribute.Media<
-      'images' | 'files' | 'videos' | 'audios',
-      true
-    >;
-    invasive_status: Schema.Attribute.Enumeration<
+          description: Schema.Attribute.RichText;
+          images: Schema.Attribute.Media<
+            'images' | 'files' | 'videos' | 'audios',
+            true
+          >;
+          invasive_status: Schema.Attribute.Enumeration<
       ['native', 'non_native_benign', 'invasive_ca', 'invasive_na', 'caution']
     >;
     latin: Schema.Attribute.String;
