@@ -113,7 +113,8 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
           },
           startDatetime: {
             $gt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString()
-          }
+          },
+          canceled: { $ne: true }
         }
       };
 
@@ -144,7 +145,8 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
         accessibility: 'Public',
         startDatetime: {
           $gt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
-        }
+        },
+        canceled: { $ne: true }
       };
 
       const populate = ['hero_image', 'garden', 'garden.hero_image', 'garden.organization'];
@@ -356,6 +358,10 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
         where: {id: ctx.params.id},
         populate: ['garden', 'garden.volunteers']
       });
+
+      if (vDay?.canceled) {
+        return ctx.badRequest('Cannot send SMS for a canceled event');
+      }
 
       const copy = VdayHelper.buildUpcomingDayCopy(vDay);
       const sentInfo = strapi.service('api::volunteer-day.volunteer-day').sendGroupMsg(vDay,copy);
