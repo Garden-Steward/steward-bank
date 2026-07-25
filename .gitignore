@@ -1,7 +1,7 @@
 .env.prod
 package-lock.json
 .cursor/
-.claude/
+.claude/settings.local.json
 
 ############################
 # OS X
