@@ -295,6 +295,9 @@ module.exports = createCoreService('api::recurring-event-template.recurring-even
         const dayEndPacific = new Date(nextDate);
         dayEndPacific.setHours(23, 59, 59, 999);
 
+        // Intentionally not filtering out canceled: {$ne: true} here — a canceled
+        // instance must still count as "exists for this date" so the engine never
+        // regenerates a duplicate for a slot the organizer canceled.
         const existingForDate = await strapi.db.query('api::volunteer-day.volunteer-day').findMany({
           where: {
             recurring_template: template.id,
