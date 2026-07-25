@@ -30,6 +30,15 @@
     "state": {
       "type": "string"
     },
+    "project_type": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "requires_maintenance": {
+      "type": "string"
+    },
     "primary_image": {
       "allowedTypes": [
         "images",

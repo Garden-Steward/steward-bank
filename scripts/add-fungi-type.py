@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Migration: Add 'fungi' to the Plant type enum on the production Strapi instance.
+Updated for Strapi v5 (documentId-based API, no 'attributes' wrapper).
 
 Uses the Content-Type Builder admin API (requires admin credentials).
 
@@ -8,7 +9,7 @@ Usage:
   ADMIN_EMAIL=your@email.com ADMIN_PASSWORD=yourpassword python scripts/add-fungi-type.py
 """
 
-import os, json, sys, urllib.request, urllib.parse
+import os, json, sys, urllib.request, urllib.parse, time
 
 API_URL = os.environ.get("API_URL", "https://steward-bank.fly.dev")
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL")
@@ -90,31 +91,57 @@ else:
         print("  ✗ Failed to update enum")
         sys.exit(1)
 
-# Step 6: Update existing mushrooms
-time.sleep(3)  # Wait for restart
+# Step 6: Update existing mushrooms to type=fungi (Strapi v5 — documentId, not numeric id)
+print("Waiting for Strapi restart...")
+time.sleep(5)
+
 print("\nUpdating existing mushrooms to type=fungi...")
-mushrooms = [
-    (640, "Reishi"),
-    (801, "Lion's Mane"),
-    (802, "Chaga"),
+# Find mushrooms by title search (Strapi v5 uses documentId, not numeric id)
+mushroom_searches = [
+    ("Reishi", "Reishi"),
+    ("Lion's Mane", "Lion's Mane"),
+    ("Chaga", "Chaga"),
 ]
-for pid, name in mushrooms:
-    payload = json.dumps({"data": {"type": "fungi"}}).encode()
-    req = urllib.request.Request(
-        f"{API_URL}/api/plants/{pid}",
-        data=payload,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json"
-        },
-        method="PUT"
-    )
+
+for search_term, display_name in mushroom_searches:
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            r = json.loads(resp.read())
-            new_type = r["data"]["attributes"]["type"]
-            print(f"  {name} (ID={pid}) → {new_type} ✓")
+        # Search for the plant by title
+        req = urllib.request.Request(
+            f"{API_URL}/api/plants?filters[title][$containsi]={urllib.parse.quote(search_term)}&fields[0]=title&fields[1]=type&fields[2]=documentId",
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            search_result = json.loads(resp.read())
+        
+        plants_found = search_result.get("data", [])
+        if not plants_found:
+            print(f"  {display_name} — NOT FOUND in database")
+            continue
+        
+        for plant in plants_found:
+            doc_id = plant.get("documentId")
+            current_type = plant.get("type")
+            plant_title = plant.get("title", display_name)
+            
+            if current_type == "fungi":
+                print(f"  {plant_title} (docId={doc_id}) — already type=fungi ✓")
+            else:
+                # Update using documentId (Strapi v5)
+                payload = json.dumps({"data": {"type": "fungi"}}).encode()
+                req = urllib.request.Request(
+                    f"{API_URL}/api/plants/{doc_id}",
+                    data=payload,
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "Content-Type": "application/json"
+                    },
+                    method="PUT"
+                )
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    r = json.loads(resp.read())
+                    new_type = r["data"]["type"]
+                    print(f"  {plant_title} (docId={doc_id}) → {new_type} ✓")
     except Exception as e:
-        print(f"  {name} (ID={pid}) → FAILED: {e}")
+        print(f"  {display_name} — FAILED: {e}")
 
 print("\nDone!")

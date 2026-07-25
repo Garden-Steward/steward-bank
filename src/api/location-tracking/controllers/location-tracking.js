@@ -109,7 +109,8 @@ module.exports = createCoreController('api::location-tracking.location-tracking'
       updateData.suggested_match_method = null;
     }
 
-    const updated = await strapi.entityService.update('api::location-tracking.location-tracking', id, {
+    const updated = await strapi.db.query('api::location-tracking.location-tracking').update({
+      where: { id },
       data: updateData,
       populate: ['garden', 'plant', 'user'],
     });

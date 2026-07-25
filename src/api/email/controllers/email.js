@@ -20,11 +20,10 @@ module.exports = {
     const { gardenId, force = false, subject: customSubject, body: customBody } = ctx.request.body || {};
 
     // Load target user with their activeGarden
-    const targetUser = await strapi.entityService.findOne(
-      'plugin::users-permissions.user',
-      targetUserId,
-      { populate: ['activeGarden'] }
-    );
+    const targetUser = await strapi.db.query('plugin::users-permissions.user').findOne({
+      where: { id: targetUserId },
+      populate: ['activeGarden']
+    });
 
     if (!targetUser) {
       return ctx.notFound('User not found');
@@ -35,7 +34,7 @@ module.exports = {
       return ctx.badRequest('No garden specified and user has no active garden');
     }
 
-    const garden = await strapi.entityService.findOne('api::garden.garden', resolvedGardenId);
+    const garden = await strapi.db.query('api::garden.garden').findOne({ where: { id: resolvedGardenId } });
     if (!garden) {
       return ctx.notFound('Garden not found');
     }
@@ -108,7 +107,8 @@ module.exports = {
       },
     ];
 
-    await strapi.entityService.update('plugin::users-permissions.user', targetUserId, {
+    await strapi.db.query('plugin::users-permissions.user').update({
+      where: { id: targetUserId },
       data: { automated_emails_sent: updatedHistory },
     });
 

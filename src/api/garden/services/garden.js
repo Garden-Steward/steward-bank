@@ -91,7 +91,8 @@ module.exports = createCoreService('api::garden.garden', ({ strapi }) =>  ({
 
     const alreadyLinked = (temporary.gardens || []).some((g) => g.id === gardenId);
     if (!alreadyLinked) {
-      await strapi.entityService.update('api::interest.interest', temporary.id, {
+      await strapi.db.query('api::interest.interest').update({
+        where: { id: temporary.id },
         data: {
           gardens: { connect: [gardenId] },
         },
@@ -125,7 +126,7 @@ module.exports = createCoreService('api::garden.garden', ({ strapi }) =>  ({
       if (existing) {
         continue;
       }
-      await strapi.entityService.create('api::user-garden-interest.user-garden-interest', {
+      await strapi.db.query('api::user-garden-interest.user-garden-interest').create({
         data: {
           user: userId,
           garden: gardenId,

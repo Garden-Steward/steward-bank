@@ -128,11 +128,9 @@ taskHelper.rsvpTask = async (taskId, data) => {
     where: { id: taskId }
   });
 
+  // v5: utils.sanitize.contentAPI was removed; use the content-API sanitizer.
   const schema = strapi.getModel('api::garden-task.garden-task');
-  const taskSanitized = await utils.sanitize.contentAPI.output(
-    { data: { attributes: updatedTask } },
-    schema
-  );
+  const taskSanitized = await strapi.contentAPI.sanitize.output(updatedTask, schema);
 
   return {
     success: true,

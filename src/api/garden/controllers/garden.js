@@ -17,20 +17,23 @@ module.exports = createCoreController('api::garden.garden', ({ strapi }) => ({
         "managers","organization", "hero_image", "featured_gallery",
       ]
     });
-    
+
+    if (!entity) {
+      return ctx.notFound('Garden not found');
+    }
+
     const interests = await strapi.db.query('api::interest.interest').findMany({
-      columns:['tag'],
+      select: ['tag'],
       where: {gardens: entity.id}
     });
-    
+
     entity.interests = interests;
 
-    try {
-      ctx.body = this.transformResponse(entity);
-    } catch (err) {
-      ctx.body = err;
-    }
-  }, 
+    // db.query returns a flat v5 entity already; return it directly. (The old
+    // this.transformResponse(entity) threw under v5, which the catch swallowed
+    // into an empty {} body.)
+    ctx.body = { data: entity };
+  },
   
   async find(ctx) {
     // Handle public access (no authenticated user)

@@ -94,10 +94,11 @@ VdayHelper.getUpcomingVdays = () => {
         $gt: toorecent
       },
       // publishedAt: {$ne: null},
-      disabled: {$ne: true}
+      disabled: {$ne: true},
+      canceled: {$ne: true}
     },
     populate: ['garden', 'garden.volunteers']
-  }) 
+  })
 }
 
 VdayHelper.getTodayVdays = () => {
@@ -110,10 +111,11 @@ VdayHelper.getTodayVdays = () => {
         $gte:today
       },
       // publishedAt: {$ne: null},
-      disabled: {$ne: true}
+      disabled: {$ne: true},
+      canceled: {$ne: true}
     },
     populate: ['garden', 'garden.volunteers']
-  }) 
+  })
 }
 VdayHelper.getTomorrowVdays = () => {
   const today = new Date();
@@ -126,10 +128,11 @@ VdayHelper.getTomorrowVdays = () => {
         $gte:tmrw
       },
       // publishedAt: {$ne: null},
-      disabled: {$ne: true}
+      disabled: {$ne: true},
+      canceled: {$ne: true}
     },
     populate: ['garden', 'garden.volunteers']
-  }) 
+  })
 }
 
 

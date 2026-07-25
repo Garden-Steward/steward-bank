@@ -16,9 +16,9 @@ module.exports = createCoreController('api::user-garden-interest.user-garden-int
     const garden = await strapi.db.query('api::garden.garden').findOne({
       where: {id: gardenId}
     });
-    let temporary = await strapi.query('api::interest.interest').findOne({ where: {tag: 'Temporary'} });
+    let temporary = await strapi.db.query('api::interest.interest').findOne({ where: {tag: 'Temporary'} });
     // console.log('temp: ', temporary, temporary.id, gardenId)
-    let deleteInterest = await strapi.query('api::user-garden-interest.user-garden-interest').findMany({ where: { 
+    let deleteInterest = await strapi.db.query('api::user-garden-interest.user-garden-interest').findMany({ where: { 
       garden: {
         id: gardenId
       }, interest: {
@@ -27,7 +27,7 @@ module.exports = createCoreController('api::user-garden-interest.user-garden-int
     }});
 
     for (let di of deleteInterest) {
-      await strapi.query("api::user-garden-interest.user-garden-interest")
+      await strapi.db.query("api::user-garden-interest.user-garden-interest")
       .delete({ where: { id: di.id } });
     }
 

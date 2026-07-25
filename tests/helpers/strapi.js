@@ -1,4 +1,4 @@
-const Strapi = require("@strapi/strapi");
+const { createStrapi } = require("@strapi/strapi");
 const fs = require("fs");
 
 let instance;
@@ -11,10 +11,8 @@ async function setupStrapi() {
       fs.unlinkSync(testDbPath);
     }
 
-    /** the following code in copied from `./node_modules/strapi/lib/Strapi.js` */
-    instance = await Strapi().load();
+    instance = await createStrapi().load();
 
-    // Mount the server
     await instance.server.mount();
   }
   return instance;

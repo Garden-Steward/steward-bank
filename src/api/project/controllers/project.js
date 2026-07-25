@@ -170,7 +170,7 @@ module.exports = createCoreController('api::project.project', ({ strapi }) => ({
       data.longitude = longitude;
     }
 
-    const entity = await strapi.entityService.create('api::project.project', {
+    const entity = await strapi.db.query('api::project.project').create({
       data,
       populate: ['hero_image', 'featured_gallery', 'garden', 'managers', 'created_by'],
     });
@@ -200,7 +200,8 @@ module.exports = createCoreController('api::project.project', ({ strapi }) => ({
       ? current.filter((uid) => uid !== user.id)
       : [...current, user.id];
 
-    await strapi.entityService.update('api::project.project', id, {
+    await strapi.db.query('api::project.project').update({
+      where: { id },
       data: { interested: next },
     });
 
@@ -241,7 +242,8 @@ module.exports = createCoreController('api::project.project', ({ strapi }) => ({
       );
     }
 
-    const updated = await strapi.entityService.update('api::project.project', id, {
+    const updated = await strapi.db.query('api::project.project').update({
+      where: { id },
       data: { managers: managerIds },
       populate: ['managers'],
     });

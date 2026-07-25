@@ -23,8 +23,15 @@ module.exports = {
     },
     {
       method: 'GET',
-      path: '/volunteer-days/public', 
+      path: '/volunteer-days/public',
       handler: 'volunteer-day.getPublic',
+    },
+    { // Fetch a single event by NUMERIC id (v5 core findOne is documentId-only;
+      // numeric /d/:id URLs are baked into SMS links, so we keep them working here).
+      method: 'GET',
+      path: '/volunteer-days/by-id/:id',
+      handler: 'volunteer-day.getById',
+      config: { auth: false },
     },
     {
       method: 'POST',
