@@ -1,10 +1,17 @@
 const fs = require('fs');
 const { setupStrapi, cleanupStrapi, grantPrivileges } = require("./helpers/strapi");
+const { restoreAll } = require("./helpers/patch");
 
 jest.setTimeout(30000);
 beforeAll(async () => {
   await setupStrapi();
   await grantPrivileges(2, ["permissions.application.controllers.hello.index"]);  // Gives Public access to endpoint
+});
+
+// Every module below shares one Strapi instance, so any service/repository stub
+// a test installs must come back off after that test. See helpers/patch.js.
+afterEach(() => {
+  restoreAll();
 });
 
 afterAll(async () => {

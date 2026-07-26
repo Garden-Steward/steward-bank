@@ -43,7 +43,9 @@ describe('cronHelper', function() {
   });
 
   it('should only send SMS for tasks with complete_once not false', async () => {
-    // Mock the database query
+    // complete_once is filtered in the DB query, not in JS, so the rows the
+    // helper iterates are already narrowed. Assert on the filter it asks for,
+    // and that the row it gets back is messaged.
     const mockStartedTasks = [
       {
         id: 1,
@@ -57,32 +59,18 @@ describe('cronHelper', function() {
           phoneNumber: '+1234567890'
         }],
         garden: { id: 1 }
-      },
-      {
-        id: 2,
-        status: 'STARTED',
-        complete_once: false,
-        title: 'Water Task 2',
-        type: 'Water',
-        volunteers: [{
-          id: 2,
-          firstName: 'Jane',
-          phoneNumber: '+1987654321'
-        }],
-        garden: { id: 1 }
       }
     ];
+
+    const findMany = jest.fn().mockResolvedValue(mockStartedTasks);
+    const handleSms = jest.fn();
 
     // Mock strapi.db.query
     global.strapi = {
       db: {
-        query: jest.fn().mockReturnValue({
-          findMany: jest.fn().mockResolvedValue(mockStartedTasks)
-        })
+        query: jest.fn().mockReturnValue({ findMany })
       },
-      service: jest.fn().mockReturnValue({
-        handleSms: jest.fn()
-      })
+      service: jest.fn().mockReturnValue({ handleSms })
     };
 
     // Mock sendingWindow to always return true for testing
@@ -90,11 +78,18 @@ describe('cronHelper', function() {
 
     await cronHelper.handleStartedTasks();
 
-    // Verify that handleSms was only called once (for the task with complete_once: true)
-    expect(strapi.service().handleSms).toHaveBeenCalledTimes(1);
-    
+    // Tasks with complete_once: false must be excluded by the query itself
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ complete_once: { $ne: false } })
+      })
+    );
+
+    // Verify that handleSms was called for the task the query returned
+    expect(handleSms).toHaveBeenCalledTimes(1);
+
     // Verify the correct task was processed
-    const smsCall = strapi.service().handleSms.mock.calls[0][0];
+    const smsCall = handleSms.mock.calls[0][0];
     expect(smsCall.task.id).toBe(1);
     expect(smsCall.task.complete_once).toBe(true);
   });

@@ -1,11 +1,38 @@
 const userMock = require('../mocks/userMock');
+const { patchService } = require('../helpers/patch');
 
 describe('Garden Task Publishing', function() {
   let garden;
   let recurringTask;
   let gardenTask;
+  let testUser;
 
   beforeEach(async () => {
+    // userMock is a plain fixture, not a DB row. The SmsHelper paths below look
+    // volunteers up by phone number and link them by id, so a real user has to
+    // exist — otherwise the volunteer link hits a FK error and finishTask finds
+    // nothing to finish.
+    testUser = await strapi.db.query('plugin::users-permissions.user').findOne({
+      where: { email: userMock.user.email }
+    });
+
+    if (!testUser) {
+      testUser = await strapi.db.query('plugin::users-permissions.user').create({
+        data: {
+          username: userMock.user.username,
+          email: userMock.user.email,
+          provider: userMock.user.provider,
+          password: userMock.user.password,
+          confirmed: userMock.user.confirmed,
+          blocked: userMock.user.blocked,
+          paused: userMock.user.paused,
+          phoneNumber: userMock.user.phoneNumber,
+          firstName: userMock.user.firstName,
+          lastName: userMock.user.lastName,
+        }
+      });
+    }
+
     // Get or create garden - use the same pattern as smsTask.js
     garden = await strapi.db.query('api::garden.garden').findOne({
       where: { id: userMock.user.activeGarden }
@@ -94,7 +121,7 @@ describe('Garden Task Publishing', function() {
       await strapi.service('api::garden-task.garden-task').updateTaskStatus(gardenTask, 'STARTED');
       
       // Get the task again to check publishedAt was set
-      const startedTask = await strapi.entityService.findOne('api::garden-task.garden-task', gardenTask.id);
+      const startedTask = await strapi.db.query('api::garden-task.garden-task').findOne({ where: { id: gardenTask.id } });
       expect(startedTask.publishedAt).toBeDefined();
       const originalPublishedAt = startedTask.publishedAt;
       
@@ -112,7 +139,7 @@ describe('Garden Task Publishing', function() {
       const updatedTask = await strapi.service('api::garden-task.garden-task').updateGardenTaskUser(
         gardenTask,
         'STARTED',
-        userMock.user.id
+        testUser.id
       );
       
       expect(updatedTask.status).toBe('STARTED');
@@ -124,7 +151,7 @@ describe('Garden Task Publishing', function() {
       const updatedTask = await strapi.service('api::garden-task.garden-task').updateGardenTaskUser(
         gardenTask,
         'PENDING',
-        userMock.user.id
+        testUser.id
       );
       
       expect(updatedTask.status).toBe('PENDING');
@@ -134,33 +161,39 @@ describe('Garden Task Publishing', function() {
 
   describe('SmsHelper.handleGardenTask', function() {
     it('should publish task when status changes from INITIALIZED to STARTED via SMS', async function() {
-      const SmsHelper = require('../../../src/api/message/controllers/SmsHelper');
+      const SmsHelper = require('../../src/api/message/controllers/SmsHelper');
       
       // Create a message with the garden task
       const message = await strapi.db.query('api::message.message').create({
         data: {
           body: 'Test question',
           type: 'question',
-          user: userMock.user.id,
+          user: testUser.id,
           garden_task: gardenTask.id
         }
       });
 
       // Mock validateQuestion to return the message
-      strapi.service('api::message.message').validateQuestion = jest.fn().mockResolvedValue({
+      patchService('api::message.message', 'validateQuestion', jest.fn().mockResolvedValue({
         id: message.id,
         body: 'Test question',
         type: 'question',
         garden_task: gardenTask
+      }));
+
+      // handleGardenTask reads gardenTask.volunteers, so hand it a populated task
+      const populatedTask = await strapi.db.query('api::garden-task.garden-task').findOne({
+        where: { id: gardenTask.id },
+        populate: ['volunteers']
       });
 
-      await SmsHelper.handleGardenTask('yes', userMock.user, {
+      await SmsHelper.handleGardenTask('yes', testUser, {
         id: message.id,
-        garden_task: gardenTask
+        garden_task: populatedTask
       });
 
       // Check that the task was published
-      const updatedTask = await strapi.entityService.findOne('api::garden-task.garden-task', gardenTask.id);
+      const updatedTask = await strapi.db.query('api::garden-task.garden-task').findOne({ where: { id: gardenTask.id } });
       expect(updatedTask.status).toBe('STARTED');
       expect(updatedTask.publishedAt).toBeDefined();
       expect(updatedTask.publishedAt).not.toBeNull();
@@ -169,10 +202,10 @@ describe('Garden Task Publishing', function() {
 
   describe('SmsHelper.finishTask', function() {
     it('should publish task when status changes from INITIALIZED to FINISHED', async function() {
-      const SmsHelper = require('../../../src/api/message/controllers/SmsHelper');
+      const SmsHelper = require('../../src/api/message/controllers/SmsHelper');
       
       // Add user as volunteer
-      await strapi.service('api::garden-task.garden-task').addUserToTask(gardenTask, userMock.user);
+      await strapi.service('api::garden-task.garden-task').addUserToTask(gardenTask, testUser);
       
       // Update task to have complete_once = true
       await strapi.db.query('api::garden-task.garden-task').update({
@@ -180,21 +213,21 @@ describe('Garden Task Publishing', function() {
         data: { complete_once: true }
       });
 
-      const result = await SmsHelper.finishTask(userMock.user);
+      const result = await SmsHelper.finishTask(testUser);
 
       // Check that the task was published
-      const updatedTask = await strapi.entityService.findOne('api::garden-task.garden-task', gardenTask.id);
+      const updatedTask = await strapi.db.query('api::garden-task.garden-task').findOne({ where: { id: gardenTask.id } });
       expect(updatedTask.status).toBe('FINISHED');
       expect(updatedTask.publishedAt).toBeDefined();
       expect(updatedTask.publishedAt).not.toBeNull();
     });
 
     it('should NOT publish task when status changes from STARTED to FINISHED (not from INITIALIZED)', async function() {
-      const SmsHelper = require('../../../src/api/message/controllers/SmsHelper');
+      const SmsHelper = require('../../src/api/message/controllers/SmsHelper');
       
       // First update to STARTED (this will publish it)
       await strapi.service('api::garden-task.garden-task').updateTaskStatus(gardenTask, 'STARTED');
-      await strapi.service('api::garden-task.garden-task').addUserToTask(gardenTask, userMock.user);
+      await strapi.service('api::garden-task.garden-task').addUserToTask(gardenTask, testUser);
       
       // Update task to have complete_once = true
       await strapi.db.query('api::garden-task.garden-task').update({
@@ -203,14 +236,14 @@ describe('Garden Task Publishing', function() {
       });
 
       // Get the task to check publishedAt was set
-      const startedTask = await strapi.entityService.findOne('api::garden-task.garden-task', gardenTask.id);
+      const startedTask = await strapi.db.query('api::garden-task.garden-task').findOne({ where: { id: gardenTask.id } });
       expect(startedTask.publishedAt).toBeDefined();
       const originalPublishedAt = startedTask.publishedAt;
 
-      const result = await SmsHelper.finishTask(userMock.user);
+      const result = await SmsHelper.finishTask(testUser);
 
       // Check that publishedAt remains the same (not republished)
-      const finishedTask = await strapi.entityService.findOne('api::garden-task.garden-task', gardenTask.id);
+      const finishedTask = await strapi.db.query('api::garden-task.garden-task').findOne({ where: { id: gardenTask.id } });
       expect(finishedTask.status).toBe('FINISHED');
       expect(finishedTask.publishedAt).toEqual(originalPublishedAt);
     });

@@ -1,6 +1,7 @@
 const userMock = require('../mocks/userMock');
 const taskMock = require('../tasks/taskMock');
 const { setupStrapi, cleanupStrapi } = require('../helpers/strapi');
+const { patchService } = require('../helpers/patch');
 
 let strapi;
 
@@ -20,7 +21,7 @@ describe('getTask', function() {
     // Clear any existing mocks
     jest.clearAllMocks();
     // Reset the specific mock we care about
-    strapi.service('api::garden-task.garden-task').getUserTasksByStatus = jest.fn().mockResolvedValue([]);
+    patchService('api::garden-task.garden-task', 'getUserTasksByStatus', jest.fn().mockResolvedValue([]));
 
     // Clean up any other tasks
     await strapi.db.query('api::garden-task.garden-task').deleteMany({
@@ -83,26 +84,25 @@ describe('getTask', function() {
     });
   });
 
-  it('should return a task', async function() {
-    const task = await strapi.service('api::garden-task.garden-task').getTaskFromSMS(userMock.user);
+  // getTaskFromSMS no longer hands back a task object — it replies with a link to
+  // the garden's tasks page, keyed off the populated activeGarden relation.
+  it('should reply with a link to the garden tasks page', async function() {
+    const task = await strapi.service('api::garden-task.garden-task').getTaskFromSMS({
+      ...userMock.user,
+      activeGarden: { id: userMock.user.activeGarden, slug: 'test-garden' }
+    });
     expect(task.type).toBe('reply');
-    expect(task.task.recurring_task.instruction.id).toBe(instruction.id);
+    expect(task.body).toContain('https://steward.garden/gardens/test-garden/tasks');
   });
 
-  it('should return a basic task you already have', async function() {
-    // Create a task without a recurring_task relation
-    strapi.service('api::garden-task.garden-task').getUserTasksByStatus = jest.fn().mockResolvedValue([{
-      title: 'SMS Test Task',
-      status: 'STARTED',
-      type: 'General',
-      volunteers: [userMock.user.id],
-      garden: userMock.user.activeGarden
-    }]);
-
-    const task = await strapi.service('api::garden-task.garden-task').getTaskFromSMS(userMock.user);
+  it('should ask the user to join a garden when there is no active garden', async function() {
+    const task = await strapi.service('api::garden-task.garden-task').getTaskFromSMS({
+      ...userMock.user,
+      activeGarden: null,
+      gardens: []
+    });
     expect(task.type).toBe('reply');
-    // The task should not have a recurring_task
-    expect(task.body).toContain('You already have the task of');
+    expect(task.body).toContain("I couldn't find your active garden");
   });
 });
 
@@ -124,8 +124,10 @@ describe('skipTask', function() {
     delete recurringTaskData.id;
     delete recurringTaskData.instructions;
     recurringTaskData.type = 'General';
-    recurringTaskData.scheduler_type = 'No Schedule';
-    
+    // skipTask only marks a task SKIPPED when it is on a real schedule; a
+    // 'No Schedule' task takes the "just text TASK again" branch instead.
+    recurringTaskData.scheduler_type = 'Weekly Shuffle';
+
     recurringTask = await strapi.db.query('api::recurring-task.recurring-task').create({
       data: {
         ...recurringTaskData,
@@ -151,8 +153,18 @@ describe('skipTask', function() {
     expect(smsInfo.body).toContain('Alright then! Your task has been skipped!');
   });
 
-  it('should return a reply if no task is found', async function() {
-    strapi.service('api::garden-task.garden-task').getUserTasksByStatus = jest.fn().mockResolvedValue([]);
+  // skipTask reaches its "no open task" reply when it has a scheduled task but
+  // the status update comes back empty. (It does NOT reach it when no task is
+  // found at all — that path currently dereferences null; see skipTask().)
+  it('should return a reply when the task cannot be skipped', async function() {
+    patchService('api::message.message', 'validateQuestion', jest.fn().mockResolvedValue(null));
+    patchService('api::garden-task.garden-task', 'findTaskFromUser', jest.fn().mockResolvedValue({
+      id: 1,
+      title: 'SMS Water Task',
+      recurring_task: { id: 1, scheduler_type: 'Weekly Shuffle' }
+    }));
+    patchService('api::garden-task.garden-task', 'updateTaskStatus', jest.fn().mockResolvedValue(null));
+
     const smsInfo = await strapi.service('api::garden-task.garden-task').skipTask(userMock.user);
     expect(smsInfo.type).toBe('reply');
     expect(smsInfo.body).toContain('I\'m sorry, we don\'t have an open task for you right now.');

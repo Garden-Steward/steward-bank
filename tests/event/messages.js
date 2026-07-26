@@ -1,4 +1,5 @@
 const vdayHelper = require('../../src/api/volunteer-day/controllers/VdayHelper');
+const { patchService } = require('../helpers/patch');
 
 
 describe('Send correct copy', function() {
@@ -35,11 +36,11 @@ describe('sendGroupMsg', function() {
     });
     newEvent.garden = {id: 1, title: "Test Garden", sms_slug: "test-garden"};
 
-    strapi.service('api::volunteer-day.volunteer-day').getVolunteerGroup = jest.fn().mockResolvedValue([{
+    patchService('api::volunteer-day.volunteer-day', 'getVolunteerGroup', jest.fn().mockResolvedValue([{
       phoneNumber: '+13038833330',
       firstName: 'John',
       lastName: 'Doe'
-    }]);
+    }]));
 
     const copy = vdayHelper.buildUpcomingDayCopy(newEvent); 
 

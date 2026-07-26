@@ -1,5 +1,6 @@
 const request = require('supertest');
 const SmsHelper = require('../../src/api/message/controllers/SmsHelper');
+const { patchQuery } = require('../helpers/patch');
 
 // user mock data
 const mockUserData = {
