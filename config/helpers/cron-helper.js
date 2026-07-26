@@ -299,23 +299,36 @@ Helper.getScheduledVolunteer = async(recTask) => {
       scheduledUser = weeklySchedule.assignees.find(a=> a.day == dayOfWeekName)?.assignee
       console.log("weekly schedule latest: ", weeklySchedule)
     }
-    
+
   } else if (recTask.scheduler_type == 'Daily Primary') {
 
     const schedulers = await strapi.db.query('api::scheduler.scheduler')
     .findMany({
       where: {recurring_task: recTask.id},
-      populate: { volunteer: true }
+      populate: { volunteer: true, backup_volunteers: true }
     });
-  
+
     if (schedulers && schedulers.length > 0) {
       for (let scheduledDay of schedulers) {
         if (scheduledDay.day == dayOfWeekName) {
           scheduledUser = scheduledDay.volunteer;
+          // The primary is on vacation — hand the day to a backup who isn't.
+          if (scheduledUser?.paused) {
+            const standIn = (scheduledDay.backup_volunteers || []).find(v => !v.paused);
+            console.log(`[Schedule] ${scheduledUser.firstName} is on vacation; ${standIn ? `assigning backup ${standIn.firstName}` : 'no available backup'}`);
+            scheduledUser = standIn;
+          }
         }
       }
-      
+
     }
+  }
+
+  // A Weekly Shuffle roster is built once a week, so someone can start their
+  // vacation after it was drawn and still be holding a day on it.
+  if (scheduledUser?.paused) {
+    console.log(`[Schedule] Skipping ${scheduledUser.firstName} — on vacation.`);
+    return undefined;
   }
 
   return scheduledUser;

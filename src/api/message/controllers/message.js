@@ -161,8 +161,11 @@ module.exports = {
         break;
 
       case 'vacation':
+        smsInfo = await SmsHelper.startVacation(user);
+        break;
+
       case 'back':
-        smsInfo = await SmsHelper.applyVacation(user);
+        smsInfo = await SmsHelper.endVacation(user);
         break;
 
       default:

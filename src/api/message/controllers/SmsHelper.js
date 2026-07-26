@@ -657,37 +657,52 @@ SmsHelper.pickVolunteer = async(user) => {
   }
 };
 
-SmsHelper.applyVacation = async(user) => {
+SmsHelper.startVacation = async (user) => {
   try {
-    const currentState = user.paused; // Assuming 'paused' is a boolean attribute of user
-    
-    const updateData = {
-      paused: !currentState // Toggle the paused state
-    };
-    
-    // If transitioning to paused, set paused_at timestamp
-    if (!currentState) {
-      updateData.paused_at = new Date();
-    } else {
-      // If unpausing, clear the paused_at timestamp
-      updateData.paused_at = null;
+    if (user.paused) {
+      // already on vacation — no DB write
+      return { body: `You're already on vacation, ${user.firstName}! Reply BACK once you're back and we'll add you to your schedules again.`, type: 'reply' };
     }
-    
     await strapi.db.query("plugin::users-permissions.user").update({
       where: { id: user.id },
-      data: updateData
+      data: {
+        paused: true,
+        paused_at: new Date(),
+        vacation_reminder_count: 0,
+        last_vacation_check_sent: null
+      }
     });
-
-    if (currentState) {
-      return { body: `Welcome back ${user.firstName}! Your account is now active again.`, type: 'reply' };
-    } else {
-      return { body: `Hi ${user.firstName}, your account is now paused. Enjoy your vacation!\n\nJust let us know when you're BACK from VACATION (either will activate you again to tasks)`, type: 'reply' };
-    }
+    return { body: `Hi ${user.firstName}, your account is now paused. Enjoy your vacation!\n\nJust let us know when you're BACK from VACATION (either will activate you again to tasks)`, type: 'reply' };
   } catch (err) {
-    console.error('Error updating user account: ', err);
+    strapi.log.error('Error starting vacation: ', err);
     return { body: 'Sorry, there was an issue updating your account.', type: 'reply' };
   }
 };
+
+SmsHelper.endVacation = async (user) => {
+  try {
+    if (!user.paused) {
+      // not paused — no DB write; regression guard against the old toggle
+      return { body: `Welcome back ${user.firstName}! You're already active on your schedules.`, type: 'reply' };
+    }
+    await strapi.db.query("plugin::users-permissions.user").update({
+      where: { id: user.id },
+      data: {
+        paused: false,
+        paused_at: null,
+        vacation_reminder_count: 0,
+        last_vacation_check_sent: null
+      }
+    });
+    return { body: `Welcome back ${user.firstName}! Your account is now active again.`, type: 'reply' };
+  } catch (err) {
+    strapi.log.error('Error ending vacation: ', err);
+    return { body: 'Sorry, there was an issue updating your account.', type: 'reply' };
+  }
+};
+
+// Preserve the old entry point without leaving a live toggle: alias to start.
+SmsHelper.applyVacation = SmsHelper.startVacation;
 
 SmsHelper.getBackupVolunteer = (currentUser, scheduler, backUpNumber) => {
   const backupVolunteers = SmsHelper.getBackupVolunteers(currentUser, scheduler);
