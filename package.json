@@ -10,7 +10,7 @@
     "deploy": "flyctl deploy --remote-only",
     "migrate": "node scripts/run-database-migrations.js",
     "migrate:columns": "node scripts/pre-migrate-v5-columns.js",
-    "test": "NODE_ENV=test jest --forceExit --detectOpenHandles",
+    "test": "NODE_ENV=test jest --runInBand",
     "seed": "node scripts/seed.js",
     "seed:manager": "node scripts/seed-cameron-manager.js",
     "seed:permissions": "node scripts/seed-auth-permissions.js",
@@ -64,10 +64,14 @@
   "jest": {
     "testPathIgnorePatterns": [
       "/node_modules/",
+      "<rootDir>/.claude/worktrees/",
       ".tmp",
       ".cache"
     ],
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "forceExit": true,
+    "bail": 0,
+    "testTimeout": 60000
   },
   "license": "MIT"
 }

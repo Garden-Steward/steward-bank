@@ -65,12 +65,18 @@ module.exports = createCoreService('api::weekly-schedule.weekly-schedule', ({ st
 
     let sentInfo = [];
 
-    const daysCopy = assignees.map((a)=> {return `${a.day}: ${a.assignee.firstName} ${a.assignee.lastName.charAt(0)}`}).join('\n');
-    const volGroup = assignees.map((a)=> {return a.assignee.id});
-    
+    // A day has no assignee when everyone in its pool is on vacation.
+    const filled = (assignees || []).filter(a => a.assignee);
+
+    const daysCopy = (assignees || []).map((a)=> {
+      if (!a.assignee) { return `${a.day}: Unassigned`; }
+      return `${a.day}: ${a.assignee.firstName} ${a.assignee.lastName.charAt(0)}`;
+    }).join('\n');
+    const volGroup = filled.map((a)=> {return a.assignee.id});
+
     const copy = `You've been selected to '${recTask.title}' this week! \n${daysCopy}. \nYou'll receive a reminder morning of where you can transfer if necessary.`
 
-    for (const volunteer of assignees) {
+    for (const volunteer of filled) {
       if (['test','stg'].indexOf(process.env.ENVIRONMENT)>-1) {continue;}
 
       await client.messages

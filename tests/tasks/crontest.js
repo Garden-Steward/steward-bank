@@ -5,6 +5,19 @@ const { addHours } = require('date-fns');
 const { utcToZonedTime } = require('date-fns-tz');
 
 describe('cronHelper', function() {
+  // One test below swaps global.strapi for a stub. Every behavioural module is
+  // required into the same app.test.js file, so without this restore the stub
+  // leaks into every suite that runs after this one.
+  let realStrapi;
+  const realSendingWindow = cronHelper.sendingWindow;
+
+  beforeEach(() => { realStrapi = global.strapi; });
+
+  afterEach(() => {
+    global.strapi = realStrapi;
+    cronHelper.sendingWindow = realSendingWindow;
+  });
+
   it('should send within sending window', function() {
     const task = testTask;
     const today = new Date();
