@@ -28,14 +28,43 @@ const baseCampaign = (overrides = {}) => ({
   ...overrides,
 });
 
-// Mock strapi.db.query for both findMany (getLatestCampaign) and findOne (closePoll)
-const mockDb = (campaign) => {
-  strapi.db.query = jest.fn().mockReturnValue({
-    findMany: jest.fn().mockResolvedValue(campaign ? [campaign] : []),
-    findOne:  jest.fn().mockResolvedValue(campaign ?? null),
-    update:   jest.fn().mockResolvedValue(campaign ?? {}),
-  });
+// These tests swap `strapi.db.query` wholesale. Capture the genuine implementation
+// once, before any test has replaced it, so restoreDb() always puts back the real
+// thing rather than whatever mock a previous test happened to leave behind.
+let realDbQuery;
+let realHandleSms;
+
+beforeAll(() => {
+  realDbQuery   = strapi.db.query;
+  realHandleSms = strapi.service('api::sms.sms').handleSms;
+});
+
+// Install a mocked query object covering every db call the poll service makes
+// (findMany for getLatestCampaign/cron lists, findOne for closePoll, update for
+// vote/winner/reminder writes). Returns the mock so tests can assert on it.
+const installDbMock = ({ findMany = [], findOne = null } = {}) => {
+  const dbMock = {
+    findMany: jest.fn().mockResolvedValue(findMany),
+    findOne:  jest.fn().mockResolvedValue(findOne),
+    update:   jest.fn().mockResolvedValue({}),
+  };
+  strapi.db.query = jest.fn().mockReturnValue(dbMock);
+  return dbMock;
 };
+
+const restoreDb = () => {
+  if (realDbQuery) { strapi.db.query = realDbQuery; }
+};
+
+const restoreHandleSms = () => {
+  if (realHandleSms) { strapi.service('api::sms.sms').handleSms = realHandleSms; }
+};
+
+// Convenience wrapper: one campaign served to both findMany and findOne.
+const mockDb = (campaign) => installDbMock({
+  findMany: campaign ? [campaign] : [],
+  findOne:  campaign ?? null,
+});
 
 // ─── handlePollResponse (SmsHelper) ────────────────────────────────────────
 
@@ -87,17 +116,8 @@ describe('handlePollResponse', function () {
 describe('recordPollVote', function () {
   const svc = () => strapi.service('api::sms-campaign.sms-campaign');
 
-  let originalDbQuery;
-  let updateSpy;
-
-  beforeEach(() => {
-    originalDbQuery = strapi.db.query;
-    updateSpy = jest.spyOn(strapi.entityService, 'update').mockResolvedValue({});
-  });
-
   afterEach(() => {
-    strapi.db.query = originalDbQuery;
-    updateSpy.mockRestore();
+    restoreDb();
   });
 
   it('returns "no active poll" when no campaign found', async () => {
@@ -132,12 +152,13 @@ describe('recordPollVote', function () {
   });
 
   it('records a single new vote and returns confirmation with label', async () => {
-    mockDb(baseCampaign());
+    const db = mockDb(baseCampaign());
     const result = await svc().recordPollVote(userMock, 'a');
-    expect(updateSpy).toHaveBeenCalledWith(
-      'api::sms-campaign.sms-campaign',
-      99,
-      expect.objectContaining({ data: expect.objectContaining({ option_a: [userMock.id] }) })
+    expect(db.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 99 },
+        data: expect.objectContaining({ option_a: [userMock.id] }),
+      })
     );
     expect(result.type).toEqual('complete');
     expect(result.body).toContain('A');
@@ -145,12 +166,11 @@ describe('recordPollVote', function () {
   });
 
   it('records multi-letter vote "ab" — adds both A and B', async () => {
-    mockDb(baseCampaign());
+    const db = mockDb(baseCampaign());
     const result = await svc().recordPollVote(userMock, 'ab');
-    expect(updateSpy).toHaveBeenCalledWith(
-      'api::sms-campaign.sms-campaign',
-      99,
+    expect(db.update).toHaveBeenCalledWith(
       expect.objectContaining({
+        where: { id: 99 },
         data: expect.objectContaining({
           option_a: [userMock.id],
           option_b: [userMock.id],
@@ -164,9 +184,9 @@ describe('recordPollVote', function () {
 
   it('does NOT remove prior votes when adding a new one (Doodle mode)', async () => {
     // User already voted A; now votes B — A must remain
-    mockDb(baseCampaign({ option_a: [{ id: userMock.id }] }));
+    const db = mockDb(baseCampaign({ option_a: [{ id: userMock.id }] }));
     const result = await svc().recordPollVote(userMock, 'b');
-    const callData = updateSpy.mock.calls[0][2].data;
+    const callData = db.update.mock.calls[0][0].data;
     expect(callData.option_b).toContain(userMock.id);
     expect(callData.option_a).toBeUndefined(); // A was not touched
     expect(result.type).toEqual('complete');
@@ -176,19 +196,19 @@ describe('recordPollVote', function () {
   });
 
   it('informs user when they already voted for that option (add-only, no update)', async () => {
-    mockDb(baseCampaign({ option_a: [{ id: userMock.id }] }));
+    const db = mockDb(baseCampaign({ option_a: [{ id: userMock.id }] }));
     const result = await svc().recordPollVote(userMock, 'a');
-    expect(updateSpy).not.toHaveBeenCalled();
+    expect(db.update).not.toHaveBeenCalled();
     expect(result.type).toEqual('reply');
     expect(result.body.toLowerCase()).toContain('already');
     expect(result.body).toContain('A');
   });
 
   it('handles partial overlap in multi-letter: adds B, reports A already had', async () => {
-    mockDb(baseCampaign({ option_a: [{ id: userMock.id }] }));
+    const db = mockDb(baseCampaign({ option_a: [{ id: userMock.id }] }));
     const result = await svc().recordPollVote(userMock, 'ab');
-    expect(updateSpy).toHaveBeenCalled(); // B was added
-    const callData = updateSpy.mock.calls[0][2].data;
+    expect(db.update).toHaveBeenCalled(); // B was added
+    const callData = db.update.mock.calls[0][0].data;
     expect(callData.option_b).toContain(userMock.id);
     expect(result.type).toEqual('complete');
     expect(result.body).toContain('Already had A');
@@ -196,8 +216,8 @@ describe('recordPollVote', function () {
   });
 
   it('handles a DB update error gracefully', async () => {
-    mockDb(baseCampaign());
-    updateSpy.mockRejectedValue(new Error('DB error'));
+    const db = mockDb(baseCampaign());
+    db.update.mockRejectedValue(new Error('DB error'));
     const result = await svc().recordPollVote(userMock, 'a');
     expect(result.type).toEqual('reply');
     expect(result.body).toContain('issue');
@@ -210,18 +230,13 @@ describe('recordPollVote', function () {
 describe('closePoll', function () {
   const svc = () => strapi.service('api::sms-campaign.sms-campaign');
 
-  let originalDbQuery;
-  let updateSpy;
-
   beforeEach(() => {
-    originalDbQuery = strapi.db.query;
-    updateSpy = jest.spyOn(strapi.entityService, 'update').mockResolvedValue({});
     strapi.service('api::sms.sms').handleSms = jest.fn().mockResolvedValue(true);
   });
 
   afterEach(() => {
-    strapi.db.query = originalDbQuery;
-    updateSpy.mockRestore();
+    restoreDb();
+    restoreHandleSms();
   });
 
   it('throws when campaign is not found', async () => {
@@ -235,15 +250,15 @@ describe('closePoll', function () {
   });
 
   it('returns alreadyClosed when winner is already set', async () => {
-    mockDb(baseCampaign({ winner: 'A' }));
+    const db = mockDb(baseCampaign({ winner: 'A' }));
     const result = await svc().closePoll(99);
     expect(result.alreadyClosed).toBe(true);
     expect(result.winner).toEqual('A');
-    expect(updateSpy).not.toHaveBeenCalled();
+    expect(db.update).not.toHaveBeenCalled();
   });
 
   it('picks the option with the most votes as winner', async () => {
-    mockDb(baseCampaign({
+    const db = mockDb(baseCampaign({
       option_a: [{ id: 1 }, { id: 2 }],
       option_b: [{ id: 3 }],
     }));
@@ -251,9 +266,11 @@ describe('closePoll', function () {
     expect(result.winner).toEqual('A');
     expect(result.totalVotes).toEqual(3);
     expect(result.tally).toEqual({ a: 2, b: 1, c: 0, d: 0 });
-    expect(updateSpy).toHaveBeenCalledWith(
-      'api::sms-campaign.sms-campaign', 99,
-      expect.objectContaining({ data: expect.objectContaining({ winner: 'A' }) })
+    expect(db.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 99 },
+        data: expect.objectContaining({ winner: 'A' }),
+      })
     );
   });
 
@@ -298,18 +315,13 @@ describe('closePoll', function () {
 describe('sendPollReminders', function () {
   const svc = () => strapi.service('api::sms-campaign.sms-campaign');
 
-  let originalDbQuery;
-  let updateSpy;
-
   beforeEach(() => {
-    originalDbQuery = strapi.db.query;
-    updateSpy = jest.spyOn(strapi.entityService, 'update').mockResolvedValue({});
     strapi.service('api::sms.sms').handleSms = jest.fn().mockResolvedValue(true);
   });
 
   afterEach(() => {
-    strapi.db.query = originalDbQuery;
-    updateSpy.mockRestore();
+    restoreDb();
+    restoreHandleSms();
   });
 
   it('sends reminder only to non-voters and stamps reminder_sent', async () => {
@@ -325,9 +337,7 @@ describe('sendPollReminders', function () {
       option_a: [{ id: 1 }], // Alice already voted
     });
 
-    strapi.db.query = jest.fn().mockReturnValue({
-      findMany: jest.fn().mockResolvedValue([campaign]),
-    });
+    const db = installDbMock({ findMany: [campaign] });
 
     await svc().sendPollReminders();
 
@@ -339,9 +349,11 @@ describe('sendPollReminders', function () {
     expect(recipients).not.toContain(1);
 
     // reminder_sent should be stamped true
-    expect(updateSpy).toHaveBeenCalledWith(
-      'api::sms-campaign.sms-campaign', 99,
-      expect.objectContaining({ data: { reminder_sent: true } })
+    expect(db.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 99 },
+        data: { reminder_sent: true },
+      })
     );
   });
 
@@ -351,9 +363,7 @@ describe('sendPollReminders', function () {
       sent: [{ id: 2, firstName: 'Bob', phoneNumber: '+13030002222' }],
     });
 
-    strapi.db.query = jest.fn().mockReturnValue({
-      findMany: jest.fn().mockResolvedValue([campaign]),
-    });
+    installDbMock({ findMany: [campaign] });
 
     await svc().sendPollReminders();
 
@@ -365,9 +375,7 @@ describe('sendPollReminders', function () {
 
   it('skips campaigns where reminder_sent is already true', async () => {
     // Simulated by the DB query returning nothing (cron filters on reminder_sent: false)
-    strapi.db.query = jest.fn().mockReturnValue({
-      findMany: jest.fn().mockResolvedValue([]),
-    });
+    installDbMock({ findMany: [] });
 
     const result = await svc().sendPollReminders();
     expect(result.remindersProcessed).toEqual(0);
@@ -377,9 +385,7 @@ describe('sendPollReminders', function () {
   it('skips campaigns where send_reminder is false (cron does not return them)', async () => {
     // The DB query filters out send_reminder: false at the query level.
     // Simulate this by returning an empty array (as the DB would).
-    strapi.db.query = jest.fn().mockReturnValue({
-      findMany: jest.fn().mockResolvedValue([]),
-    });
+    installDbMock({ findMany: [] });
 
     const result = await svc().sendPollReminders();
     expect(result.remindersProcessed).toEqual(0);
@@ -395,9 +401,7 @@ describe('sendPollReminders', function () {
       ],
     });
 
-    strapi.db.query = jest.fn().mockReturnValue({
-      findMany: jest.fn().mockResolvedValue([campaign]),
-    });
+    installDbMock({ findMany: [campaign] });
 
     await svc().sendPollReminders();
     expect(strapi.service('api::sms.sms').handleSms).toHaveBeenCalledTimes(1);
@@ -411,9 +415,6 @@ describe('sendPollReminders', function () {
 describe('autoCloseExpiredPolls', function () {
   const svc = () => strapi.service('api::sms-campaign.sms-campaign');
 
-  let originalDbQuery;
-  let updateSpy;
-
   // A campaign whose closes_at is in the past and has votes
   const expiredCampaign = (overrides = {}) => baseCampaign({
     closes_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1 hour ago
@@ -424,61 +425,50 @@ describe('autoCloseExpiredPolls', function () {
   });
 
   beforeEach(() => {
-    originalDbQuery = strapi.db.query;
-    updateSpy = jest.spyOn(strapi.entityService, 'update').mockResolvedValue({});
     strapi.service('api::sms.sms').handleSms = jest.fn().mockResolvedValue(true);
   });
 
   afterEach(() => {
-    strapi.db.query = originalDbQuery;
-    updateSpy.mockRestore();
+    restoreDb();
+    restoreHandleSms();
   });
 
   it('closes expired polls and returns count', async () => {
     const campaign = expiredCampaign();
     // findMany for autoClose (list), findOne for closePoll (detail)
-    strapi.db.query = jest.fn().mockReturnValue({
-      findMany: jest.fn().mockResolvedValue([campaign]),
-      findOne:  jest.fn().mockResolvedValue(campaign),
-    });
+    const db = mockDb(campaign);
 
     const result = await svc().autoCloseExpiredPolls();
 
     expect(result.closed).toEqual(1);
     // closePoll should have stamped the winner
-    expect(updateSpy).toHaveBeenCalledWith(
-      'api::sms-campaign.sms-campaign',
-      99,
-      expect.objectContaining({ data: expect.objectContaining({ winner: 'A' }) })
+    expect(db.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 99 },
+        data: expect.objectContaining({ winner: 'A' }),
+      })
     );
   });
 
   it('stamps the correct winner based on vote counts', async () => {
     // B has more votes than A
-    const campaign = expiredCampaign({
+    const db = mockDb(expiredCampaign({
       option_a: [{ id: 1 }],
       option_b: [{ id: 2 }, { id: 3 }, { id: 4 }],
-    });
-    strapi.db.query = jest.fn().mockReturnValue({
-      findMany: jest.fn().mockResolvedValue([campaign]),
-      findOne:  jest.fn().mockResolvedValue(campaign),
-    });
+    }));
 
     await svc().autoCloseExpiredPolls();
 
-    expect(updateSpy).toHaveBeenCalledWith(
-      'api::sms-campaign.sms-campaign',
-      99,
-      expect.objectContaining({ data: expect.objectContaining({ winner: 'B' }) })
+    expect(db.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 99 },
+        data: expect.objectContaining({ winner: 'B' }),
+      })
     );
   });
 
   it('notifies the sender when auto-closing', async () => {
-    const campaign = expiredCampaign();
-    strapi.db.query = jest.fn().mockReturnValue({
-      findMany: jest.fn().mockResolvedValue([campaign]),
-      findOne:  jest.fn().mockResolvedValue(campaign),
-    });
+    mockDb(expiredCampaign());
 
     await svc().autoCloseExpiredPolls();
 
@@ -490,11 +480,7 @@ describe('autoCloseExpiredPolls', function () {
   });
 
   it('notifies the sender with "no votes" when poll expires with zero votes', async () => {
-    const campaign = expiredCampaign({ option_a: [], option_b: [], option_c: [], option_d: [] });
-    strapi.db.query = jest.fn().mockReturnValue({
-      findMany: jest.fn().mockResolvedValue([campaign]),
-      findOne:  jest.fn().mockResolvedValue(campaign),
-    });
+    mockDb(expiredCampaign({ option_a: [], option_b: [], option_c: [], option_d: [] }));
 
     await svc().autoCloseExpiredPolls();
 
@@ -504,14 +490,11 @@ describe('autoCloseExpiredPolls', function () {
 
   it('skips polls that are already closed (winner already set)', async () => {
     // The DB query filters on winner: null, so this returns nothing
-    strapi.db.query = jest.fn().mockReturnValue({
-      findMany: jest.fn().mockResolvedValue([]),
-      findOne:  jest.fn().mockResolvedValue(null),
-    });
+    const db = mockDb(null);
 
     const result = await svc().autoCloseExpiredPolls();
     expect(result.closed).toEqual(0);
-    expect(updateSpy).not.toHaveBeenCalled();
+    expect(db.update).not.toHaveBeenCalled();
     expect(strapi.service('api::sms.sms').handleSms).not.toHaveBeenCalled();
   });
 
@@ -519,19 +502,11 @@ describe('autoCloseExpiredPolls', function () {
     const campA = expiredCampaign({ id: 101, option_a: [{ id: 1 }] });
     const campB = expiredCampaign({ id: 102, option_b: [{ id: 2 }, { id: 3 }] });
 
-    strapi.db.query = jest.fn()
-      .mockReturnValueOnce({
-        findMany: jest.fn().mockResolvedValue([campA, campB]),
-        findOne:  jest.fn().mockResolvedValue(campA),
-      })
-      .mockReturnValueOnce({
-        findMany: jest.fn(),
-        findOne:  jest.fn().mockResolvedValue(campA),
-      })
-      .mockReturnValueOnce({
-        findMany: jest.fn(),
-        findOne:  jest.fn().mockResolvedValue(campB),
-      });
+    // findMany lists both; closePoll's findOne is called once per poll, in order
+    const db = installDbMock({ findMany: [campA, campB] });
+    db.findOne
+      .mockResolvedValueOnce(campA)
+      .mockResolvedValueOnce(campB);
 
     const result = await svc().autoCloseExpiredPolls();
     expect(result.closed).toEqual(2);
@@ -541,15 +516,10 @@ describe('autoCloseExpiredPolls', function () {
     const campA = expiredCampaign({ id: 101 });
     const campB = expiredCampaign({ id: 102, option_b: [{ id: 2 }] });
 
-    let callCount = 0;
-    strapi.db.query = jest.fn().mockImplementation(() => ({
-      findMany: jest.fn().mockResolvedValue([campA, campB]),
-      findOne: jest.fn().mockImplementation(() => {
-        callCount++;
-        if (callCount === 1) throw new Error('DB timeout');
-        return Promise.resolve(campB);
-      }),
-    }));
+    const db = installDbMock({ findMany: [campA, campB] });
+    db.findOne
+      .mockRejectedValueOnce(new Error('DB timeout'))
+      .mockResolvedValueOnce(campB);
 
     const result = await svc().autoCloseExpiredPolls();
     // campA threw, campB succeeded — still closed 1

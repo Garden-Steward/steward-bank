@@ -1,5 +1,6 @@
 const request = require('supertest');
 const SmsHelper = require('../../src/api/message/controllers/SmsHelper');
+const { patchQuery } = require('../helpers/patch');
 
 // user mock data
 const mockUserData = {
@@ -84,7 +85,7 @@ describe('User Authentication Tests', () => {
 
 describe('User SMS tests', () => {
   it('should pause user account', async () => {
-    strapi.db.query("plugin::users-permissions.user").update = jest.fn().mockResolvedValue({firstName: "Henry", paused: true});
+    patchQuery("plugin::users-permissions.user", "update", jest.fn().mockResolvedValue({firstName: "Henry", paused: true}));
     SmsHelper.applyVacation({...mockUserData}).then(data => {
       expect(data.body).toContain("Hi Henry, your account is now paused. Enjoy your vacation!");
     });

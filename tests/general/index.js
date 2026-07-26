@@ -1,12 +1,13 @@
 
 const SmsHelper = require('../../src/api/message/controllers/SmsHelper');
 const testTask = require('../tasks/taskMock');
+const { patchQuery, patchService } = require('../helpers/patch');
 
 
 describe('Yes Response on SmsHelper', () => {
 
   it('should handle yes appopriately', async () => {
-    strapi.service('api::message.message').validateQuestion = jest.fn().mockResolvedValue({
+    patchService('api::message.message', 'validateQuestion', jest.fn().mockResolvedValue({
       id: 331,
       body: 'Do you "Approve" of this instruction?',
       type: 'question',
@@ -15,7 +16,7 @@ describe('Yes Response on SmsHelper', () => {
       updatedAt: '2024-06-16T03:48:06.526Z',
       publishedAt: null,
     
-    });
+    }));
 
     const smsText = 'yes';
     const user = {
@@ -32,7 +33,7 @@ describe('Yes Response on SmsHelper', () => {
 
 
   it('should handle yes for instruction needs', async () => {
-    strapi.service('api::message.message').validateQuestion = jest.fn().mockResolvedValue({
+    patchService('api::message.message', 'validateQuestion', jest.fn().mockResolvedValue({
       id: 331,
       body: 'Do you "Approve" of this instruction?',
       type: 'question',
@@ -41,17 +42,17 @@ describe('Yes Response on SmsHelper', () => {
       updatedAt: '2024-06-16T03:48:06.526Z',
       publishedAt: null,
       meta_data: { instructionId: 123 },
-    });
-    strapi.service('api::sms.sms').handleSms = jest.fn().mockResolvedValue({
+    }));
+    patchService('api::sms.sms', 'handleSms', jest.fn().mockResolvedValue({
       success: true,
       message: 'Message sent',
-    });
-    strapi.db.query('api::instruction.instruction').findOne = jest.fn().mockResolvedValue({
+    }));
+    patchQuery('api::instruction.instruction', 'findOne', jest.fn().mockResolvedValue({
       id: 123,
       title: 'Test Instruction',
       slug: 'test-instruction',
       affirm_button_title: 'Approve',
-    });
+    }));
     const smsText = 'yes';
     const user = {
       id: '123',
@@ -61,15 +62,15 @@ describe('Yes Response on SmsHelper', () => {
     }
     testTask.status = 'PENDING'
     testTask.volunteers = [user];
-    strapi.service('api::garden-task.garden-task').getUserTasksByStatus = jest.fn().mockResolvedValue(
+    patchService('api::garden-task.garden-task', 'getUserTasksByStatus', jest.fn().mockResolvedValue(
       [
         testTask
       ]
-    );
-    strapi.service('api::instruction.instruction').InstructionAssignTask = jest.fn().mockResolvedValue({
+    ));
+    patchService('api::instruction.instruction', 'InstructionAssignTask', jest.fn().mockResolvedValue({
       success: true,
       message: 'Message sent',
-    });
+    }));
     
     let result = await SmsHelper.handleYesResponse(smsText, user)
     expect(result.type).toBe('followup');

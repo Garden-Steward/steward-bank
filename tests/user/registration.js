@@ -6,6 +6,7 @@ const request = require("supertest");
 
 const SmsHelper = require('../../src/api/message/controllers/SmsHelper');
 const { createUser, defaultData, mockUserData } = require("./factory");
+const { patch } = require('../helpers/patch');
 
 // Mock Mailchimp module
 jest.mock('@mailchimp/mailchimp_marketing', () => ({
@@ -60,7 +61,7 @@ describe("Join Garden", () => {
     const originalSendContactCard = SmsHelper.sendContactCard;
     
     // Mock sendContactCard
-    SmsHelper.sendContactCard = jest.fn().mockResolvedValue(true);
+    patch(SmsHelper, 'sendContactCard', jest.fn().mockResolvedValue(true));
     
     // Create simplified version of joinGarden that only tests the contact card flow
     SmsHelper.joinGarden = async (user, phone, garden) => {

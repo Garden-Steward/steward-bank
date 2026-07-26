@@ -21,9 +21,8 @@ describe('getRSVPs', function() {
       data: noconfirmedEvent
     });
 
-    eventHelper.rsvpEvent(newEvent.id, {userId: 1, user: {phoneNumber: "1234567890"}}).then(res=>{
-      const {data} = res;
-      expect(data.attributes.confirmed.data.some(user => user.id === 1)).toBe(true);
-    });
+    // v5 returns a flat entity — the v4 `attributes` / nested `data` wrappers are gone.
+    const { data } = await eventHelper.rsvpEvent(newEvent.id, {userId: 1, user: {phoneNumber: "1234567890"}});
+    expect(data.confirmed.some(user => user.id === 1)).toBe(true);
   });
 });

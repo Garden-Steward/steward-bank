@@ -1,5 +1,6 @@
 const request = require('supertest');
 const SmsHelper = require('../../src/api/message/controllers/SmsHelper');
+const { patch, patchService } = require('../helpers/patch');
 // user mock data
 
 const messageMock = {
@@ -57,14 +58,10 @@ const setupTask = async (addInst) => {
 }
 describe('transferTask', function() {
 
-  it("should deny if user has no task to transfer", async () => {
-    const message = await strapi.db.query('api::message.message').create({
-      data: {
-      ...messageMock,
-      },
-    });
-
-    SmsHelper.getSchedulerFromTask = jest.fn().mockReturnValue({
+  // Every test here needs the backup roster. It used to be installed by the
+  // first test only and relied on leaking into the other two.
+  beforeEach(() => {
+    patch(SmsHelper, 'getSchedulerFromTask', jest.fn().mockReturnValue({
       day: 'Tuesday',
       backup_volunteers: [{
         id: 1,
@@ -96,10 +93,16 @@ describe('transferTask', function() {
         activeGarden: 1,
         gardens: [1, 2, 3]
       }]
+    }));
+  });
+
+  it("should deny if user has no task to transfer", async () => {
+    await strapi.db.query('api::message.message').create({
+      data: {
+      ...messageMock,
+      },
     });
 
-
-  
     await SmsHelper.transferTask({firstName:"Cameron", lastName:"Smith", id:1}, 1)
       .then((data) => {
         // console.log('trasnfer: ', data)
@@ -119,7 +122,7 @@ describe('transferTask', function() {
       }
     });
 
-    strapi.service('api::message.message').validateQuestion = jest.fn().mockResolvedValue({
+    patchService('api::message.message', 'validateQuestion', jest.fn().mockResolvedValue({
       id: message.id,
       body: 'Do you "Approve" of this instruction?',
       type: 'question',
@@ -128,7 +131,7 @@ describe('transferTask', function() {
       updatedAt: '2024-06-16T03:48:06.526Z',
       publishedAt: null,
       garden_task: gardenTask,
-    });
+    }));
   
     await SmsHelper.transferTask({firstName:"Cameron", lastName:"Smith", id:1}, 1)
       .then((data) => {
@@ -138,7 +141,7 @@ describe('transferTask', function() {
 
   it("should transfer task with instruction", async () => {
     let garden_task = await setupTask(true);
-    strapi.service('api::message.message').validateQuestion = jest.fn().mockResolvedValue({
+    patchService('api::message.message', 'validateQuestion', jest.fn().mockResolvedValue({
       id: 1,
       body: 'Do you "Approve" of this instruction?',
       type: 'question',
@@ -147,7 +150,7 @@ describe('transferTask', function() {
       updatedAt: '2024-06-16T03:48:06.526Z',
       publishedAt: null,
       garden_task,
-    });
+    }));
 
     await SmsHelper.transferTask({firstName:"Cameron", lastName:"Smith", id:1}, 1)
       .then((data) => {
@@ -167,7 +170,7 @@ describe('handleGardenTask', function() {
 describe('findBackupUsers - SMS Helper No Response', function() {
 
   it("returns PASS/PICK/SKIP prompt when backups exist", async () => {
-    strapi.service('api::message.message').validateQuestion = jest.fn().mockReturnValue({
+    patchService('api::message.message', 'validateQuestion', jest.fn().mockReturnValue({
       body: "Will you do the watering?",
       type: 'question',
       garden_task: {
@@ -178,15 +181,15 @@ describe('findBackupUsers - SMS Helper No Response', function() {
           backup_volunteers: [1]
         }
       },
-    });
+    }));
 
-    SmsHelper.getSchedulerFromTask = jest.fn().mockResolvedValue({
+    patch(SmsHelper, 'getSchedulerFromTask', jest.fn().mockResolvedValue({
       day: 'Tuesday',
       backup_volunteers: [
         { id: 2, firstName: 'John', lastName: 'Doe', paused: false },
         { id: 3, firstName: 'Jane', lastName: 'Goodall', paused: false },
       ]
-    });
+    }));
 
     const data = await SmsHelper.findBackupUsers(userMock);
     expect(data.body).toContain('PASS');
@@ -197,7 +200,7 @@ describe('findBackupUsers - SMS Helper No Response', function() {
   });
 
   it('should fail if no recurring task', async () => {
-    strapi.service('api::message.message').validateQuestion = jest.fn().mockReturnValue({
+    patchService('api::message.message', 'validateQuestion', jest.fn().mockReturnValue({
       body: "Will you do the watering?",
       type: 'question',
       garden_task: {
@@ -205,7 +208,7 @@ describe('findBackupUsers - SMS Helper No Response', function() {
         id: 1,
         user: 1,
       },
-    });
+    }));
 
     const result = await SmsHelper.findBackupUsers(userMock);
     expect(result.success).toEqual(false);
@@ -224,20 +227,20 @@ describe('passToNextVolunteer', function() {
   ];
 
   beforeEach(() => {
-    SmsHelper.getSchedulerFromTask = jest.fn().mockResolvedValue({
+    patch(SmsHelper, 'getSchedulerFromTask', jest.fn().mockResolvedValue({
       day: 'Tuesday',
       backup_volunteers: backupList,
-    });
-    strapi.service('api::sms.sms').handleSms = jest.fn().mockResolvedValue(true);
-    strapi.service('api::garden-task.garden-task').updateGardenTaskUser = jest.fn().mockResolvedValue({
+    }));
+    patchService('api::sms.sms', 'handleSms', jest.fn().mockResolvedValue(true));
+    patchService('api::garden-task.garden-task', 'updateGardenTaskUser', jest.fn().mockResolvedValue({
       id: 1, title: 'Water the Garden', recurring_task: { id: 1, instruction: null }
-    });
-    strapi.service('api::instruction.instruction').checkInstruction = jest.fn().mockReturnValue(false);
+    }));
+    patchService('api::instruction.instruction', 'checkInstruction', jest.fn().mockReturnValue(false));
   });
 
   it('passes to the next person in circular order', async () => {
     // current user is id:1 (index 0), next should be id:2 (John)
-    strapi.service('api::message.message').validateQuestion = jest.fn().mockResolvedValue({
+    patchService('api::message.message', 'validateQuestion', jest.fn().mockResolvedValue({
       body: 'Should we PASS?',
       type: 'question',
       garden_task: {
@@ -245,7 +248,7 @@ describe('passToNextVolunteer', function() {
         title: 'Water the Garden',
         recurring_task: { id: 1 }
       }
-    });
+    }));
 
     const result = await SmsHelper.passToNextVolunteer({ id: 1, firstName: 'Cameron', paused: false });
     expect(strapi.service('api::garden-task.garden-task').updateGardenTaskUser).toHaveBeenCalled();
@@ -258,7 +261,7 @@ describe('passToNextVolunteer', function() {
     // current user is id:5 (index 4), next should be id:1 (Cameron) — but that's the user making the request?
     // Use id:5 as current, expect wrap to id:1... but id:1 is not in this call's user arg.
     // Simulate: user is person 5 (Bob), next should be person 1 (Cameron).
-    strapi.service('api::message.message').validateQuestion = jest.fn().mockResolvedValue({
+    patchService('api::message.message', 'validateQuestion', jest.fn().mockResolvedValue({
       body: 'Should we PASS?',
       type: 'question',
       garden_task: {
@@ -266,7 +269,7 @@ describe('passToNextVolunteer', function() {
         title: 'Water the Garden',
         recurring_task: { id: 1 }
       }
-    });
+    }));
     const result = await SmsHelper.passToNextVolunteer({ id: 5, firstName: 'Bob', paused: false });
     expect(result.type).toEqual('complete');
     expect(result.body).toContain('Cameron');
@@ -274,26 +277,26 @@ describe('passToNextVolunteer', function() {
 
   it('skips paused volunteers in rotation', async () => {
     // Person at index 1 (John, id:2) is paused — should skip to Jane (id:3)
-    SmsHelper.getSchedulerFromTask = jest.fn().mockResolvedValue({
+    patch(SmsHelper, 'getSchedulerFromTask', jest.fn().mockResolvedValue({
       day: 'Tuesday',
       backup_volunteers: [
         { id: 1, firstName: 'Cameron', lastName: 'Smith', paused: false },
         { id: 2, firstName: 'John',    lastName: 'Doe',   paused: true },
         { id: 3, firstName: 'Jane',    lastName: 'Goodall', paused: false },
       ]
-    });
-    strapi.service('api::message.message').validateQuestion = jest.fn().mockResolvedValue({
+    }));
+    patchService('api::message.message', 'validateQuestion', jest.fn().mockResolvedValue({
       body: 'Should we PASS?',
       type: 'question',
       garden_task: { id: 1, title: 'Water the Garden', recurring_task: { id: 1 } }
-    });
+    }));
     const result = await SmsHelper.passToNextVolunteer({ id: 1, firstName: 'Cameron', paused: false });
     expect(result.body).toContain('Jane');
   });
 
   it('returns error when no task is found', async () => {
-    strapi.service('api::message.message').validateQuestion = jest.fn().mockResolvedValue(null);
-    strapi.service('api::garden-task.garden-task').findTaskFromUser = jest.fn().mockResolvedValue(null);
+    patchService('api::message.message', 'validateQuestion', jest.fn().mockResolvedValue(null));
+    patchService('api::garden-task.garden-task', 'findTaskFromUser', jest.fn().mockResolvedValue(null));
     const result = await SmsHelper.passToNextVolunteer({ id: 1, firstName: 'Cameron' });
     expect(result.type).toEqual('reply');
     expect(result.body).toContain('No task');
@@ -302,19 +305,19 @@ describe('passToNextVolunteer', function() {
 
 describe('pickVolunteer', function() {
   it('shows numbered list of available backup volunteers', async () => {
-    strapi.service('api::message.message').validateQuestion = jest.fn().mockResolvedValue({
+    patchService('api::message.message', 'validateQuestion', jest.fn().mockResolvedValue({
       body: 'Should we PASS?',
       type: 'question',
       garden_task: { id: 1, title: 'Water the Garden', recurring_task: { id: 1 } }
-    });
-    SmsHelper.getSchedulerFromTask = jest.fn().mockResolvedValue({
+    }));
+    patch(SmsHelper, 'getSchedulerFromTask', jest.fn().mockResolvedValue({
       day: 'Tuesday',
       backup_volunteers: [
         { id: 1, firstName: 'Cameron', paused: false },
         { id: 2, firstName: 'John',    paused: false },
         { id: 3, firstName: 'Jane',    paused: false },
       ]
-    });
+    }));
 
     const result = await SmsHelper.pickVolunteer({ id: 1, firstName: 'Cameron', paused: false });
     expect(result.type).toEqual('followup');
@@ -325,8 +328,8 @@ describe('pickVolunteer', function() {
   });
 
   it('returns error when no schedulable task', async () => {
-    strapi.service('api::message.message').validateQuestion = jest.fn().mockResolvedValue(null);
-    strapi.service('api::garden-task.garden-task').findTaskFromUser = jest.fn().mockResolvedValue(null);
+    patchService('api::message.message', 'validateQuestion', jest.fn().mockResolvedValue(null));
+    patchService('api::garden-task.garden-task', 'findTaskFromUser', jest.fn().mockResolvedValue(null));
     const result = await SmsHelper.pickVolunteer({ id: 1, firstName: 'Cameron' });
     expect(result.type).toEqual('reply');
   });
