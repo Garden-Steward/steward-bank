@@ -58,9 +58,11 @@ module.exports = createCoreController('api::sms-campaign.sms-campaign', ({strapi
 
       const vGroup = await strapi.service('api::user-garden-interest.user-garden-interest').getUsersOfInterest(gardenObj,interest);
 
+      // Count only who will actually be texted — sendGroupMsg drops paused
+      // (on-vacation) volunteers, so counting the raw group overstates the audience.
       const response = {
         copy: body,
-        numVolunteers: vGroup.length,
+        numVolunteers: vGroup.filter(v => !v.paused).length,
         interest,
         type,
       };

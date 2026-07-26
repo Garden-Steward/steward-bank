@@ -30,6 +30,7 @@ require('./general/weather');
 require('./general/twilio');
 require('./user/registration');
 require('./user/user.http');
+require('./user/vacation-reminders');
 require('./tasks/transfer');
 require('./tasks/poll');
 require('./tasks/schedule');
@@ -39,6 +40,7 @@ require('./tasks/smsTask');
 require('./tasks/publish');
 require('./event/rsvp');
 require('./event/messages');
+require('./sms-campaign-vacation');
 
 // Recurring event tests (unit tests for date calculations)
 require('./recurring-events/date-calculations.test');

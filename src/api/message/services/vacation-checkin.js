@@ -13,60 +13,66 @@ module.exports = {
    */
   sendVacationCheckIns: async () => {
     try {
-      console.log('[VacationCheckIn] Starting weekly vacation check-in...');
-      
+      strapi.log.info('[VacationCheckIn] Starting weekly vacation check-in...');
+
       // Find all paused users
       const pausedUsers = await strapi.db.query("plugin::users-permissions.user").findMany({
         where: {
           paused: true,
           paused_at: { $ne: null }
         },
-        select: ['id', 'firstName', 'phone_number', 'paused_at', 'last_vacation_check_sent']
+        select: ['id', 'firstName', 'phoneNumber', 'paused_at', 'last_vacation_check_sent', 'vacation_reminder_count'],
+        populate: { gardens: { select: ['title'] } }
       });
-      
-      console.log(`[VacationCheckIn] Found ${pausedUsers.length} paused users`);
-      
+
+      strapi.log.info(`[VacationCheckIn] Found ${pausedUsers.length} paused users`);
+
       const now = new Date();
       let messagesCount = 0;
-      
+
       for (const user of pausedUsers) {
         const daysPaused = differenceInDays(now, new Date(user.paused_at));
         const lastCheckSent = user.last_vacation_check_sent ? new Date(user.last_vacation_check_sent) : null;
         const daysSinceLastCheck = lastCheckSent ? differenceInDays(now, lastCheckSent) : null;
-        
+
         // Check if paused >14 days AND (never been sent check OR sent >7 days ago)
         if (daysPaused > 14 && (!lastCheckSent || daysSinceLastCheck >= 7)) {
-          console.log(`[VacationCheckIn] Sending check-in to ${user.firstName} (paused ${daysPaused} days)`);
-          
-          // Send SMS via sendSms service
-          const smsBody = `Hi ${user.firstName}! Just checking in...\n\nWe noticed you've been on vacation for ${daysPaused} days.\n\nText BACK or VACATION to update your status. If you're still on vacation, just ignore this message!`;
-          
+          strapi.log.info(`[VacationCheckIn] Sending check-in to ${user.firstName} (paused ${daysPaused} days)`);
+
+          const newCount = (user.vacation_reminder_count || 0) + 1;
+          const gardenTitles = (user.gardens || []).map(g => g.title).filter(Boolean);
+          const gardenList = gardenTitles.length ? ` for ${gardenTitles.join(', ')}` : '';
+          let smsBody = `Hi ${user.firstName}! You're still on vacation and paused from watering and other recurring schedules${gardenList}. Reply BACK once you're back and we'll add you to your schedules again.`;
+          if (newCount >= 2) {
+            smsBody += `\n\nIf you no longer want the responsibility of being in this task please let a Garden Manager know so you can be quickly removed, instead of feigning vacation :)`;
+          }
+
           try {
-            await strapi.service('api::sms.sms').sendSms(user.phone_number, smsBody);
-            
-            // Update last_vacation_check_sent timestamp
+            await strapi.service('api::sms.sms').sendSms(user.phoneNumber, smsBody);
+
+            // Update last_vacation_check_sent timestamp and reminder counter (only on send success)
             await strapi.db.query("plugin::users-permissions.user").update({
               where: { id: user.id },
-              data: { last_vacation_check_sent: now }
+              data: { last_vacation_check_sent: now, vacation_reminder_count: newCount }
             });
-            
+
             messagesCount++;
-            console.log(`[VacationCheckIn] ✅ Check-in sent to ${user.phone_number}`);
+            strapi.log.info(`[VacationCheckIn] Check-in sent to ${user.phoneNumber}`);
           } catch (err) {
-            console.error(`[VacationCheckIn] Error sending SMS to ${user.phone_number}:`, err);
+            strapi.log.error(`[VacationCheckIn] Error sending SMS for user ${user.id}: `, err);
           }
         }
       }
-      
-      console.log(`[VacationCheckIn] ✅ Weekly check-in complete. Sent ${messagesCount} messages.`);
+
+      strapi.log.info(`[VacationCheckIn] Weekly check-in complete. Sent ${messagesCount} messages.`);
       return {
         success: true,
         pausedUsersTotal: pausedUsers.length,
         messagesCheckedIn: messagesCount
       };
-      
+
     } catch (err) {
-      console.error('[VacationCheckIn] Error in sendVacationCheckIns:', err);
+      strapi.log.error('[VacationCheckIn] Error in sendVacationCheckIns:', err);
       throw err;
     }
   }

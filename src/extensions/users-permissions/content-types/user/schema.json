@@ -74,6 +74,11 @@
       "type": "datetime",
       "description": "Timestamp of last weekly vacation check-in message sent"
     },
+    "vacation_reminder_count": {
+      "type": "integer",
+      "default": 0,
+      "description": "Number of vacation reminders sent during the current vacation; reset to 0 when a vacation starts or ends"
+    },
     "status": {
       "type": "enumeration",
       "enum": [

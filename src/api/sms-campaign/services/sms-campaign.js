@@ -212,7 +212,7 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
         ...(campaign.option_d || []).map(u => u.id),
       ]);
 
-      const nonVoters = (campaign.sent || []).filter(u => u.phoneNumber && !votedIds.has(u.id));
+      const nonVoters = (campaign.sent || []).filter(u => u.phoneNumber && !votedIds.has(u.id) && !u.paused);
 
       // Build the options summary for the body
       const optionsLines = (campaign.poll_options || []).map(formatPollOption);
@@ -344,13 +344,25 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
     return { winner: winnerLetter?.toUpperCase() ?? null, totalVotes, tally };
   },
 
+  /**
+   * Blast an SMS to a group and record the campaign.
+   * Paused (on-vacation) users are excluded from BOTH the send and the persisted
+   * `sent` relation, so downstream vote tallies / poll reminders never treat a
+   * paused user as a non-voter to nudge.
+   * NOTE: relies on `paused` being present on each volGroup member. Every current
+   * builder (getUsersOfInterest) returns full user records. Any future caller that
+   * passes a narrowed user shape MUST include `paused`, or the filter passes
+   * everyone through.
+   */
   sendGroupMsg: async (volGroup, copy, gardenObj, params) => {
 
     console.log("sendGroupMsg on SMS Campaign: \n", copy);
-  
+
+    const activeGroup = (volGroup || []).filter(v => !v.paused);
+
     let sentInfo = [];
-  
-    for (const volunteer of volGroup) {
+
+    for (const volunteer of activeGroup) {
       if (!volunteer.phoneNumber) { continue; }
       try {
         await client.messages
@@ -371,7 +383,7 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
       await strapi.db.query('api::sms-campaign.sms-campaign').create({
         data: {
           publishedAt: null,
-          sent: volGroup,
+          sent: activeGroup,
           body: copy,
           garden: gardenObj.id,
           type: params.type,
