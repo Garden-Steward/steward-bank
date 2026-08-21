@@ -103,6 +103,11 @@
       "type": "relation",
       "relation": "oneToOne",
       "target": "api::instruction.instruction"
+    },
+    "priority": {
+      "type": "enumeration",
+      "enum": ["High", "Normal", "Low"],
+      "default": "Normal"
     }
   }
 }

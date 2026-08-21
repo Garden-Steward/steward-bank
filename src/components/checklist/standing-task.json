@@ -1,0 +1,17 @@
+{
+  "collectionName": "components_checklist_standing_tasks",
+  "info": {
+    "displayName": "Standing Task",
+    "description": "One line on the every-workday checklist"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "note": {
+      "type": "text"
+    }
+  }
+}
