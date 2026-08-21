@@ -47,3 +47,4 @@ require('./recurring-events/date-calculations.test');
 require('./recurring-events/instance-generation.test');
 
 require('./tasks/standing-tasks');
+require('./event/day-sheet');
