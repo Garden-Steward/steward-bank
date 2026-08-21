@@ -7,18 +7,20 @@ Repos: `steward-bank` (backend, base `49f8ceb`) + `garden-vue` (frontend, base `
 
 The morning of a workday, a garden manager opens the event page in Garden Steward,
 clicks **Print day sheet**, glances over a list of the things that always get done
-plus the tasks specifically scheduled for that day, X's out the ones that don't
-apply today, optionally types one extra line ("bring the wheelbarrow back from the
+plus the tasks specifically scheduled for that day, X's out the standing lines that
+don't apply today, hides any of the day's tasks that aren't good volunteer-day material,
+optionally types one extra line ("bring the wheelbarrow back from the
 lower plot"), and prints. What comes out of the printer is a plain black-on-white
 sheet with big type and big empty checkboxes that a volunteer with dirty gloves can
 carry around the garden in bright sun and tick off with a pencil. The standing list
 itself — the things that are true every workday at every garden — is editable in the
 app by garden managers, not just by whoever has a Strapi admin login.
 
-Two things on this sheet must never be confused, and the design keeps them apart
-everywhere: **X-ing a row out is ephemeral** (it changes only the sheet being printed
-right now and is never written anywhere), while **editing or deleting a standing row
-is persistent and global** (it changes what every garden prints from then on).
+Two kinds of action on this sheet must never be confused, and the design keeps them
+apart everywhere: **skipping a standing line and hiding a task are ephemeral** (they
+change only the sheet being printed right now and are never written anywhere), while
+**editing or deleting a standing row is persistent and global** (it changes what every
+garden prints from then on).
 
 ## Current state
 
@@ -134,7 +136,8 @@ scope.
 
 Responsibilities:
 
-1. `assemble(eventId, { excludeKeys, extras })` → the sheet payload (below). Both
+1. `assemble(eventId, { excludeKeys, extras, hiddenTaskIds })` → the sheet payload
+   (below). Both
    endpoints call this and nothing else; neither controller queries the DB directly.
    This is the "can never drift" guarantee.
 2. `resolveEvent(eventId)` — `strapi.db.query('api::volunteer-day.volunteer-day').findOne({ where: { id: eventId }, populate: { garden: true } })`.
@@ -330,16 +333,27 @@ Document structure, in order:
    followed by the validated `extra` lines in submitted order, rendered identically
    (checkbox + 16pt title). Extras are not visually distinguished; they are just
    additional lines for today. `note` prints under the title at 13pt when present.
-3. **Today's Tasks** — the day's tasks in priority order. Each: checkbox, 16pt bold
-   title, and a 13pt meta line rendered as plain text — `High priority · Weeding · needs 4`
-   — with priority shown as a word, never a color. `overview` prints beneath, truncated
-   at 240 chars on a word boundary with a trailing "…". If the event has zero tasks, the
-   section prints with the single line "No tasks scheduled for today."
+3. **Today's Tasks** — the day's tasks that survived `hideTasks` (D5), in priority
+   order. Each: checkbox, 16pt bold title, and a 13pt meta line rendered as plain text —
+   `High priority · Weeding · needs 4` — with priority shown as a word, never a color.
+   `overview` prints beneath, truncated at 240 chars on a word boundary with a trailing
+   "…". If no tasks remain — because the event has none, or because every one of them was
+   hidden — the section still prints, with the single line "No tasks on this sheet."
+   (one string covers both cases; the sheet never silently omits the section).
 4. **Notes** — heading plus 5 blank ruled lines (`border-bottom:1px solid #000`,
    0.4in apart) for writing on. `break-inside: avoid`.
 
-**Degradation as the day gets busy.** `totalItems = standing(after exclusion) + extras + tasks`.
-The server picks one class on `<body>` — no JS, no measurement:
+**Degradation as the day gets busy.** The density tier is computed on what will
+actually be **printed**, i.e. strictly *after* `exclude` and `hideTasks` have been
+applied and `extra` lines added:
+
+```
+totalItems = standing(after exclude) + extras + tasks(after hideTasks)
+```
+
+Order matters: filter first, count second. Hiding six tasks must relax the sheet into a
+roomier tier, not leave it cramped for items that are not on the page. The server picks
+one class on `<body>` — no JS, no measurement:
 
 | totalItems | class | effect |
 |---|---|---|
@@ -381,13 +395,44 @@ Applies identically to both day-sheet endpoints, in `parseSheetParams(query)`.
   length across all lines ≤ 400 chars. Violations → 400.
 - Order is preserved.
 
+**`hideTasks`** — the day's garden tasks kept off *this* printout. Some garden tasks
+simply are not volunteer-day material; hiding one is ephemeral in exactly the way
+X-ing out a standing row is. It is never persisted, and there is deliberately **no**
+`print_on_sheet` / `not_for_print` boolean on `garden-task` — `priority` remains the
+only garden-task schema change in this feature.
+- Format: comma-separated numeric garden-task ids, e.g. `?hideTasks=91,104`. Repeated
+  `?hideTasks=` params are concatenated before splitting. Named `hideTasks`, not
+  `excludeTasks`, so no reader or implementer confuses it with `exclude` — the two
+  params share no prefix, no value grammar, and no target list.
+- Each token must match `/^[0-9]{1,9}$/`. Any token that does not (letters, negatives,
+  decimals, empty segments from `91,,104`) → **400**.
+- Max **30** ids after dedupe → more is 400. Same cap as `exclude`, deliberately.
+- The ids are the numeric `id` values from `data.tasks[].id` in the JSON response —
+  which is the deduped, published-preferred row id from D2a. Because the HTML endpoint
+  runs the identical dedupe through the same `assemble()`, an id the wizard saw always
+  refers to the same task the renderer is about to print. Never `documentId`: this is
+  an internal, transient reference, and numeric ids are what the day's tasks already
+  have. The content-hash machinery used for standing items is unnecessary here — garden
+  tasks are real DB rows with stable ids.
+- Ids matching no task on this event are **ignored silently** — never a 400, never a
+  404. Same fail-safe direction as a stale `exclude` key: the sheet prints something
+  extra rather than dropping the wrong row or refusing to render at all.
+- Absent/empty → nothing hidden.
+
+All three ephemeral params are parsed by the one `parseSheetParams(query)` — there is no
+second validator. It returns `{ excludeKeys, extras, hiddenTaskIds }`, all normalized
+(deduped, trimmed, order-preserving), or throws the tagged error the controllers
+translate per content type.
+
 **Error surfaces (deliberately non-reflective).** Invalid params produce a fixed
 message that never contains any part of the input:
 - JSON endpoint → Strapi's standard `ctx.badRequest('Invalid exclude parameter')` /
-  `ctx.badRequest('Invalid extra parameter')` envelope.
+  `ctx.badRequest('Invalid extra parameter')` / `ctx.badRequest('Invalid hideTasks parameter')`
+  envelope.
 - HTML endpoint → status 400, `Content-Type: text/plain; charset=utf-8`, body exactly
-  `Invalid exclude parameter` or `Invalid extra parameter`. Plain text, so even a
-  hypothetical escaping bug in the renderer cannot be reached through an error path.
+  `Invalid exclude parameter`, `Invalid extra parameter`, or `Invalid hideTasks parameter`.
+  Plain text, so even a hypothetical escaping bug in the renderer cannot be reached
+  through an error path.
 
 Both endpoints set `Cache-Control: no-store` (live data; params are per-print).
 `X-Content-Type-Options: nosniff` already comes from the security middleware.
@@ -421,7 +466,10 @@ for everyone until then.
   Day by numeric id, full stop.
 - Per-garden standing lists, an `active` flag, a `sort_order` field, or any `garden`
   relation on the component.
-- Persisting anything the wizard's **X-out** or **extra line** controls do.
+- Persisting anything the wizard's **X-out**, **hide task**, or **extra line** controls
+  do. In particular: **no `print_on_sheet` / `not_for_print` boolean on `garden-task`.**
+  Hiding is per-printout only, and `priority` remains the single garden-task schema
+  change in this feature.
 - Server-side PDF generation. The browser's print dialog is the whole output pipeline.
 - Filtering the day's tasks by status.
 - Backfilling `priority` on existing rows.
@@ -443,7 +491,8 @@ Wizard data. **Auth: none** (`config: { auth: false }`). No role grant required.
 **Params** — `:id` numeric volunteer-day id (the same id used by `/d/:id` and SMS
 links). Non-numeric → 400.
 
-**Query** — optional `exclude`, `extra` per D5. No `populate` is honored or needed; the
+**Query** — optional `exclude`, `extra`, `hideTasks` per D5. No `populate` is honored or
+needed; the
 server decides what to populate. Unknown query params are ignored.
 
 **200** `Content-Type: application/json`, `Cache-Control: no-store`:
@@ -477,6 +526,7 @@ server decides what to populate. Unknown query params are ignored.
       }
     ],
     "excludedKeys": ["ff00ab99"],
+    "hiddenTaskIds": [104],
     "extras": ["bring the wheelbarrow back"],
     "meta": {
       "standingSource": "single-type",
@@ -494,6 +544,11 @@ Field notes:
   row to render its X controls. `excludedKeys` echoes back only the submitted keys that
   survived validation (unknown ones included; the server does not tell you which
   matched). `extras` echoes the normalized lines.
+- `tasks` follows the same asymmetry: it is **always the full task list**, never filtered
+  by `hideTasks`, and `hiddenTaskIds` echoes the submitted, validated, deduped ids
+  (including ids that match nothing). Filtering happens only in the HTML renderer. This
+  is what lets the wizard render a hidden task struck-through and restorable instead of
+  making the row vanish — the same treatment a skipped standing row gets.
 - `key` is the D3 content hash. It is **not** a database id and is not stable across a
   title edit — by design.
 - `priority` is always one of `"High" | "Normal" | "Low"`; a `null` column value is
@@ -506,7 +561,8 @@ Field notes:
 - `meta.standingSource` is `"default"` when the five hardcoded defaults are in play,
   `"single-type"` when the curated list is.
 
-**400** — non-numeric `:id`, or invalid `exclude`/`extra`. Standard Strapi envelope:
+**400** — non-numeric `:id`, or invalid `exclude`/`extra`/`hideTasks`. Standard Strapi
+envelope:
 `{ "data": null, "error": { "status": 400, "name": "BadRequestError", "message": "Invalid exclude parameter", "details": {} } }`.
 The message is one of a fixed set and never contains submitted input.
 
@@ -526,14 +582,15 @@ fresh browser tab, which carries no Authorization header, so this is a requireme
 a convenience.
 
 **Params/query** — identical to endpoint 1, and parsed by the same
-`parseSheetParams()`.
+`parseSheetParams()`. **This is the only endpoint where `exclude` and `hideTasks`
+actually remove anything**: the JSON endpoint echoes them, the renderer obeys them.
 
 **200** — `Content-Type: text/html; charset=utf-8`, `Cache-Control: no-store`. Body is
 a complete standalone HTML document per D4: one inline `<style>`, no `<script>`, no
 external URLs, black on white.
 
-**400** — `text/plain; charset=utf-8`, body exactly `Invalid exclude parameter` or
-`Invalid extra parameter`. No HTML, no reflection.
+**400** — `text/plain; charset=utf-8`, body exactly `Invalid exclude parameter`,
+`Invalid extra parameter`, or `Invalid hideTasks parameter`. No HTML, no reflection.
 
 **404** — `text/plain; charset=utf-8`, body exactly `Volunteer day not found`.
 
@@ -627,10 +684,11 @@ button until the backend is up — but no code depends on that.
   - `async fetchDaySheet(id)` → `fetchWrapper.get(`${baseUrl}/by-id/${id}/day-sheet`)`,
     sets `this.daySheet = res.data`, `.catch(this.handleError)` — the existing
     `handleError` at line 38 (alert store + rethrow).
-  - `daySheetPrintUrl(id, { excludeKeys, extras })` → returns a URL **string**, performs
-    no fetch: `${baseUrl}/by-id/${id}/day-sheet.html` plus
-    `exclude=${excludeKeys.join(',')}` when non-empty and one
-    `extra=${encodeURIComponent(line)}` per line.
+  - `daySheetPrintUrl(id, { excludeKeys, hiddenTaskIds, extras })` → returns a URL
+    **string**, performs no fetch: `${baseUrl}/by-id/${id}/day-sheet.html` plus
+    `exclude=${excludeKeys.join(',')}` when non-empty, `hideTasks=${hiddenTaskIds.join(',')}`
+    when non-empty, and one `extra=${encodeURIComponent(line)}` per line. Each of the
+    three is omitted entirely when its collection is empty.
   - `async saveStandingTasks(items)` → `fetchWrapper.put(`${import.meta.env.VITE_API_URL}/api/day-sheet-standing-tasks/list`, { data: { standing_tasks: items } })`,
     merges `res.data.standing` into `this.daySheet.standing`, `.catch(this.handleError)`.
 - `src/components/modals/PrintDaySheetModal.vue` — new, exported from
@@ -649,10 +707,14 @@ button labeled "Skip on this sheet". Clicking X strikes the row through and swap
 small "Skipped — undo" affordance; the row stays visible so nothing feels deleted.
 Below the list, one text input plus an **Add line** button appends a one-off line for
 today (max 5, 120 chars each, enforced client-side with the same limits the server
-enforces; added lines get their own remove control). Second block: **Today's tasks**,
-read-only, rendered **in the order the API returned them** — the frontend must not
-re-sort, because priority ordering is the server's contract. Each task shows title,
-priority word, type, and overview.
+enforces; added lines get their own remove control). Second block: **Today's tasks** —
+read-only *content* with one control per row, rendered **in the order the API returned
+them**; the frontend must not re-sort, because priority ordering is the server's
+contract. Each task shows title, priority word, type, and overview, plus a **Hide from
+sheet** button. Clicking it strikes the row through, dims it, tags it "Hidden from this
+sheet", and flips the button to **Show on sheet** — the row never leaves the list, and
+the task itself is untouched in the database. Hidden task ids ride to the printout in
+`hideTasks`; nothing is sent to the server by hiding or unhiding.
 
 *Step 1b — Edit the shared list (managers only).* An **Edit list** toggle above the
 standing block. Turning it on visibly changes the block: a persistent banner in
@@ -667,18 +729,33 @@ re-titled underneath them) with a one-line note "Skips cleared — review the li
 again". Saving an empty list requires confirming a warning: "This clears the list —
 sheets will fall back to the five built-in defaults."
 
-The two concepts stay apart via: different verbs ("Skip on this sheet" vs
-"Delete from the list"), different iconography (X-in-outline vs trash), a mode toggle
-so only one set is live at a time, and the orange persistent banner that only ever
-appears in edit mode.
+**Three control families live in this one modal, and only one of them writes to the
+database.** They must never be mistakable for one another:
 
-*Step 2 — Print.* A summary ("5 standing lines, 1 extra, 4 tasks") and an **Open print
+| Control | Scope | Verb on the button | Icon | Persists? |
+|---|---|---|---|---|
+| Standing skip | this printout, standing list | "Skip on this sheet" / "Undo skip" | outline X | **no** |
+| Task hide | this printout, this event's tasks | "Hide from sheet" / "Show on sheet" | crossed-out eye | **no** |
+| Standing edit/delete | **every garden, every future sheet** | "Delete from the list" (inside Edit mode) | trash | **yes** |
+
+The separation is carried by: distinct verbs (skip / hide / delete — no two share a
+word), distinct icons, the fact that the only persistent controls live behind an
+explicit **Edit list** mode toggle that disables the ephemeral controls while it is on,
+and the `bg-dark-orange` banner that appears *only* in edit mode. The two ephemeral
+families are further separated by living in different sections with different section
+headings, and by their opposite-polarity restore verbs ("Undo skip" vs "Show on sheet").
+Ephemeral rows are struck through and stay in place; the persistent delete removes the
+row from the list outright — a visible structural difference, not just a label
+difference.
+
+*Step 2 — Print.* A summary that counts only what will actually print
+("5 standing lines, 1 extra, 3 of 4 tasks") and an **Open print
 sheet** button that does `window.open(url, '_blank', 'noopener')` with the URL from
 `daySheetPrintUrl`. The new tab shows the plain sheet; the user presses Cmd/Ctrl-P. The
 modal offers **Back** to return to Review and adjust.
 
-Closing the modal discards all ephemeral state (skips, extras, step) — reopening starts
-clean.
+Closing the modal discards all ephemeral state — skips, hidden task ids, extras, and the
+step — so reopening starts clean. Nothing in this list has ever been written anywhere.
 
 **Which gate for the manager-only editing UI.** Use the existing `isManager` computed in
 `EventView.vue:43-46` (managers of *this* event's garden), passed into the modal as a
@@ -713,7 +790,11 @@ at all.
   fail toward *printing* a line rather than silently dropping the wrong one. Index-based
   `?exclude=0,3` was rejected: a concurrent admin reorder would drop the wrong rows.
   Component row ids were rejected: whole-list replace recreates component rows, so ids are
-  not stable across a save.
+  not stable across a save. **The day's tasks need none of this** — they are real DB rows
+  with stable numeric ids, so `hideTasks` is plain integers. Two different identifier
+  schemes in one URL is a small readability cost, paid deliberately: neither list can
+  borrow the other's identifiers, so a param mix-up degrades to a silent no-op rather than
+  hiding the wrong thing.
 - **A global list is genuinely global.** Any garden manager's edit changes what *every*
   garden prints, with no audit trail and no per-garden override. The user has accepted this
   knowingly for the current single-org deployment. If gardens outside this org are ever
@@ -839,11 +920,11 @@ while items 1 and 3 do. With an `exclude` key matching nothing, all items appear
 AC24. Submitted `extra` lines appear in the "Every Workday" section, after the standing
 items, in submitted order.
 
-AC25. Density degrades on count: with ≤10 total items the `<body>` carries
-`density-normal` and at least one task `overview` string appears; with 11-18 it carries
-`density-compact` and no task `overview` text appears; with >18 it carries `density-dense`
-and the "Notes" heading is absent. Type-size declarations (18pt/16pt/13pt) are identical in
-all three.
+AC25. Density degrades on **printed** count — measured after `exclude` and `hideTasks`
+are applied, not before: with ≤10 printed items the `<body>` carries `density-normal` and
+at least one task `overview` string appears; with 11-18 it carries `density-compact` and no
+task `overview` text appears; with >18 it carries `density-dense` and the "Notes" heading is
+absent. Type-size declarations (18pt/16pt/13pt) are identical in all three.
 
 AC26. Each task block and each checklist item carries `break-inside: avoid` (via a class
 whose rule declares it), and every checklist item renders a 16px-square element with
@@ -916,8 +997,8 @@ Nothing is sent to the server by either action.
 AC43. Adding "bring the wheelbarrow back" produces `extra=bring%20the%20wheelbarrow%20back`
 (or `+`-encoded equivalent) in the generated URL, and a sixth line is refused client-side.
 
-AC44. Closing and reopening the modal clears all skips, extras, and the step — no ephemeral
-state survives, and none of it was ever POSTed or PUT.
+AC44. Closing and reopening the modal clears all skips, **hidden task ids**, extras, and
+the step — no ephemeral state survives, and none of it was ever POSTed or PUT.
 
 AC45. The Edit-list controls (inline inputs, trash, reorder, Save) render only when the
 manager prop is true; while edit mode is on, the skip/X controls are disabled, and the
@@ -933,6 +1014,52 @@ AC48. Modal markup uses only `tailwind.config.js` tokens (`custom-light`, `prima
 `darkest-green`, `forest-panel`, `forest-border`, `dark-orange`) — no arbitrary
 `bg-[#...]`/`text-[#...]` classes are introduced by this feature — and it renders legibly
 in dark mode (`darkMode: 'class'`).
+
+**Hiding the day's tasks (ephemeral)**
+
+AC49. For an event with three tasks, `GET .../day-sheet.html?hideTasks=<id of task 2>`
+returns 200 whose body contains the titles of tasks 1 and 3 and does **not** contain the
+title of task 2. `?hideTasks=<id1>,<id3>` leaves only task 2's title. Omitting the param
+prints all three.
+
+AC50. `?hideTasks=999999` (an id belonging to no task on this event, or to no task at all)
+returns **200**, not 400 and not 404, and every task on the event still prints. The same id
+mixed with a real one (`?hideTasks=999999,<id1>`) hides only task 1.
+
+AC51. Malformed and over-cap values 400 without echoing input:
+`?hideTasks=abc` → 400 with message `Invalid hideTasks parameter` on the JSON endpoint and
+body exactly `Invalid hideTasks parameter` (`text/plain`) on the HTML endpoint, and neither
+response body contains the substring `abc`; likewise `?hideTasks=-1`, `?hideTasks=1.5`, and
+`?hideTasks=1,,2`. Thirty-one distinct ids → 400; thirty ids → 200.
+
+AC52. `GET .../day-sheet?hideTasks=<id of task 2>` returns 200 with `data.tasks` containing
+**all three** tasks (unfiltered, still in priority order) and `data.hiddenTaskIds` equal to
+`[<id of task 2>]`. Duplicate submitted ids are deduped in the echo; an unknown id is
+echoed back as submitted.
+
+AC53. Density is computed post-filter: an event whose sheet would total 20 printed items
+renders `density-dense`, and the same request with `hideTasks` removing six of those tasks
+renders a roomier tier (`density-compact` at 14 printed items) — proving the tier is derived
+from printed items, not from the unfiltered totals.
+
+AC54. `?hideTasks=` covering every task on the event returns 200 and the "Today's Tasks"
+section is still present, containing exactly the line `No tasks on this sheet.` — the same
+line an event with zero tasks produces.
+
+AC55. In the wizard, clicking **Hide from sheet** on a task strikes the row through, leaves
+it in the list, flips the button to **Show on sheet**, and causes that task's numeric id to
+appear in the `hideTasks` param of the URL generated at step 2; clicking **Show on sheet**
+removes it. Neither action issues any network request.
+
+AC56. Closing and reopening the modal clears hidden task ids specifically: a task hidden
+before closing renders unhidden on reopen, and the regenerated print URL carries no
+`hideTasks` param.
+
+AC57. The three control families are distinguishable in the rendered modal: the standing
+skip control reads "Skip on this sheet", the task control reads "Hide from sheet", and the
+persistent delete control reads "Delete from the list" and is reachable only after toggling
+**Edit list** (which simultaneously disables the skip controls and shows the
+"changes apply to every garden" banner). No two of the three share a verb.
 
 ## Verification plan
 
@@ -958,6 +1085,8 @@ object and no Strapi at all.
 | AC32–AC33 | Supertest with a manager JWT, table-driven over the invalid bodies; assert 400 and that the message contains no submitted text. **Backend-verifiable.** |
 | AC34–AC38 | Supertest sequences (PUT → PUT → GET), plus a direct `strapi.db.query(uid).count()` and a component-row count for AC37 (DB inspection). AC38 asserts the `.html` body after a PUT in the same test. **Backend-verifiable.** |
 | AC39 | Static assertion / grep over `scripts/seed-content-permissions.js`. Separately, **manual**: run `yarn seed:content-permissions` against the develop server and confirm the Authenticated role shows `replaceList` enabled in the admin Roles screen. |
+| AC49–AC54 | Supertest against a fixture event with three tasks of known numeric ids, plus pure-renderer unit tests for AC53/AC54 (build the sheet object at 20 and 14 printed items and assert the body class / empty-state line). AC51 asserts `expect(res.text).not.toContain('abc')` on both endpoints. AC50 is the one most likely to be implemented as a 400 by mistake — write it first. **Backend-verifiable.** |
+| AC55–AC57 | **UI-observable + contract-level.** Browser against both dev servers: hide a task, open step 2, and read the generated URL in the Network tab (or the anchor's href) to confirm `hideTasks=<id>` with the exact grammar from the API contract. AC55's "no request" half is verified by an empty Network tab across a hide/unhide cycle. AC57 is a visual/label check plus a grep of the new `.vue` file for the three verb strings. |
 | AC40–AC48 | **UI-observable** — no Vitest harness exists in garden-vue today, so verify in a browser against `yarn dev` (garden-vue) + `yarn develop` (steward-bank) as a manager of the event's garden, with DevTools open. AC41/AC42/AC43 are also **contract-level**: read the actual Network tab request URLs and confirm they match the API-contract section character-for-character (param names, comma separator, percent-encoding). AC44 is verified by confirming the Network tab shows **zero** non-GET requests across a full skip/extra/print cycle. AC45/AC47 are visual + interaction checks. AC48 is a grep of the new `.vue` file for `-\[#` plus a dark-mode toggle in the browser. |
 
 Cross-cutting manual checks that no automated test covers:
