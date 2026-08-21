@@ -4,6 +4,8 @@
  * once for the whole `tests/app.test.js` suite.
  */
 
+const request = require('supertest');
+
 const STANDING_UID = 'api::day-sheet-standing-task.day-sheet-standing-task';
 
 const resetStandingList = async () => {
@@ -229,6 +231,321 @@ describe('Day sheet assembly service', function () {
       const sheet = await sheetSvc().assemble(event.id);
 
       expect(JSON.stringify(sheet)).not.toContain('"volunteers"');
+    });
+  });
+});
+
+/**
+ * HTTP-level tests for Task 6's two public endpoints. No Authorization
+ * header is sent anywhere in this describe.
+ */
+describe('Day sheet HTTP endpoints', function () {
+  let httpGarden;
+  let httpEvent;
+
+  beforeAll(async () => {
+    await resetStandingList();
+    httpGarden = await strapi.db.query('api::garden.garden').create({
+      data: { title: 'Day Sheet HTTP Garden', slug: 'day-sheet-http-garden' },
+    });
+    httpEvent = await strapi.db.query('api::volunteer-day.volunteer-day').create({
+      data: {
+        title: 'Day Sheet HTTP Event',
+        startDatetime: '2026-08-22T16:00:00.000Z',
+        garden: httpGarden.id,
+        canceled: false,
+        disabled: false,
+        confirmed: [],
+      },
+    });
+  });
+
+  afterAll(resetStandingList);
+
+  describe('JSON endpoint (AC5, AC10, AC11, AC12, AC13, AC14, AC28)', function () {
+    it('AC5: 200 with no Authorization header, body has event/standing/tasks/meta', async () => {
+      const res = await request(strapi.server.httpServer)
+        .get(`/api/volunteer-days/by-id/${httpEvent.id}/day-sheet`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.event).toBeDefined();
+      expect(res.body.data.standing).toBeDefined();
+      expect(res.body.data.tasks).toBeDefined();
+      expect(res.body.data.meta).toBeDefined();
+    });
+
+    it('AC10: nonexistent id -> 404 with the exact message', async () => {
+      const res = await request(strapi.server.httpServer)
+        .get('/api/volunteer-days/by-id/999999999/day-sheet');
+
+      expect(res.status).toBe(404);
+      expect(res.body.error.message).toBe('Volunteer day not found');
+    });
+
+    it('AC11: ?exclude=notahex -> 400 with the exact message, no reflection of the input', async () => {
+      const res = await request(strapi.server.httpServer)
+        .get(`/api/volunteer-days/by-id/${httpEvent.id}/day-sheet?exclude=notahex`);
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.message).toBe('Invalid exclude parameter');
+      expect(res.text).not.toContain('notahex');
+    });
+
+    it('AC12: ?exclude=<valid key> -> 200, full standing list unfiltered, key echoed in excludedKeys', async () => {
+      const before = await request(strapi.server.httpServer)
+        .get(`/api/volunteer-days/by-id/${httpEvent.id}/day-sheet`);
+      const key = before.body.data.standing[0].key;
+      const fullLength = before.body.data.standing.length;
+
+      const res = await request(strapi.server.httpServer)
+        .get(`/api/volunteer-days/by-id/${httpEvent.id}/day-sheet?exclude=${key}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.standing).toHaveLength(fullLength);
+      expect(res.body.data.excludedKeys).toContain(key);
+    });
+
+    it('AC13: six extra params -> 400; five valid -> 200 with trimmed values in submitted order', async () => {
+      const tooMany = await request(strapi.server.httpServer)
+        .get(`/api/volunteer-days/by-id/${httpEvent.id}/day-sheet?extra=a&extra=b&extra=c&extra=d&extra=e&extra=f`);
+
+      expect(tooMany.status).toBe(400);
+      expect(tooMany.body.error.message).toBe('Invalid extra parameter');
+
+      const fine = await request(strapi.server.httpServer)
+        .get(`/api/volunteer-days/by-id/${httpEvent.id}/day-sheet?extra=a&extra=b&extra=c&extra=d&extra=e`);
+
+      expect(fine.status).toBe(200);
+      expect(fine.body.data.extras).toEqual(['a', 'b', 'c', 'd', 'e']);
+    });
+
+    it('AC14: meta.printPath equals the day-sheet.html path', async () => {
+      const res = await request(strapi.server.httpServer)
+        .get(`/api/volunteer-days/by-id/${httpEvent.id}/day-sheet`);
+
+      expect(res.body.data.meta.printPath).toBe(`/api/volunteer-days/by-id/${httpEvent.id}/day-sheet.html`);
+    });
+
+    it('AC28: JSON response carries Cache-Control: no-store', async () => {
+      const res = await request(strapi.server.httpServer)
+        .get(`/api/volunteer-days/by-id/${httpEvent.id}/day-sheet`);
+
+      expect(res.headers['cache-control']).toBe('no-store');
+    });
+  });
+
+  describe('HTML endpoint (AC17, AC27, AC28)', function () {
+    it('AC17: 200, text/html, no Authorization header', async () => {
+      const res = await request(strapi.server.httpServer)
+        .get(`/api/volunteer-days/by-id/${httpEvent.id}/day-sheet.html`);
+
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toMatch(/^text\/html/);
+    });
+
+    it('AC27: bad param -> 400 text/plain exact body; nonexistent id -> 404 text/plain exact body', async () => {
+      const badParam = await request(strapi.server.httpServer)
+        .get(`/api/volunteer-days/by-id/${httpEvent.id}/day-sheet.html?exclude=zzz`);
+
+      expect(badParam.status).toBe(400);
+      expect(badParam.headers['content-type']).toMatch(/^text\/plain/);
+      expect(badParam.text).toBe('Invalid exclude parameter');
+
+      const notFound = await request(strapi.server.httpServer)
+        .get('/api/volunteer-days/by-id/999999999/day-sheet.html');
+
+      expect(notFound.status).toBe(404);
+      expect(notFound.headers['content-type']).toMatch(/^text\/plain/);
+      expect(notFound.text).toBe('Volunteer day not found');
+    });
+
+    it('AC28: HTML response carries Cache-Control: no-store', async () => {
+      const res = await request(strapi.server.httpServer)
+        .get(`/api/volunteer-days/by-id/${httpEvent.id}/day-sheet.html`);
+
+      expect(res.headers['cache-control']).toBe('no-store');
+    });
+  });
+
+  describe('PII (AC21)', function () {
+    it('neither endpoint leaks volunteer identity or contact info', async () => {
+      const { createUser } = require('../user/factory');
+      const volunteer = await createUser({
+        username: 'daysheet-pii-user',
+        email: 'daysheet-pii-user@example.com',
+        firstName: 'Zzpiifirstname',
+        lastName: 'Zzpiilastname',
+        phoneNumber: '5035551234',
+      });
+
+      const piiEvent = await strapi.db.query('api::volunteer-day.volunteer-day').create({
+        data: {
+          title: 'PII Test Event',
+          startDatetime: '2026-08-22T16:00:00.000Z',
+          garden: httpGarden.id,
+          canceled: false,
+          disabled: false,
+          confirmed: [volunteer.id],
+        },
+      });
+
+      await strapi.db.query('api::garden-task.garden-task').create({
+        data: {
+          title: 'PII test task',
+          type: 'General',
+          priority: 'Normal',
+          garden: httpGarden.id,
+          volunteer_day: piiEvent.id,
+          volunteers: [volunteer.id],
+          publishedAt: new Date().toISOString(),
+        },
+      });
+
+      const jsonRes = await request(strapi.server.httpServer)
+        .get(`/api/volunteer-days/by-id/${piiEvent.id}/day-sheet`);
+      const htmlRes = await request(strapi.server.httpServer)
+        .get(`/api/volunteer-days/by-id/${piiEvent.id}/day-sheet.html`);
+
+      [jsonRes, htmlRes].forEach((res) => {
+        expect(res.text).not.toContain('Zzpiifirstname');
+        expect(res.text).not.toContain('Zzpiilastname');
+        expect(res.text).not.toContain('daysheet-pii-user@example.com');
+        expect(res.text).not.toContain('5035551234');
+        expect(res.text).not.toContain('daysheet-pii-user');
+        expect(res.text).not.toContain('"volunteers"');
+      });
+
+      expect(typeof jsonRes.body.data.tasks[0].volunteer_count).toBe('number');
+    });
+  });
+
+  describe('hideTasks (AC49, AC50, AC51, AC52)', function () {
+    let hideEvent;
+    let task1;
+    let task2;
+    let task3;
+
+    beforeAll(async () => {
+      hideEvent = await strapi.db.query('api::volunteer-day.volunteer-day').create({
+        data: {
+          title: 'Hide Tasks Event',
+          startDatetime: '2026-08-22T16:00:00.000Z',
+          garden: httpGarden.id,
+          canceled: false,
+          disabled: false,
+          confirmed: [],
+        },
+      });
+
+      task1 = await strapi.db.query('api::garden-task.garden-task').create({
+        data: {
+          title: 'Hide Task One', type: 'General', priority: 'Normal',
+          garden: httpGarden.id, volunteer_day: hideEvent.id,
+          publishedAt: new Date().toISOString(),
+        },
+      });
+      task2 = await strapi.db.query('api::garden-task.garden-task').create({
+        data: {
+          title: 'Hide Task Two', type: 'General', priority: 'Normal',
+          garden: httpGarden.id, volunteer_day: hideEvent.id,
+          publishedAt: new Date().toISOString(),
+        },
+      });
+      task3 = await strapi.db.query('api::garden-task.garden-task').create({
+        data: {
+          title: 'Hide Task Three', type: 'General', priority: 'Normal',
+          garden: httpGarden.id, volunteer_day: hideEvent.id,
+          publishedAt: new Date().toISOString(),
+        },
+      });
+    });
+
+    // AC50 is the AC most likely implemented wrong: an unknown hideTasks id
+    // must be a silent 200 no-op, never a 400 or a 404. Written first.
+    it('AC50: an unknown hideTasks id is a 200 no-op, never 400 or 404', async () => {
+      const unknownOnly = await request(strapi.server.httpServer)
+        .get(`/api/volunteer-days/by-id/${hideEvent.id}/day-sheet.html?hideTasks=999999`);
+
+      expect(unknownOnly.status).toBe(200);
+      expect(unknownOnly.text).toContain('Hide Task One');
+      expect(unknownOnly.text).toContain('Hide Task Two');
+      expect(unknownOnly.text).toContain('Hide Task Three');
+
+      const unknownPlusReal = await request(strapi.server.httpServer)
+        .get(`/api/volunteer-days/by-id/${hideEvent.id}/day-sheet.html?hideTasks=999999,${task1.id}`);
+
+      expect(unknownPlusReal.status).toBe(200);
+      expect(unknownPlusReal.text).not.toContain('Hide Task One');
+      expect(unknownPlusReal.text).toContain('Hide Task Two');
+      expect(unknownPlusReal.text).toContain('Hide Task Three');
+    });
+
+    it('AC49: hideTasks removes only the requested task(s) from the printed HTML', async () => {
+      const oneHidden = await request(strapi.server.httpServer)
+        .get(`/api/volunteer-days/by-id/${hideEvent.id}/day-sheet.html?hideTasks=${task2.id}`);
+
+      expect(oneHidden.status).toBe(200);
+      expect(oneHidden.text).toContain('Hide Task One');
+      expect(oneHidden.text).toContain('Hide Task Three');
+      expect(oneHidden.text).not.toContain('Hide Task Two');
+
+      const twoHidden = await request(strapi.server.httpServer)
+        .get(`/api/volunteer-days/by-id/${hideEvent.id}/day-sheet.html?hideTasks=${task1.id},${task3.id}`);
+
+      expect(twoHidden.text).toContain('Hide Task Two');
+      expect(twoHidden.text).not.toContain('Hide Task One');
+      expect(twoHidden.text).not.toContain('Hide Task Three');
+
+      const noneHidden = await request(strapi.server.httpServer)
+        .get(`/api/volunteer-days/by-id/${hideEvent.id}/day-sheet.html`);
+
+      expect(noneHidden.text).toContain('Hide Task One');
+      expect(noneHidden.text).toContain('Hide Task Two');
+      expect(noneHidden.text).toContain('Hide Task Three');
+    });
+
+    it('AC51: malformed/over-cap hideTasks values 400 without echoing input, on both endpoints', async () => {
+      const cases = ['abc', '-1', '1.5', '1,,2'];
+      for (const value of cases) {
+        // eslint-disable-next-line no-await-in-loop
+        const jsonRes = await request(strapi.server.httpServer)
+          .get(`/api/volunteer-days/by-id/${hideEvent.id}/day-sheet?hideTasks=${value}`);
+        expect(jsonRes.status).toBe(400);
+        expect(jsonRes.body.error.message).toBe('Invalid hideTasks parameter');
+        expect(jsonRes.text).not.toContain(value);
+
+        // eslint-disable-next-line no-await-in-loop
+        const htmlRes = await request(strapi.server.httpServer)
+          .get(`/api/volunteer-days/by-id/${hideEvent.id}/day-sheet.html?hideTasks=${value}`);
+        expect(htmlRes.status).toBe(400);
+        expect(htmlRes.text).toBe('Invalid hideTasks parameter');
+        expect(htmlRes.text).not.toContain(value);
+      }
+
+      const thirtyOne = Array.from({ length: 31 }, (_, i) => i + 1).join(',');
+      const overCap = await request(strapi.server.httpServer)
+        .get(`/api/volunteer-days/by-id/${hideEvent.id}/day-sheet?hideTasks=${thirtyOne}`);
+      expect(overCap.status).toBe(400);
+
+      const thirty = Array.from({ length: 30 }, (_, i) => i + 1).join(',');
+      const atCap = await request(strapi.server.httpServer)
+        .get(`/api/volunteer-days/by-id/${hideEvent.id}/day-sheet?hideTasks=${thirty}`);
+      expect(atCap.status).toBe(200);
+    });
+
+    it('AC52: JSON endpoint never filters data.tasks, and echoes deduped hiddenTaskIds', async () => {
+      const res = await request(strapi.server.httpServer)
+        .get(`/api/volunteer-days/by-id/${hideEvent.id}/day-sheet?hideTasks=${task2.id},${task2.id}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.tasks).toHaveLength(3);
+      expect(res.body.data.tasks.map((t) => t.id).sort((a, b) => a - b))
+        .toEqual([task1.id, task2.id, task3.id].sort((a, b) => a - b));
+      expect(res.body.data.hiddenTaskIds).toEqual([task2.id]);
+
+      const unknownEcho = await request(strapi.server.httpServer)
+        .get(`/api/volunteer-days/by-id/${hideEvent.id}/day-sheet?hideTasks=999999`);
+      expect(unknownEcho.body.data.hiddenTaskIds).toEqual([999999]);
     });
   });
 });

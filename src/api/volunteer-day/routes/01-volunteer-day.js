@@ -33,6 +33,21 @@ module.exports = {
       handler: 'volunteer-day.getById',
       config: { auth: false },
     },
+    { // Printable day-sheet JSON. Public: the payload is PII-free (D2b) and
+      // authenticating it risks logging managers out on an unseeded grant
+      // (garden-vue's fetch-wrapper logs the user out on any 401/403).
+      method: 'GET',
+      path: '/volunteer-days/by-id/:id/day-sheet',
+      handler: 'volunteer-day.getDaySheet',
+      config: { auth: false },
+    },
+    { // Printable day-sheet HTML. Must be public — opened in a fresh browser
+      // tab with no Authorization header.
+      method: 'GET',
+      path: '/volunteer-days/by-id/:id/day-sheet.html',
+      handler: 'volunteer-day.getDaySheetHtml',
+      config: { auth: false },
+    },
     {
       method: 'POST',
       path: '/volunteer-days/rsvp/:id',
