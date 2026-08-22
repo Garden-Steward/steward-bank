@@ -100,7 +100,10 @@ describe('renderDaySheetHtml', () => {
     const hexes = html.match(/#[0-9a-fA-F]{3,6}/g) || [];
     expect(hexes.every((h) => ['#000', '#000000', '#fff', '#ffffff'].includes(h))).toBe(true);
     expect(html).not.toMatch(/rgba?\(|hsla?\(/);
-    expect(html).not.toMatch(/\b(black|white|gray|grey|red|silver|transparent|currentColor)\b/);
+    // Match colour KEYWORDS only where a value may legally appear (after ':' or
+    // inside a border shorthand). The bare-word form also matched property names
+    // like `white-space`, which declare no colour at all.
+    expect(html).not.toMatch(/(?::|\bsolid\s|\bdashed\s)\s*(black|white|gray|grey|red|silver|transparent|currentColor)\b/);
   });
 
   test('AC20 — dangerous strings are escaped, never emitted raw', () => {
@@ -159,8 +162,8 @@ describe('renderDaySheetHtml', () => {
     expect(extra2Idx).toBeGreaterThan(extra1Idx);
   });
 
-  describe('AC25 — density tiers derived from printed item counts', () => {
-    test('8 printed items -> density-normal, overview present', () => {
+  describe('AC25 — density tiers derived from printed row counts', () => {
+    test('8 printed rows -> density-normal, full task notes present', () => {
       const html = renderDaySheetHtml(makeSheet({
         standing: makeStanding(4),
         tasks: makeTasks(4, { withOverview: true }),
@@ -171,77 +174,107 @@ describe('renderDaySheetHtml', () => {
       expect(html).toContain('Overview text for task 0.');
     });
 
-    test('14 printed items -> density-compact, overview omitted entirely', () => {
+    test('12 printed rows -> density-compact, task notes kept but truncated', () => {
       const html = renderDaySheetHtml(makeSheet({
-        standing: makeStanding(7),
+        standing: makeStanding(5),
         tasks: makeTasks(7, { withOverview: true }),
         extras: [],
       }));
 
       expect(html).toContain('density-compact');
-      expect(html).not.toContain('Overview text for task');
+      // The instructions are the point of the sheet; a busy day shortens them
+      // rather than losing them.
+      expect(html).toContain('Overview text for task');
     });
 
-    test('22 printed items -> density-dense, Notes heading absent', () => {
+    test('18 printed rows -> density-packed, notes dropped to hold one page', () => {
       const html = renderDaySheetHtml(makeSheet({
-        standing: makeStanding(11),
-        tasks: makeTasks(11, { withOverview: true }),
+        standing: makeStanding(6),
+        tasks: makeTasks(12, { withOverview: true }),
         extras: [],
       }));
 
-      expect(html).toContain('density-dense');
-      expect(html).not.toContain('Notes');
+      expect(html).toContain('density-packed');
+      expect(html).not.toContain('Overview text for task');
     });
 
-    test('type sizes are identical, and appear the same number of times, across all three tiers', () => {
+    test('the Notes block is always present, and is always exactly two ruled lines', () => {
+      [[2, 2], [5, 7], [6, 12], [8, 24]].forEach(([nStanding, nTasks]) => {
+        const html = renderDaySheetHtml(makeSheet({
+          standing: makeStanding(nStanding),
+          tasks: makeTasks(nTasks, { withOverview: true }),
+          extras: [],
+        }));
+        expect(html).toContain('Notes');
+        expect((html.match(/class="notes-line"/g) || []).length).toBe(2);
+      });
+    });
+
+    test('type sizes are identical, and appear the same number of times, across tiers', () => {
       const normal = renderDaySheetHtml(makeSheet({
         standing: makeStanding(4), tasks: makeTasks(4), extras: [],
       }));
       const compact = renderDaySheetHtml(makeSheet({
-        standing: makeStanding(7), tasks: makeTasks(7), extras: [],
+        standing: makeStanding(5), tasks: makeTasks(7), extras: [],
       }));
-      const dense = renderDaySheetHtml(makeSheet({
-        standing: makeStanding(11), tasks: makeTasks(11), extras: [],
+      const packed = renderDaySheetHtml(makeSheet({
+        standing: makeStanding(6), tasks: makeTasks(12), extras: [],
       }));
 
       const count = (html, needle) => (html.match(new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
 
-      ['18pt', '16pt', '13pt'].forEach((size) => {
+      ['22pt', '15pt', '13pt', '11pt'].forEach((size) => {
         expect(count(normal, size)).toBeGreaterThan(0);
         expect(count(normal, size)).toBe(count(compact, size));
-        expect(count(normal, size)).toBe(count(dense, size));
+        expect(count(normal, size)).toBe(count(packed, size));
       });
     });
   });
 
-  test('AC26 — checklist/task classes carry break-inside: avoid and checkbox dimensions', () => {
+  test('AC26 — rows avoid page breaks and checkboxes stay pencil-sized', () => {
     const html = renderDaySheetHtml(makeSheet({
       standing: [{ key: 'stand0001', title: 'A standing row', note: null }],
       tasks: makeTasks(1),
     }));
 
-    expect(html).toMatch(/\.item\s*\{[^}]*break-inside:\s*avoid/);
+    expect(html).toMatch(/table\.sheet\s+tr\s*\{[^}]*break-inside:\s*avoid/);
+    expect(html).toMatch(/table\.sheet\s+td\s*\{[^}]*break-inside:\s*avoid/);
     expect(html).toMatch(/\.checkbox\s*\{[^}]*width:\s*16px/);
     expect(html).toMatch(/\.checkbox\s*\{[^}]*height:\s*16px/);
     expect(html).toMatch(/\.checkbox\s*\{[^}]*border:\s*2px solid #000/);
 
-    const itemCount = (html.match(/class="item"/g) || []).length;
-    const checkboxCount = (html.match(/class="checkbox"/g) || []).length;
-    expect(itemCount).toBe(2); // one standing row + one task
-    expect(checkboxCount).toBe(2);
+    // One checkbox per printed row: one standing row + one task.
+    expect((html.match(/class="checkbox"/g) || []).length).toBe(2);
   });
 
-  test('AC53 — density derives from printed items, not unfiltered totals', () => {
+  test('priority is its own column, abbreviated to keep it narrow', () => {
+    const html = renderDaySheetHtml(makeSheet({
+      tasks: [
+        { ...makeTasks(1)[0], id: 1, title: 'High one', priority: 'High' },
+        { ...makeTasks(1)[0], id: 2, title: 'Normal one', priority: 'Normal' },
+        { ...makeTasks(1)[0], id: 3, title: 'Low one', priority: 'Low' },
+      ],
+    }));
+
+    expect(html).toContain('>Priority<');
+    expect(html).toContain('>HIGH<');
+    expect(html).toContain('>NORM<');
+    expect(html).toContain('>LOW<');
+    // The priority no longer costs a whole line under the title.
+    expect(html).not.toContain('High priority');
+  });
+
+  test('AC53 — density derives from printed rows, not unfiltered totals', () => {
     const standing = makeStanding(6);
     const tasks = makeTasks(14);
     const extras = [];
 
     const unfiltered = renderDaySheetHtml(makeSheet({ standing, tasks, extras }));
-    expect(unfiltered).toContain('density-dense'); // 6 + 14 = 20 printed items
+    expect(unfiltered).toContain('density-packed'); // 6 + 14 = 20 printed rows
 
     const hiddenTaskIds = tasks.slice(0, 6).map((t) => t.id);
     const filtered = renderDaySheetHtml(makeSheet({ standing, tasks, extras, hiddenTaskIds }));
-    expect(filtered).toContain('density-compact'); // 6 + 8 = 14 printed items
+    expect(filtered).toContain('density-dense'); // 6 + 8 = 14 printed rows
   });
 
   test('AC54 — empty printed task list still prints the heading and the no-tasks line', () => {

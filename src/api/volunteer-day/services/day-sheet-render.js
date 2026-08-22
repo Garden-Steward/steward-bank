@@ -8,11 +8,21 @@
  * tasks.md Task 2) and returns a complete, self-contained HTML document as a string.
  *
  * The renderer — not the caller — applies `excludedKeys` / `hiddenTaskIds`.
+ *
+ * The sheet is a two-column table of checkboxes and work, with a priority column on
+ * the day's tasks. It must come out of the printer on ONE page: a second sheet that
+ * is nine-tenths blank is worse than a tighter first one, so as the day gets busier
+ * the row spacing closes up and task notes are trimmed, in that order. Type sizes
+ * never shrink — the sheet is read outdoors in glare, and that is the one thing worth
+ * spending the space on.
  */
 
 const { format, utcToZonedTime } = require('date-fns-tz');
 
 const TIME_ZONE = 'America/Los_Angeles';
+
+/** Abbreviations keep the priority column narrow enough to earn its place. */
+const PRIORITY_LABEL = { High: 'HIGH', Normal: 'NORM', Low: 'LOW' };
 
 /**
  * Escape a value for safe placement inside HTML element text content.
@@ -45,95 +55,120 @@ function formatPacific(isoString, pattern) {
   return format(utcToZonedTime(new Date(isoString), TIME_ZONE), pattern);
 }
 
-function densityFor(totalItems) {
-  if (totalItems <= 10) {
-    return { bodyClass: 'density-normal', showOverview: true, showNotes: true, gap: '0.30in' };
+/**
+ * Pick the layout tier from the number of rows that will actually print.
+ *
+ * Tuned against rendered page counts, not guessed: `rowPad` and `noteChars` are the
+ * only levers, and the tiers are set so the busiest realistic sheet still lands on
+ * one page. `noteChars` of 0 drops task notes entirely, which only happens once the
+ * row count alone would overflow.
+ */
+function densityFor(printedRows) {
+  if (printedRows <= 8) {
+    return { bodyClass: 'density-normal', rowPad: '0.070in', noteChars: 200, noteGap: '0.38in' };
   }
-  if (totalItems <= 18) {
-    return { bodyClass: 'density-compact', showOverview: false, showNotes: true, gap: '0.18in' };
+  if (printedRows <= 12) {
+    return { bodyClass: 'density-compact', rowPad: '0.040in', noteChars: 72, noteGap: '0.26in' };
   }
-  return { bodyClass: 'density-dense', showOverview: false, showNotes: false, gap: '0.12in' };
+  if (printedRows <= 17) {
+    return { bodyClass: 'density-dense', rowPad: '0.030in', noteChars: 0, noteGap: '0.20in' };
+  }
+  if (printedRows <= 26) {
+    return { bodyClass: 'density-packed', rowPad: '0.016in', noteChars: 0, noteGap: '0.14in' };
+  }
+  return { bodyClass: 'density-max', rowPad: '0.006in', noteChars: 0, noteGap: '0.10in' };
 }
 
-function renderStyle(gap) {
-  // All colour is #000 / #fff. Type sizes are unconditional across every density tier —
-  // only the item gap and the presence of certain blocks vary.
+function renderStyle(d) {
+  // Every colour here is #000 or #fff. Type sizes are identical in all four tiers;
+  // only row padding, note length and the notes gap vary.
   return `
     @page { size: letter; margin: 0.5in; }
     * { box-sizing: border-box; }
-    html, body { padding: 0; margin: 0; }
+    html, body { margin: 0; padding: 0; background: #fff; color: #000; }
     body {
-      background: #fff;
-      color: #000;
-      font-family: system-ui, -apple-system, Helvetica, sans-serif;
+      font-family: system-ui, -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
       font-size: 13pt;
+      line-height: 1.28;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
-    h1, .section-head, .title {
-      font-family: Charter, Georgia, serif;
-    }
-    .hint {
-      padding: 8px 12px;
-      border-bottom: 1px solid #000;
-    }
-    @media print {
-      .hint { display: none; }
-    }
+    .hint { font-size: 10pt; margin-bottom: 0.10in; }
+    @media print { .hint { display: none; } }
+
     h1 {
-      font-size: 18pt;
-      font-weight: bold;
-      margin: 0 0 4px 0;
+      font-family: Charter, "Bitstream Charter", Georgia, serif;
+      font-size: 22pt;
+      font-weight: 700;
+      margin: 0 0 0.02in 0;
+      line-height: 1.12;
     }
-    .sub-line {
-      font-size: 14pt;
-      margin: 0 0 2px 0;
-    }
+    .sub-line { font-size: 12pt; margin: 0; }
+    .meta-line { font-size: 11pt; margin: 0.03in 0 0 0; }
     .canceled-line {
       font-size: 14pt;
-      font-weight: bold;
-      text-transform: uppercase;
-      margin: 8px 0;
-    }
-    .section-head {
-      font-size: 18pt;
-      font-weight: bold;
-      break-after: avoid;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      margin: 0.06in 0 0 0;
+      padding: 0.04in 0;
       border-top: 2px solid #000;
-      padding-top: 8px;
-      margin-top: 16px;
+      border-bottom: 2px solid #000;
     }
-    .item {
-      display: flex;
-      gap: 12px;
-      align-items: flex-start;
+
+    .section { margin-top: 0.11in; }
+    .section-head {
+      font-family: Charter, "Bitstream Charter", Georgia, serif;
+      font-size: 15pt;
+      font-weight: 700;
+      margin: 0 0 0.03in 0;
+      padding-bottom: 0.02in;
+      border-bottom: 2px solid #000;
+    }
+
+    table.sheet { width: 100%; border-collapse: collapse; }
+    table.sheet th {
+      font-size: 9pt;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      text-align: left;
+      padding: 0 0.12in 0.03in 0;
+      border-bottom: 1px solid #000;
+      white-space: nowrap;
+    }
+    table.sheet td {
+      padding-top: ${d.rowPad};
+      padding-bottom: ${d.rowPad};
+      padding-right: 0.12in;
+      border-bottom: 1px solid #000;
+      vertical-align: top;
       break-inside: avoid;
-      margin-bottom: ${gap};
+      page-break-inside: avoid;
     }
+    table.sheet tr { break-inside: avoid; page-break-inside: avoid; }
+
+    .col-box { width: 0.46in; }
+    .col-pri { width: 0.80in; }
+
     .checkbox {
-      display: inline-block;
+      display: block;
       width: 16px;
       height: 16px;
       border: 2px solid #000;
-      flex-shrink: 0;
-      margin-top: 3px;
+      margin-top: 0.02in;
     }
-    .item-body { flex: 1; }
-    .title {
-      font-size: 16pt;
-      font-weight: bold;
-    }
-    .note, .meta, .overview {
+    .pri { font-size: 11pt; font-weight: 700; letter-spacing: 0.04em; white-space: nowrap; }
+    .title { font-size: 13pt; font-weight: 700; }
+    .note { font-size: 11pt; font-weight: 400; margin-top: 0.01in; }
+    .empty { font-size: 12pt; padding: 0.06in 0; }
+
+    .notes-head {
+      font-family: Charter, "Bitstream Charter", Georgia, serif;
       font-size: 13pt;
-      margin-top: 2px;
+      font-weight: 700;
+      margin: 0 0 ${d.noteGap} 0;
     }
-    .notes-section {
-      border-top: 2px solid #000;
-      margin-top: 16px;
-      padding-top: 8px;
-    }
-    .notes-line {
-      border-bottom: 1px solid #000;
-      height: 0.4in;
-    }
+    .notes-line { border-bottom: 1px solid #000; margin-bottom: ${d.noteGap}; }
   `;
 }
 
@@ -149,14 +184,16 @@ function renderHeader(event) {
     parts.push(`<div class="sub-line">${escapeHtml(event.garden.title)}</div>`);
   }
 
+  // Event date and print date share one line — two lines of dates at the top of a
+  // one-page sheet is space the tasks need more.
+  const metaBits = [];
   if (event.startDatetime) {
     const dateStr = formatPacific(event.startDatetime, 'EEEE, MMMM d, yyyy');
     const timeStr = formatPacific(event.startDatetime, 'h:mm a');
-    parts.push(`<div class="sub-line">${escapeHtml(dateStr)} at ${escapeHtml(timeStr)}</div>`);
+    metaBits.push(`${escapeHtml(dateStr)} at ${escapeHtml(timeStr)}`);
   }
-
-  const printedStr = formatPacific(new Date().toISOString(), 'EEEE, MMMM d, yyyy');
-  parts.push(`<div class="sub-line">Printed ${escapeHtml(printedStr)}</div>`);
+  metaBits.push(`printed ${escapeHtml(formatPacific(new Date().toISOString(), 'MMM d'))}`);
+  parts.push(`<div class="meta-line">${metaBits.join(' · ')}</div>`);
 
   if (event.canceled) {
     parts.push('<div class="canceled-line">THIS EVENT IS CANCELED</div>');
@@ -165,85 +202,111 @@ function renderHeader(event) {
   return parts.join('\n');
 }
 
-function renderEveryWorkday(printedStanding, printedExtras) {
-  const items = [];
+function renderEveryWorkday(printedStanding, printedExtras, noteChars) {
+  const rows = [];
 
   printedStanding.forEach((s) => {
-    const noteHtml = s.note && String(s.note).trim() !== ''
-      ? `<div class="note">${escapeHtml(s.note)}</div>`
+    const hasNote = noteChars > 0 && s.note && String(s.note).trim() !== '';
+    const noteHtml = hasNote
+      ? `<div class="note">${escapeHtml(truncateWords(s.note, noteChars))}</div>`
       : '';
-    items.push(`
-      <div class="item">
-        <span class="checkbox"></span>
-        <div class="item-body">
-          <div class="title">${escapeHtml(s.title)}</div>
-          ${noteHtml}
-        </div>
-      </div>
+    rows.push(`
+      <tr>
+        <td class="col-box"><span class="checkbox"></span></td>
+        <td><div class="title">${escapeHtml(s.title)}</div>${noteHtml}</td>
+      </tr>
     `);
   });
 
   printedExtras.forEach((line) => {
-    items.push(`
-      <div class="item">
-        <span class="checkbox"></span>
-        <div class="item-body">
-          <div class="title">${escapeHtml(line)}</div>
-        </div>
-      </div>
+    rows.push(`
+      <tr>
+        <td class="col-box"><span class="checkbox"></span></td>
+        <td><div class="title">${escapeHtml(line)}</div></td>
+      </tr>
     `);
   });
 
+  if (rows.length === 0) {
+    return '';
+  }
+
   return `
-    <div class="section-head">Every Workday</div>
-    ${items.join('\n')}
+    <div class="section">
+      <div class="section-head">Every Workday</div>
+      <table class="sheet">
+        <thead>
+          <tr><th class="col-box">Done</th><th>Task</th></tr>
+        </thead>
+        <tbody>
+${rows.join('\n')}
+        </tbody>
+      </table>
+    </div>
   `;
 }
 
-function renderTasks(printedTasks, showOverview) {
+function renderTasks(printedTasks, noteChars) {
   if (printedTasks.length === 0) {
     return `
-      <div class="section-head">Today's Tasks</div>
-      <div class="item-body">No tasks on this sheet.</div>
+      <div class="section">
+        <div class="section-head">Today's Tasks</div>
+        <div class="empty">No tasks on this sheet.</div>
+      </div>
     `;
   }
 
-  const items = printedTasks.map((t) => {
-    const metaParts = [`${escapeHtml(t.priority)} priority`];
-    if (t.type) metaParts.push(escapeHtml(t.type));
-    if (typeof t.max_volunteers === 'number') metaParts.push(`needs ${t.max_volunteers}`);
-    const metaLine = metaParts.join(' · ');
+  const rows = printedTasks.map((t) => {
+    const label = PRIORITY_LABEL[t.priority] || String(t.priority || '').toUpperCase();
 
-    let overviewHtml = '';
-    if (showOverview && t.overview) {
-      const truncated = truncateWords(t.overview, 240);
-      overviewHtml = `<div class="overview">${escapeHtml(truncated)}</div>`;
+    const detailBits = [];
+    if (t.type) detailBits.push(escapeHtml(t.type));
+    if (typeof t.max_volunteers === 'number') detailBits.push(`needs ${t.max_volunteers}`);
+    if (noteChars > 0 && t.overview) {
+      detailBits.push(escapeHtml(truncateWords(t.overview, noteChars)));
     }
+    const detailHtml = detailBits.length
+      ? `<div class="note">${detailBits.join(' · ')}</div>`
+      : '';
 
     return `
-      <div class="item">
-        <span class="checkbox"></span>
-        <div class="item-body">
-          <div class="title">${escapeHtml(t.title)}</div>
-          <div class="meta">${metaLine}</div>
-          ${overviewHtml}
-        </div>
-      </div>
+      <tr>
+        <td class="col-box"><span class="checkbox"></span></td>
+        <td class="col-pri"><span class="pri">${escapeHtml(label)}</span></td>
+        <td><div class="title">${escapeHtml(t.title)}</div>${detailHtml}</td>
+      </tr>
     `;
   });
 
   return `
-    <div class="section-head">Today's Tasks</div>
-    ${items.join('\n')}
+    <div class="section">
+      <div class="section-head">Today's Tasks</div>
+      <table class="sheet">
+        <thead>
+          <tr>
+            <th class="col-box">Done</th>
+            <th class="col-pri">Priority</th>
+            <th>Task</th>
+          </tr>
+        </thead>
+        <tbody>
+${rows.join('\n')}
+        </tbody>
+      </table>
+    </div>
   `;
 }
 
+/**
+ * Two ruled lines with generous space around them. People write directly on the
+ * paper; a block of tightly packed rules just wastes the bottom of the sheet.
+ */
 function renderNotes() {
-  const lines = [1, 2, 3, 4, 5].map(() => '<div class="notes-line"></div>').join('\n');
   return `
-    <div class="notes-section">
-      <div class="section-head">Notes</div>
-      ${lines}
+    <div class="section">
+      <div class="notes-head">Notes</div>
+      <div class="notes-line"></div>
+      <div class="notes-line"></div>
     </div>
   `;
 }
@@ -259,20 +322,17 @@ function renderDaySheetHtml(sheet) {
   const printedStanding = standing.filter((s) => !excludedKeys.includes(s.key));
   const printedExtras = extras;
   const printedTasks = tasks.filter((t) => !hiddenTaskIds.includes(t.id));
-  const totalItems = printedStanding.length + printedExtras.length + printedTasks.length;
+  const printedRows = printedStanding.length + printedExtras.length + printedTasks.length;
 
-  const density = densityFor(totalItems);
+  const density = densityFor(printedRows);
 
   const bodySections = [
     renderHint(),
     renderHeader(event),
-    renderEveryWorkday(printedStanding, printedExtras),
-    renderTasks(printedTasks, density.showOverview),
+    renderEveryWorkday(printedStanding, printedExtras, density.noteChars),
+    renderTasks(printedTasks, density.noteChars),
+    renderNotes(),
   ];
-
-  if (density.showNotes) {
-    bodySections.push(renderNotes());
-  }
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -281,7 +341,7 @@ function renderDaySheetHtml(sheet) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>Day Sheet — ${escapeHtml(event.title)}</title>
-<style>${renderStyle(density.gap)}</style>
+<style>${renderStyle(density)}</style>
 </head>
 <body class="${density.bodyClass}">
 ${bodySections.join('\n')}

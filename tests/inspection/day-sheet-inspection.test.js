@@ -332,7 +332,8 @@ describe('PROBE: live HTML surface', () => {
     expect(html).toContain('Saturday, August 22, 2026');
     expect(html).toContain('Probe Garden &amp; &quot;Co&quot; &lt;b&gt;');
     expect(html).toContain('…');
-    expect(html).toMatch(/High priority · Weeding · needs 4/);
+    expect(html).toContain('>HIGH<');
+    expect(html).toMatch(/Weeding · needs 4/);
     console.log('P16 byte length =', html.length);
   });
 
@@ -354,11 +355,11 @@ describe('PROBE: live HTML surface', () => {
       ids.push(t.id);
     }
     const dense = await get(`/api/volunteer-days/by-id/${ev.id}/day-sheet.html`);
-    expect(dense.text).toContain('density-dense');
-    expect(dense.text).not.toMatch(/>Notes</);
+    expect(dense.text).toContain('density-packed'); // 6 + 14 = 20 printed rows
+    expect(dense.text).toMatch(/>Notes</); // Notes is no longer dropped at any tier
 
     const compact = await get(`/api/volunteer-days/by-id/${ev.id}/day-sheet.html?hideTasks=${ids.slice(0, 6).join(',')}`);
-    expect(compact.text).toContain('density-compact');
+    expect(compact.text).toContain('density-dense'); // 6 + 8 = 14 printed rows
     expect(compact.text).toMatch(/>Notes</);
     expect(compact.text).not.toContain('Overview 6');
 
@@ -374,10 +375,12 @@ describe('PROBE: live HTML surface', () => {
     await mkTask(ev, { title: 'CTask 1' });
     await mkTask(ev, { title: 'CTask 2' });
     const res = await get(`/api/volunteer-days/by-id/${ev.id}/day-sheet.html?extra=one&extra=two`);
-    const items = (res.text.match(/class="item"/g) || []).length;
     const boxes = (res.text.match(/class="checkbox"/g) || []).length;
-    expect(items).toBe(5 + 2 + 2);
-    expect(boxes).toBe(items);
+    const rows = (res.text.match(/<tr>/g) || []).length;
+    // 5 standing defaults + 2 extras + 2 tasks, one checkbox each.
+    expect(boxes).toBe(5 + 2 + 2);
+    // Plus the two header rows, which carry labels rather than checkboxes.
+    expect(rows).toBe(boxes + 2);
   });
 });
 
