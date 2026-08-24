@@ -925,14 +925,15 @@ export interface ApiPlantPlant extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-          description: Schema.Attribute.RichText;
-          images: Schema.Attribute.Media<
-            'images' | 'files' | 'videos' | 'audios',
-            true
-          >;
-          invasive_status: Schema.Attribute.Enumeration<
-      ['native', 'non_native_benign', 'invasive_ca', 'invasive_na', 'caution']
+    description: Schema.Attribute.RichText;
+    images: Schema.Attribute.Media<
+      'images' | 'files' | 'videos' | 'audios',
+      true
     >;
+    invasive_status: Schema.Attribute.Enumeration<
+      ['native', 'non_native_benign', 'invasive_ca', 'invasive_na', 'caution']
+    > &
+      Schema.Attribute.DefaultTo<'non_native_benign'>;
     latin: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::plant.plant'> &
@@ -1322,6 +1323,35 @@ export interface ApiSmsCampaignSmsCampaign extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiTagTag extends Struct.CollectionTypeSchema {
+  collectionName: 'tags';
+  info: {
+    description: '';
+    displayName: 'Tag';
+    pluralName: 'tags';
+    singularName: 'tag';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::tag.tag'> &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    plants: Schema.Attribute.Relation<'manyToMany', 'api::plant.plant'>;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiUserGardenInterestUserGardenInterest
   extends Struct.CollectionTypeSchema {
   collectionName: 'user_garden_interests';
@@ -1375,6 +1405,9 @@ export interface ApiVolunteerDayVolunteerDay
     > &
       Schema.Attribute.DefaultTo<'Public'>;
     blurb: Schema.Attribute.Text;
+    canceled: Schema.Attribute.Boolean &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<false>;
     confirmed: Schema.Attribute.Relation<
       'oneToMany',
       'plugin::users-permissions.user'
@@ -2046,6 +2079,8 @@ export interface PluginUsersPermissionsUser
       Schema.Attribute.SetMinMaxLength<{
         minLength: 3;
       }>;
+    vacation_reminder_count: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<0>;
   };
 }
 
@@ -2076,6 +2111,7 @@ declare module '@strapi/strapi' {
       'api::recurring-task.recurring-task': ApiRecurringTaskRecurringTask;
       'api::scheduler.scheduler': ApiSchedulerScheduler;
       'api::sms-campaign.sms-campaign': ApiSmsCampaignSmsCampaign;
+      'api::tag.tag': ApiTagTag;
       'api::user-garden-interest.user-garden-interest': ApiUserGardenInterestUserGardenInterest;
       'api::volunteer-day.volunteer-day': ApiVolunteerDayVolunteerDay;
       'api::weather.weather': ApiWeatherWeather;
