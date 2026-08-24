@@ -43,8 +43,8 @@ def api(method, path, body=None):
         with urllib.request.urlopen(req) as resp:
             return json.loads(resp.read())
     except urllib.error.HTTPError as e:
-        body = e.read().decode()
-        print(f"API ERROR {e.code} on {method} {path}: {body[:500]}")
+        body_text = e.read().decode()
+        print(f"API ERROR {e.code} on {method} {path}: {body_text[:500]}")
         return None
 
 # ── Step 1: Fetch recurring tasks with schedulers ───────────
@@ -74,7 +74,7 @@ for rec_task in rec_tasks:
     last_week_ids = []
     if last_week and last_week.get("data"):
         lw = last_week["data"][0]
-        print(f"  Last schedule: {lw['Week']} (id={lw['id']})")
+        print(f"  Last schedule: {lw.get('Week', 'unknown')} (id={lw['id']})")
         for a in lw.get("assignees", []):
             if a.get("assignee"):
                 last_week_ids.append(a["assignee"]["id"])
@@ -136,7 +136,7 @@ for rec_task in rec_tasks:
         print("  ❌ No assignees generated — nothing to create")
         continue
 
-    # ── Step 4: Ask what to do ──
+    # ── Step 4: Decide what to do ──
     dry_run = "--send" not in sys.argv and "--create" not in sys.argv
     if dry_run:
         print(f"\n  DRY RUN — use --create to create schedule, --send to also send SMS")
@@ -155,24 +155,21 @@ for rec_task in rec_tasks:
     result = api("POST", "/api/weekly-schedules", body)
     if result and result.get("data"):
         ws_id = result["data"]["id"]
-        print(f"\n  ✅ Created weekly schedule: {week_title} (id={ws_id})")
+        ws_doc_id = result["data"]["documentId"]
+        print(f"\n  ✅ Created weekly schedule: {week_title} (id={ws_id}, docId={ws_doc_id})")
     else:
         print(f"\n  ❌ Failed to create weekly schedule")
         continue
 
     # ── Step 6: Send SMS (if --send) ──
     if "--send" in sys.argv:
-        print("  Sending SMS via steward-bank...")
-        # The sendWeeklyMsg function sends SMS via Twilio
-        # We need to call a custom endpoint or replicate the logic
-        # For now, the server-side cron would handle sending on create
-        # But we can POST to a trigger endpoint if one exists
-        #
-        # Actually, sendWeeklyMsg is called inside setWeeklySchedule,
-        # which runs server-side. Since we're doing this via API,
-        # we'd need a custom endpoint. Let me check if one exists...
-        print("  NOTE: SMS sending requires server-side trigger.")
-        print("  Schedule created — SMS will be sent by the 'taskReminders' cron")
-        print("  or you can test via the admin panel.")
+        print(f"  Sending SMS via POST /api/weekly-schedules/{ws_doc_id}/send ...")
+        send_result = api("POST", f"/api/weekly-schedules/{ws_doc_id}/send")
+        if send_result and send_result.get("success"):
+            sent_phones = send_result.get("sent", [])
+            print(f"  ✅ SMS sent to {len(sent_phones)} volunteer(s): {sent_phones}")
+        else:
+            err = send_result.get("error", "unknown") if send_result else "no response"
+            print(f"  ❌ SMS send failed: {err}")
 
 print("\nDone.")
