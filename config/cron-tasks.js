@@ -16,22 +16,19 @@ module.exports = {
   createRecurringTasks: {
     task: async ({ strapi }) => {
       const recurringTasks = await strapi.service('api::recurring-task.recurring-task').getRecurringTaskGarden();
-      let curTask, recTask;
-      try {
-        console.log('recurringTasks cronned count: ', recurringTasks.length);
-        for (recTask of recurringTasks) {
-
+      console.log('recurringTasks cronned count: ', recurringTasks.length);
+      for (const recTask of recurringTasks) {
+        try {
           await Helper.setWeeklySchedule(recTask);
 
-          curTask = await strapi.service('api::garden-task.garden-task').getTaskByRecurringUndone(recTask);
+          const curTask = await strapi.service('api::garden-task.garden-task').getTaskByRecurringUndone(recTask);
 
           let scheduledUser = await Helper.getScheduledVolunteer(recTask);
 
           await Helper.buildSchedulerTask(curTask, recTask, scheduledUser);
-
+        } catch (err) {
+          console.error(`createRecurringTasks: failed for recurring task ${recTask.id}`, err);
         }
-      } catch (err) {
-        console.error(err);
       }
     },
     options: {

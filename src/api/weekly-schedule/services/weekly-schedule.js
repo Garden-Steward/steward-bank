@@ -25,7 +25,10 @@ module.exports = createCoreService('api::weekly-schedule.weekly-schedule', ({ st
     const weekTitle = format(new Date(), 'PPP')
 
     try {
-      return strapi.db.query('api::weekly-schedule.weekly-schedule').create({
+      // Uses the Document Service API (not db.query) because db.query's
+      // relation attachment can't create a repeatable component's rows
+      // together with the nested `assignee` relation in Strapi v5.
+      return await strapi.documents('api::weekly-schedule.weekly-schedule').create({
         data: {
           Week: `${title}: ${weekTitle}`,
           recurring_task: id,

@@ -212,6 +212,11 @@ Helper.setWeeklySchedule = async(recTask) => {
     console.log("Setting weekly schedule for %s of type ", dayOfWeekName, recTask.scheduler_type)
   let weeklySchedule = await strapi.service('api::weekly-schedule.weekly-schedule').createWeeklySchedule(recTask);
 
+  if (!weeklySchedule) {
+    console.warn('setWeeklySchedule: no schedule created for recTask %s, skipping SMS', recTask.id);
+    return;
+  }
+
   // Text all the people on the weekly list
   return strapi.service('api::weekly-schedule.weekly-schedule').sendWeeklyMsg(recTask, weeklySchedule.assignees);
   
