@@ -10,6 +10,29 @@ const taskHelper = require('../services/helper');
 module.exports = createCoreController('api::garden-task.garden-task', ({ strapi }) => ({
 
   /**
+   * Active tasks for the authenticated user across all gardens.
+   *
+   * GET /garden-tasks/user
+   * Used by the dashboard (GardensView) to list the user's cross-garden tasks.
+   */
+  userTasks: async (ctx) => {
+    const user = ctx.state.user;
+    if (!user) {
+      return ctx.unauthorized('You must be logged in to view your tasks');
+    }
+
+    const tasks = await strapi.db.query('api::garden-task.garden-task').findMany({
+      where: {
+        volunteers: user.id,
+        status: { $in: ['INITIALIZED', 'STARTED', 'PENDING'] }
+      },
+      populate: ['garden', 'primary_image', 'volunteers', 'instruction', 'recurring_task']
+    });
+
+    return { data: tasks };
+  },
+
+  /**
    * RSVP to a garden task via phone number or userId
    *
    * POST /garden-tasks/rsvp/:id

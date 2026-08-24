@@ -1,3 +1,4 @@
+const _ = require("lodash");
 const { createStrapi } = require("@strapi/strapi");
 const fs = require("fs");
 

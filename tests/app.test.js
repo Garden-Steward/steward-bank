@@ -38,6 +38,7 @@ require('./tasks/crontest');
 require('./tasks/instruction');
 require('./tasks/smsTask');
 require('./tasks/publish');
+require('./tasks/user-tasks.http');
 require('./event/rsvp');
 require('./event/messages');
 require('./sms-campaign-vacation');
