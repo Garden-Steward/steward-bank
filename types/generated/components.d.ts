@@ -39,6 +39,31 @@ export interface PlantsPlanting extends Struct.ComponentSchema {
   };
 }
 
+export interface PlantsSources extends Struct.ComponentSchema {
+  collectionName: 'components_plants_sources';
+  info: {
+    description: 'References and sources cited for plant data';
+    displayName: 'Sources';
+    icon: 'bookOpen';
+  };
+  attributes: {
+    author: Schema.Attribute.String;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
+    type: Schema.Attribute.Enumeration<
+      [
+        'website',
+        'book',
+        'academic-paper',
+        'indigenous-knowledge',
+        'garden-observation',
+        'blog',
+        'other',
+      ]
+    >;
+    url: Schema.Attribute.String;
+  };
+}
+
 export interface ProjectsImpactMetric extends Struct.ComponentSchema {
   collectionName: 'components_projects_impact_metrics';
   info: {
@@ -95,6 +120,7 @@ declare module '@strapi/strapi' {
       'education.card': EducationCard;
       'plants.benefits': PlantsBenefits;
       'plants.planting': PlantsPlanting;
+      'plants.sources': PlantsSources;
       'projects.impact-metric': ProjectsImpactMetric;
       'scheduling.schedule-assignee': SchedulingScheduleAssignee;
       'seo.seo-information': SeoSeoInformation;
