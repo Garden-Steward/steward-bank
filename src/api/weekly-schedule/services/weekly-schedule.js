@@ -44,16 +44,16 @@ module.exports = createCoreService('api::weekly-schedule.weekly-schedule', ({ st
   },
 
   async getWeeklySchedule(recTaskId) {
-    return strapi.db.query('api::weekly-schedule.weekly-schedule').findOne({
-      where: { recurring_task: recTaskId },
-      populate: ['assignees', 'assignees.assignee'],
-      orderBy: {
-        id: 'desc'
-      },
-    });
-    // strapi.entityService.findOne('api::weekly-schedule.weekly-schedule',null, {
-      
-  },
+      // Use strapi.documents() (Strapi v5 proper API) instead of db.query.
+      // Filter by relation numeric id, not documentId.
+      const schedules = await strapi.documents('api::weekly-schedule.weekly-schedule').findMany({
+        filters: { recurring_task: { id: recTaskId } },
+        populate: ['assignees', 'assignees.assignee'],
+        sort: 'id:desc',
+        limit: 1,
+      });
+      return schedules?.[0] ?? null;
+    },
 
   async getScheduleAssignees(assignees) {
     return assignees.map((a)=> {
