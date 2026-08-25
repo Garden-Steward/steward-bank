@@ -44,15 +44,19 @@ module.exports = createCoreService('api::weekly-schedule.weekly-schedule', ({ st
   },
 
   async getWeeklySchedule(recTaskId) {
-      // Use strapi.documents() (Strapi v5 proper API) instead of db.query.
-      // Filter by relation numeric id, not documentId.
+      // Strapi v5: documents API relation filters with numeric ids are tricky.
+      // Instead, fetch the latest schedule with recurring_task populated, then
+      // verify it matches the requested recTaskId client-side.
       const schedules = await strapi.documents('api::weekly-schedule.weekly-schedule').findMany({
-        filters: { recurring_task: { id: recTaskId } },
-        populate: ['assignees', 'assignees.assignee'],
+        populate: ['assignees', 'assignees.assignee', 'recurring_task'],
         sort: 'id:desc',
         limit: 1,
       });
-      return schedules?.[0] ?? null;
+      const candidate = schedules?.[0];
+      if (candidate && candidate.recurring_task?.id === recTaskId) {
+        return candidate;
+      }
+      return null;
     },
 
   async getScheduleAssignees(assignees) {
