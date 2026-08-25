@@ -327,7 +327,7 @@ describe('PROBE: live HTML surface', () => {
     const hexes = html.match(/#[0-9a-fA-F]{3,6}/g) || [];
     expect(hexes.filter((h) => !['#000', '#000000', '#fff', '#ffffff'].includes(h))).toEqual([]);
     expect(html).not.toMatch(/rgba?\(|hsla?\(/);
-    expect(html).toMatch(/@page\s*\{\s*size:\s*letter;\s*margin:\s*0\.5in;?\s*\}/);
+    expect(html).toMatch(/@page\s*\{\s*size:\s*letter;\s*margin:\s*0\.6in;?\s*\}/);
     expect(html).toContain('9:00 AM');
     expect(html).toContain('Saturday, August 22, 2026');
     expect(html).toContain('Probe Garden &amp; &quot;Co&quot; &lt;b&gt;');
@@ -355,16 +355,16 @@ describe('PROBE: live HTML surface', () => {
       ids.push(t.id);
     }
     const dense = await get(`/api/volunteer-days/by-id/${ev.id}/day-sheet.html`);
-    expect(dense.text).toContain('density-packed'); // 6 + 14 = 20 printed rows
+    expect(dense.text).toContain('density-packed'); // 6 standing + 14 tasks + 3 blanks = 23 rows
     expect(dense.text).toMatch(/>Notes</); // Notes is no longer dropped at any tier
 
     const compact = await get(`/api/volunteer-days/by-id/${ev.id}/day-sheet.html?hideTasks=${ids.slice(0, 6).join(',')}`);
-    expect(compact.text).toContain('density-dense'); // 6 + 8 = 14 printed rows
+    expect(compact.text).toContain('density-dense'); // 6 + 8 + 3 = 17 rows
     expect(compact.text).toMatch(/>Notes</);
     expect(compact.text).not.toContain('Overview 6');
 
     const normal = await get(`/api/volunteer-days/by-id/${ev.id}/day-sheet.html?hideTasks=${ids.slice(0, 12).join(',')}`);
-    expect(normal.text).toContain('density-normal');
+    expect(normal.text).toContain('density-compact'); // 6 + 2 + 3 = 11 rows
     expect(normal.text).toContain('Overview 12');
     await resetStanding();
   });

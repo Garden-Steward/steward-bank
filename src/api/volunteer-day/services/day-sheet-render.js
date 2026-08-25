@@ -33,12 +33,12 @@ const BLANK_ROWS = 3;
 
 /**
  * The most rows that fit on one page, measured by rendering to PDF and counting
- * pages — not estimated. Thirty rows spills onto a second, near-empty page, which
- * is worse than printing one task fewer. The cap sits one row below the measured
- * limit so the "not shown" notice, which only appears when trimming happened, has
- * somewhere to go.
+ * pages — not estimated. Spilling onto a second, near-empty page is worse than
+ * printing one task fewer. The cap sits one row below the measured limit so the
+ * "not shown" notice, which only appears when trimming happened, has somewhere
+ * to go.
  */
-const MAX_ROWS = 28;
+const MAX_ROWS = 25;
 
 /**
  * Escape a value for safe placement inside HTML element text content.
@@ -81,26 +81,26 @@ function formatPacific(isoString, pattern) {
  * they occupy the page exactly like a printed task.
  */
 function densityFor(printedRows) {
-  if (printedRows <= 11) {
-    return { bodyClass: 'density-normal', rowPad: '0.070in', noteChars: 200, noteGap: '0.38in' };
+  if (printedRows <= 10) {
+    return { bodyClass: 'density-normal', rowPad: '0.058in', noteChars: 180, noteGap: '0.32in' };
   }
-  if (printedRows <= 16) {
-    return { bodyClass: 'density-compact', rowPad: '0.038in', noteChars: 72, noteGap: '0.24in' };
+  if (printedRows <= 15) {
+    return { bodyClass: 'density-compact', rowPad: '0.030in', noteChars: 64, noteGap: '0.21in' };
   }
-  if (printedRows <= 21) {
-    return { bodyClass: 'density-dense', rowPad: '0.026in', noteChars: 0, noteGap: '0.18in' };
+  if (printedRows <= 20) {
+    return { bodyClass: 'density-dense', rowPad: '0.020in', noteChars: 0, noteGap: '0.15in' };
   }
-  if (printedRows <= 26) {
-    return { bodyClass: 'density-packed', rowPad: '0.014in', noteChars: 0, noteGap: '0.13in' };
+  if (printedRows <= 25) {
+    return { bodyClass: 'density-packed', rowPad: '0.010in', noteChars: 0, noteGap: '0.11in' };
   }
-  return { bodyClass: 'density-max', rowPad: '0.005in', noteChars: 0, noteGap: '0.09in' };
+  return { bodyClass: 'density-max', rowPad: '0.003in', noteChars: 0, noteGap: '0.08in' };
 }
 
 function renderStyle(d) {
   // Every colour here is #000 or #fff. Type sizes are identical in all four tiers;
   // only row padding, note length and the notes gap vary.
   return `
-    @page { size: letter; margin: 0.5in; }
+    @page { size: letter; margin: 0.6in; }
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; background: #fff; color: #000; }
     body {
@@ -132,7 +132,7 @@ function renderStyle(d) {
       border-bottom: 2px solid #000;
     }
 
-    .section { margin-top: 0.11in; }
+    .section { margin-top: 0.09in; }
     .section-head {
       font-family: Charter, "Bitstream Charter", Georgia, serif;
       font-size: 15pt;

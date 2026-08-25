@@ -81,7 +81,7 @@ describe('renderDaySheetHtml', () => {
 
     expect(html).toContain('@page');
     expect(html).toContain('size: letter');
-    expect(html).toContain('margin: 0.5in');
+    expect(html).toContain('margin: 0.6in');
     expect(html).toContain('<style');
 
     expect(html).not.toContain('<script');
@@ -163,9 +163,10 @@ describe('renderDaySheetHtml', () => {
   });
 
   describe('AC25 — density tiers derived from printed row counts', () => {
-    test('8 printed rows -> density-normal, full task notes present', () => {
+    test('10 printed rows -> density-normal, full task notes present', () => {
+      // 3 standing + 4 tasks + 3 blank write-in rows = 10.
       const html = renderDaySheetHtml(makeSheet({
-        standing: makeStanding(4),
+        standing: makeStanding(3),
         tasks: makeTasks(4, { withOverview: true }),
         extras: [],
       }));
@@ -187,10 +188,10 @@ describe('renderDaySheetHtml', () => {
       expect(html).toContain('Overview text for task');
     });
 
-    test('21 printed rows -> density-dense, notes dropped to hold one page', () => {
-      // 6 standing + 12 tasks + 3 blank write-in rows = 21.
+    test('20 printed rows -> density-dense, notes dropped to hold one page', () => {
+      // 5 standing + 12 tasks + 3 blank write-in rows = 20.
       const html = renderDaySheetHtml(makeSheet({
-        standing: makeStanding(6),
+        standing: makeStanding(5),
         tasks: makeTasks(12, { withOverview: true }),
         extras: [],
       }));
@@ -240,13 +241,13 @@ describe('renderDaySheetHtml', () => {
 
     test('type sizes are identical, and appear the same number of times, across tiers', () => {
       const normal = renderDaySheetHtml(makeSheet({
-        standing: makeStanding(4), tasks: makeTasks(4), extras: [],
+        standing: makeStanding(3), tasks: makeTasks(4), extras: [],
       }));
       const compact = renderDaySheetHtml(makeSheet({
         standing: makeStanding(5), tasks: makeTasks(7), extras: [],
       }));
       const dense = renderDaySheetHtml(makeSheet({
-        standing: makeStanding(6), tasks: makeTasks(12), extras: [],
+        standing: makeStanding(5), tasks: makeTasks(12), extras: [],
       }));
 
       const count = (html, needle) => (html.match(new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
