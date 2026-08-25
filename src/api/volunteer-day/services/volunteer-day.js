@@ -13,12 +13,64 @@ const { createCoreService } = require('@strapi/strapi').factories;
 
 module.exports = createCoreService('api::volunteer-day.volunteer-day', ({ strapi }) =>  ({
 
+  /**
+   * Every row of a garden document that shares its documentId, i.e. both the
+   * draft and the published version.
+   *
+   * Strapi v5 keeps those as two separate rows with two separate ids, and a
+   * volunteer joining a garden is linked to whichever single row the caller
+   * happened to be holding. An event, meanwhile, resolves its `garden` relation
+   * to one specific row. When those two rows disagree the event sees an empty
+   * volunteer list and the reminder silently goes to nobody, which is exactly
+   * what happened after the v4 -> v5 upgrade.
+   *
+   * @param {obj} garden populated garden relation off an event
+   * @returns {arr} deduped volunteers across every version of that garden
+   */
+  async getGardenVolunteers(garden) {
+    if (!garden) {
+      return [];
+    }
+
+    let gardenRows = [garden];
+
+    if (garden.documentId) {
+      const rows = await strapi.db.query('api::garden.garden').findMany({
+        where: { documentId: garden.documentId },
+        populate: ['volunteers'],
+      });
+      if (rows?.length) {
+        gardenRows = rows;
+      }
+    }
+
+    const byId = new Map();
+    for (const row of gardenRows) {
+      for (const volunteer of row.volunteers || []) {
+        if (volunteer?.id) {
+          byId.set(volunteer.id, volunteer);
+        }
+      }
+    }
+
+    return [...byId.values()];
+  },
+
   async getVolunteerGroup(vDay) {
-    let volGroup = vDay.garden.volunteers
+    if (!vDay?.garden) {
+      console.warn(`getVolunteerGroup: volunteer-day ${vDay?.id} has no garden, nobody to text`);
+      return [];
+    }
+
+    let volGroup = await this.getGardenVolunteers(vDay.garden);
+
     if (vDay.interest && vDay.interest !== "Everyone") {
+      // Interests are linked to a garden row too, so match on every version of
+      // the garden document for the same reason getGardenVolunteers does.
+      const gardenIds = await this.getGardenRowIds(vDay.garden);
       let volInterests = await strapi.db.query('api::user-garden-interest.user-garden-interest').findMany({
         where: {
-          garden: vDay.garden.id
+          garden: { id: { $in: gardenIds } }
         },
         populate: {
           interest: {
@@ -31,9 +83,36 @@ module.exports = createCoreService('api::volunteer-day.volunteer-day', ({ strapi
         garden: true
       });
       volInterests = volInterests.filter(vi=> vi.interest)
-      volGroup = volInterests.map(vi=> {return vi.user})
+
+      const byId = new Map();
+      for (const vi of volInterests) {
+        if (vi.user?.id) {
+          byId.set(vi.user.id, vi.user);
+        }
+      }
+      volGroup = [...byId.values()];
     }
+
     return volGroup
+  },
+
+  /**
+   * Ids of every row belonging to a garden document (draft and published).
+   * @param {obj} garden
+   * @returns {arr} numeric row ids
+   */
+  async getGardenRowIds(garden) {
+    if (!garden) {
+      return [];
+    }
+    if (!garden.documentId) {
+      return [garden.id];
+    }
+    const rows = await strapi.db.query('api::garden.garden').findMany({
+      where: { documentId: garden.documentId },
+      select: ['id'],
+    });
+    return rows?.length ? rows.map(r => r.id) : [garden.id];
   },
 
   async sendGroupMsg(vDay, copy) {

@@ -94,21 +94,52 @@ Helper.handleInitialTasks = async() => {
   }
 };
 
+/**
+ * Send one event's reminder without letting it take the rest of the run down.
+ *
+ * These reminders are the whole point of the daily cron, so a single event with
+ * bad data (a deleted garden, a half-migrated row) must not stop every other
+ * garden from being texted.
+ *
+ * @param {obj} vDay
+ * @param {string} copy
+ * @returns {arr} phone numbers texted for this event
+ */
+Helper.sendVdayReminder = async(vDay, copy) => {
+  try {
+    const sent = await strapi.service('api::volunteer-day.volunteer-day').sendGroupMsg(vDay, copy);
+
+    if (!sent?.length) {
+      console.warn(
+        `handleVolunteerReminders: volunteer-day ${vDay.id} ("${vDay.title}") matched the reminder window but texted nobody`
+      );
+    }
+
+    return sent || [];
+  } catch (err) {
+    console.error(`handleVolunteerReminders: failed to send for volunteer-day ${vDay.id} ("${vDay.title}")`, err);
+    return [];
+  }
+};
+
 Helper.handleVolunteerReminders = async() => {
+  const messagesSent = [];
+
   const vDays = await VdayHelper.getUpcomingVdays();
-  let messagesSent = []
   for (let vDay of vDays) {
     console.log("7 days: ", vDay.startDatetime);
     let copy = VdayHelper.buildUpcomingDayCopy(vDay);
-    messagesSent = await strapi.service('api::volunteer-day.volunteer-day').sendGroupMsg(vDay,copy);
+    messagesSent.push(...await Helper.sendVdayReminder(vDay, copy));
   }
+
   const todDays = await VdayHelper.getTomorrowVdays();
   for (let tDay of todDays) {
     console.log("today: ", tDay.startDatetime);
     let copy = VdayHelper.buildTomorrowCopy(tDay);
-    messagesSent = await strapi.service('api::volunteer-day.volunteer-day').sendGroupMsg(tDay,copy);
+    messagesSent.push(...await Helper.sendVdayReminder(tDay, copy));
   }
-  console.log("messages sent: ", messagesSent);
+
+  console.log(`handleVolunteerReminders: ${vDays.length} upcoming + ${todDays.length} tomorrow event(s), ${messagesSent.length} message(s) sent`);
   return messagesSent
 };
 

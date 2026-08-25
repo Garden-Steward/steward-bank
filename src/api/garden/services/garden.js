@@ -18,9 +18,19 @@ module.exports = createCoreService('api::garden.garden', ({ strapi }) =>  ({
   async initializeCache() {
     try {
       const gardens = await strapi.db.query('api::garden.garden').findMany({});
+      // Strapi v5 stores a garden's draft and published versions as two rows
+      // sharing one documentId and one sms_slug. Volunteers get linked to
+      // whichever row this cache hands back, while events resolve their garden
+      // relation to the published row, so always prefer the published row here
+      // rather than letting row order decide.
       gardenCache = gardens.reduce((acc, garden) => {
-        if (garden.sms_slug) {
-          acc[garden.sms_slug.toLowerCase()] = garden;
+        if (!garden.sms_slug) {
+          return acc;
+        }
+        const slug = garden.sms_slug.toLowerCase();
+        const existing = acc[slug];
+        if (!existing || (!existing.publishedAt && garden.publishedAt)) {
+          acc[slug] = garden;
         }
         return acc;
       }, {});
