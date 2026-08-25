@@ -376,9 +376,9 @@ describe('PROBE: live HTML surface', () => {
     await mkTask(ev, { title: 'CTask 2' });
     const res = await get(`/api/volunteer-days/by-id/${ev.id}/day-sheet.html?extra=one&extra=two`);
     const boxes = (res.text.match(/class="checkbox"/g) || []).length;
-    const rows = (res.text.match(/<tr>/g) || []).length;
-    // 5 standing defaults + 2 extras + 2 tasks, one checkbox each.
-    expect(boxes).toBe(5 + 2 + 2);
+    const rows = (res.text.match(/<tr[ >]/g) || []).length; // blank rows carry a class
+    // 5 standing defaults + 2 extras + 2 tasks + 3 blank write-in rows, one box each.
+    expect(boxes).toBe(5 + 2 + 2 + 3);
     // Plus the two header rows, which carry labels rather than checkboxes.
     expect(rows).toBe(boxes + 2);
   });

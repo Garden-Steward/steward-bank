@@ -187,15 +187,43 @@ describe('renderDaySheetHtml', () => {
       expect(html).toContain('Overview text for task');
     });
 
-    test('18 printed rows -> density-packed, notes dropped to hold one page', () => {
+    test('21 printed rows -> density-dense, notes dropped to hold one page', () => {
+      // 6 standing + 12 tasks + 3 blank write-in rows = 21.
       const html = renderDaySheetHtml(makeSheet({
         standing: makeStanding(6),
         tasks: makeTasks(12, { withOverview: true }),
         extras: [],
       }));
 
-      expect(html).toContain('density-packed');
+      expect(html).toContain('density-dense');
       expect(html).not.toContain('Overview text for task');
+    });
+
+    test('the three blank write-in rows are always present, whatever the tier', () => {
+      [[2, 1], [5, 7], [6, 12], [8, 40]].forEach(([nStanding, nTasks]) => {
+        const html = renderDaySheetHtml(makeSheet({
+          standing: makeStanding(nStanding),
+          tasks: makeTasks(nTasks, { withOverview: true }),
+          extras: [],
+        }));
+        expect((html.match(/class="blank-row"/g) || []).length).toBe(3);
+      });
+    });
+
+    test('a day too full to fit trims its lowest-priority tasks and says how many', () => {
+      const tasks = [
+        ...makeTasks(10).map((t, i) => ({ ...t, id: 100 + i, priority: 'High', title: `High ${i}` })),
+        ...makeTasks(30).map((t, i) => ({ ...t, id: 200 + i, priority: 'Low', title: `Low ${i}` })),
+      ];
+      const html = renderDaySheetHtml(makeSheet({ standing: makeStanding(5), tasks, extras: [] }));
+
+      // High-priority work survives; the tail is what gets dropped.
+      expect(html).toContain('High 0');
+      expect(html).toContain('Low 0');
+      expect(html).not.toContain('Low 29');
+      expect(html).toMatch(/lower-priority tasks? not shown/);
+      // The write-in rows are never what gets sacrificed.
+      expect((html.match(/class="blank-row"/g) || []).length).toBe(3);
     });
 
     test('the Notes block is always present, and is always exactly two ruled lines', () => {
@@ -217,7 +245,7 @@ describe('renderDaySheetHtml', () => {
       const compact = renderDaySheetHtml(makeSheet({
         standing: makeStanding(5), tasks: makeTasks(7), extras: [],
       }));
-      const packed = renderDaySheetHtml(makeSheet({
+      const dense = renderDaySheetHtml(makeSheet({
         standing: makeStanding(6), tasks: makeTasks(12), extras: [],
       }));
 
@@ -226,7 +254,7 @@ describe('renderDaySheetHtml', () => {
       ['22pt', '15pt', '13pt', '11pt'].forEach((size) => {
         expect(count(normal, size)).toBeGreaterThan(0);
         expect(count(normal, size)).toBe(count(compact, size));
-        expect(count(normal, size)).toBe(count(packed, size));
+        expect(count(normal, size)).toBe(count(dense, size));
       });
     });
   });
@@ -243,8 +271,8 @@ describe('renderDaySheetHtml', () => {
     expect(html).toMatch(/\.checkbox\s*\{[^}]*height:\s*16px/);
     expect(html).toMatch(/\.checkbox\s*\{[^}]*border:\s*2px solid #000/);
 
-    // One checkbox per printed row: one standing row + one task.
-    expect((html.match(/class="checkbox"/g) || []).length).toBe(2);
+    // One checkbox per printed row: one standing row + one task + three blanks.
+    expect((html.match(/class="checkbox"/g) || []).length).toBe(2 + 3);
   });
 
   test('priority is its own column, abbreviated to keep it narrow', () => {

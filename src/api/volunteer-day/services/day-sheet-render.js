@@ -25,6 +25,22 @@ const TIME_ZONE = 'America/Los_Angeles';
 const PRIORITY_LABEL = { High: 'HIGH', Normal: 'NORM', Low: 'LOW' };
 
 /**
+ * Blank write-in rows, always printed at the foot of the task table. Work gets
+ * discovered standing in the garden, and a sheet with nowhere to add it sends
+ * people back to their phones.
+ */
+const BLANK_ROWS = 3;
+
+/**
+ * The most rows that fit on one page, measured by rendering to PDF and counting
+ * pages — not estimated. Thirty rows spills onto a second, near-empty page, which
+ * is worse than printing one task fewer. The cap sits one row below the measured
+ * limit so the "not shown" notice, which only appears when trimming happened, has
+ * somewhere to go.
+ */
+const MAX_ROWS = 28;
+
+/**
  * Escape a value for safe placement inside HTML element text content.
  * Ampersand first, then the rest. Coerces null/undefined to ''.
  */
@@ -61,22 +77,23 @@ function formatPacific(isoString, pattern) {
  * Tuned against rendered page counts, not guessed: `rowPad` and `noteChars` are the
  * only levers, and the tiers are set so the busiest realistic sheet still lands on
  * one page. `noteChars` of 0 drops task notes entirely, which only happens once the
- * row count alone would overflow.
+ * row count alone would overflow. The blank write-in rows are counted here too —
+ * they occupy the page exactly like a printed task.
  */
 function densityFor(printedRows) {
-  if (printedRows <= 8) {
+  if (printedRows <= 11) {
     return { bodyClass: 'density-normal', rowPad: '0.070in', noteChars: 200, noteGap: '0.38in' };
   }
-  if (printedRows <= 12) {
-    return { bodyClass: 'density-compact', rowPad: '0.040in', noteChars: 72, noteGap: '0.26in' };
+  if (printedRows <= 16) {
+    return { bodyClass: 'density-compact', rowPad: '0.038in', noteChars: 72, noteGap: '0.24in' };
   }
-  if (printedRows <= 17) {
-    return { bodyClass: 'density-dense', rowPad: '0.030in', noteChars: 0, noteGap: '0.20in' };
+  if (printedRows <= 21) {
+    return { bodyClass: 'density-dense', rowPad: '0.026in', noteChars: 0, noteGap: '0.18in' };
   }
   if (printedRows <= 26) {
-    return { bodyClass: 'density-packed', rowPad: '0.016in', noteChars: 0, noteGap: '0.14in' };
+    return { bodyClass: 'density-packed', rowPad: '0.014in', noteChars: 0, noteGap: '0.13in' };
   }
-  return { bodyClass: 'density-max', rowPad: '0.006in', noteChars: 0, noteGap: '0.10in' };
+  return { bodyClass: 'density-max', rowPad: '0.005in', noteChars: 0, noteGap: '0.09in' };
 }
 
 function renderStyle(d) {
@@ -246,16 +263,7 @@ ${rows.join('\n')}
   `;
 }
 
-function renderTasks(printedTasks, noteChars) {
-  if (printedTasks.length === 0) {
-    return `
-      <div class="section">
-        <div class="section-head">Today's Tasks</div>
-        <div class="empty">No tasks on this sheet.</div>
-      </div>
-    `;
-  }
-
+function renderTasks(printedTasks, noteChars, omittedCount) {
   const rows = printedTasks.map((t) => {
     const label = PRIORITY_LABEL[t.priority] || String(t.priority || '').toUpperCase();
 
@@ -278,9 +286,34 @@ function renderTasks(printedTasks, noteChars) {
     `;
   });
 
+  // Blank rows mirror the shape of a real task row at this density — title line,
+  // plus a note line when the printed tasks carry one — so they stand the same
+  // height as the rows above them. A shorter line is awkward to write on.
+  const blankSpacer = noteChars > 0
+    ? '<div class="title">&nbsp;</div><div class="note">&nbsp;</div>'
+    : '<div class="title">&nbsp;</div>';
+  for (let i = 0; i < BLANK_ROWS; i += 1) {
+    rows.push(`
+      <tr class="blank-row">
+        <td class="col-box"><span class="checkbox"></span></td>
+        <td class="col-pri"><span class="pri">&nbsp;</span></td>
+        <td>${blankSpacer}</td>
+      </tr>
+    `);
+  }
+
+  const emptyLine = printedTasks.length === 0
+    ? '<div class="empty">No tasks on this sheet.</div>'
+    : '';
+
+  const omittedLine = omittedCount > 0
+    ? `<div class="empty">${omittedCount} lower-priority task${omittedCount === 1 ? '' : 's'} not shown — see the app.</div>`
+    : '';
+
   return `
     <div class="section">
       <div class="section-head">Today's Tasks</div>
+      ${emptyLine}
       <table class="sheet">
         <thead>
           <tr>
@@ -293,6 +326,7 @@ function renderTasks(printedTasks, noteChars) {
 ${rows.join('\n')}
         </tbody>
       </table>
+      ${omittedLine}
     </div>
   `;
 }
@@ -321,8 +355,22 @@ function renderDaySheetHtml(sheet) {
 
   const printedStanding = standing.filter((s) => !excludedKeys.includes(s.key));
   const printedExtras = extras;
-  const printedTasks = tasks.filter((t) => !hiddenTaskIds.includes(t.id));
-  const printedRows = printedStanding.length + printedExtras.length + printedTasks.length;
+  const allPrintedTasks = tasks.filter((t) => !hiddenTaskIds.includes(t.id));
+
+  // The three write-in rows are not negotiable, so they claim their space first.
+  // Tasks arrive sorted High -> Normal -> Low, so trimming from the tail sheds the
+  // least important work; the reader is told a count is missing rather than being
+  // left to wonder.
+  const fixedRows = printedStanding.length + printedExtras.length + BLANK_ROWS;
+  const roomForTasks = Math.max(0, MAX_ROWS - fixedRows);
+  // Trimming costs one further row for the "not shown" notice, so the capacity when
+  // we do trim is one lower than the capacity when everything fits.
+  const willTrim = allPrintedTasks.length > roomForTasks;
+  const taskCapacity = willTrim ? Math.max(0, roomForTasks - 1) : roomForTasks;
+  const omittedCount = Math.max(0, allPrintedTasks.length - taskCapacity);
+  const printedTasks = omittedCount > 0 ? allPrintedTasks.slice(0, taskCapacity) : allPrintedTasks;
+
+  const printedRows = fixedRows + printedTasks.length;
 
   const density = densityFor(printedRows);
 
@@ -330,7 +378,7 @@ function renderDaySheetHtml(sheet) {
     renderHint(),
     renderHeader(event),
     renderEveryWorkday(printedStanding, printedExtras, density.noteChars),
-    renderTasks(printedTasks, density.noteChars),
+    renderTasks(printedTasks, density.noteChars, omittedCount),
     renderNotes(),
   ];
 
