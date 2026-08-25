@@ -49,7 +49,7 @@ module.exports = {
 
     },
     options: {
-      rule: '2 1/2 * * *',
+      rule: '0 8-20/2 * * *',
       tz: 'America/Los_Angeles',
     },
   },
