@@ -6,6 +6,7 @@ const Helper = require('../../../../config/helpers/cron-helper.js');
  */
 
 const { createCoreService } = require('@strapi/strapi').factories;
+const { dedupeByDocument, documentRowIds } = require('../../../utils/documents');
 
 module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) =>  ({
 
@@ -198,17 +199,39 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
     });
   },
 
+  /**
+   * The open task already generated for a recurring task, if there is one.
+   *
+   * Matched across every row of the recurring task's document, and of its
+   * garden's: Strapi v5 keeps a draft and a published row per document, and a
+   * task generated against one row does not match a filter written against the
+   * other. Matching only the row in hand made the cron miss the task it had
+   * already created and generate a second one beside it.
+   *
+   * @param {obj} recTask
+   * @returns {obj|null} the open task, preferring its published row
+   */
   async getTaskByRecurringUndone(recTask) {
+    const recTaskIds = await documentRowIds('api::recurring-task.recurring-task', recTask);
 
-    return strapi.db.query('api::garden-task.garden-task').findOne({
-      where: {
-        status:{$notIn: ['FINISHED', 'SKIPPED', 'ABANDONED']}, //$notIn: ['Hello', 'Hola', 'Bonjour']
-        recurring_task: recTask.id, 
-        garden:recTask.garden
-      },
-      populate: { recurring_task: { populate: { instruction: { populate: ['card'] } } }, volunteers: true, primary_image: true, instruction: { populate: ['card'] } }
+    const where = {
+      status:{$notIn: ['FINISHED', 'SKIPPED', 'ABANDONED']}, //$notIn: ['Hello', 'Hola', 'Bonjour']
+      recurring_task: recTaskIds.length ? { id: { $in: recTaskIds } } : recTask.id,
+    };
+
+    if (recTask.garden) {
+      const gardenIds = await documentRowIds('api::garden.garden', recTask.garden);
+      where.garden = gardenIds.length ? { id: { $in: gardenIds } } : recTask.garden;
+    } else {
+      where.garden = recTask.garden;
+    }
+
+    const tasks = await strapi.db.query('api::garden-task.garden-task').findMany({
+      where,
+      populate: { recurring_task: { populate: { instruction: { populate: ['card'] } } }, volunteers: true, primary_image: true, garden: true, instruction: { populate: ['card'] } }
     });
 
+    return dedupeByDocument(tasks)[0] || null;
   },
 
   async skipTask(user) {
