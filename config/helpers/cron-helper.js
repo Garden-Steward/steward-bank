@@ -253,6 +253,63 @@ Helper.setWeeklySchedule = async(recTask) => {
   
 }
 
+/**
+ * Bring an already-open generated task up to date with its recurring task.
+ *
+ * Two things this repairs, both of which leave a task looking half-empty on the
+ * front-end:
+ *
+ * 1. Generated tasks never copied primary_image, so every task the cron has
+ *    ever created is imageless. New tasks get the image at creation; this fills
+ *    in the ones already sitting open. An image set directly on the task is
+ *    left alone - a manager may have picked something for that day.
+ * 2. Tasks generated before the cron settled on published rows point their
+ *    relations at draft rows. The REST API resolves published-to-published, so
+ *    those come back null and the task shows up with no recurring task, garden
+ *    or instruction. Relations are only ever moved between rows of the *same*
+ *    document, so this never repoints a task at different content.
+ *
+ * @param {obj} task open garden task, populated with primary_image and relations
+ * @param {obj} recTask recurring task it was generated from
+ * @returns {obj|null} the fields that were repaired, or null if nothing was
+ */
+Helper.realignGeneratedTask = async(task, recTask) => {
+  if (!task || !recTask) {
+    return null;
+  }
+
+  const data = {};
+
+  if (recTask.primary_image?.id && !task.primary_image) {
+    data.primary_image = recTask.primary_image.id;
+  }
+
+  // Same document, different row: the draft/published twin of what it already
+  // points at, so this only changes which version the API can resolve.
+  const relations = { recurring_task: recTask, garden: recTask.garden, instruction: recTask.instruction };
+  for (const [field, target] of Object.entries(relations)) {
+    const current = task[field];
+    if (!current || !target?.id || !target.documentId) {
+      continue;
+    }
+    if (current.documentId === target.documentId && current.id !== target.id) {
+      data[field] = target.id;
+    }
+  }
+
+  if (!Object.keys(data).length) {
+    return null;
+  }
+
+  const repaired = { ...data };
+  await strapi.db.query('api::garden-task.garden-task').update({
+    where: { id: task.id },
+    data
+  });
+  console.log(`[realignGeneratedTask] task ${task.id}:`, repaired);
+  return repaired;
+};
+
 Helper.buildSchedulerTask = async(curTask, recTask, scheduledUser) => {
     console.log(`[buildSchedulerTask] Processing recurring task ${recTask.id} (${recTask.title}), curTask: ${curTask?.id || 'none'}, status: ${curTask?.status || 'N/A'}`);
     // ASSIGN && SKIP IF ALREADY INITIALIZED
@@ -271,6 +328,7 @@ Helper.buildSchedulerTask = async(curTask, recTask, scheduledUser) => {
           });
           console.log("added volunteer onto: ", curTask.id);
         }
+        await Helper.realignGeneratedTask(curTask, recTask);
         return {success: true, message: 'Added volunteer onto: ' + curTask.id}; 
       }
     }
@@ -287,6 +345,7 @@ Helper.buildSchedulerTask = async(curTask, recTask, scheduledUser) => {
         });
         console.log("added volunteer onto existing task: ", existingActiveTask.id);
       }
+      await Helper.realignGeneratedTask(existingActiveTask, recTask);
       return {success: true, message: 'Using existing task: ' + existingActiveTask.id};
     }
     
@@ -301,7 +360,8 @@ Helper.buildSchedulerTask = async(curTask, recTask, scheduledUser) => {
         recurring_task:recTask.id,
         type:recTask.type,
         volunteers: scheduledUser,
-        instruction: recTask.instruction?.id || null
+        instruction: recTask.instruction?.id || null,
+        primary_image: recTask.primary_image?.id || null
       }
     });
     console.log('newtask added: ',newTask.title, newTask.id);

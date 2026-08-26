@@ -1,5 +1,6 @@
 const { addHours, addDays } = require('date-fns');
 const {format,utcToZonedTime,} = require("date-fns-tz");
+const { dedupeByDocument } = require('../../../utils/documents');
 
 const VdayHelper = {};
 
@@ -80,34 +81,14 @@ VdayHelper.buildTodayCopy = (vDay) => {
   return copy
 }
 /**
- * Strapi v5 draft & publish stores the draft and published versions of an entry
- * as two separate rows sharing one documentId. The reminder queries below run on
- * the query engine, which returns raw rows, so an event that has been published
- * comes back twice and would be texted out twice.
- *
- * Collapse each document down to a single row, preferring the published one.
- * Rows without a documentId (older/hand-inserted data) are always kept.
+ * Collapse the draft/published twins the query engine returns down to one row
+ * per event, so a published event isn't texted out twice. See
+ * src/utils/documents.js — the recurring-task cron needs the same thing.
  *
  * @param {arr} vDays
  * @returns {arr} one row per event
  */
-VdayHelper.dedupeByDocument = (vDays) => {
-  const byDocument = new Map();
-  const orphans = [];
-
-  for (const vDay of vDays) {
-    if (!vDay.documentId) {
-      orphans.push(vDay);
-      continue;
-    }
-    const existing = byDocument.get(vDay.documentId);
-    if (!existing || (!existing.publishedAt && vDay.publishedAt)) {
-      byDocument.set(vDay.documentId, vDay);
-    }
-  }
-
-  return [...byDocument.values(), ...orphans];
-};
+VdayHelper.dedupeByDocument = (vDays) => dedupeByDocument(vDays);
 
 /**
  * 3-4 days in the future.
