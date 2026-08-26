@@ -80,14 +80,44 @@ VdayHelper.buildTodayCopy = (vDay) => {
   return copy
 }
 /**
+ * Strapi v5 draft & publish stores the draft and published versions of an entry
+ * as two separate rows sharing one documentId. The reminder queries below run on
+ * the query engine, which returns raw rows, so an event that has been published
+ * comes back twice and would be texted out twice.
+ *
+ * Collapse each document down to a single row, preferring the published one.
+ * Rows without a documentId (older/hand-inserted data) are always kept.
+ *
+ * @param {arr} vDays
+ * @returns {arr} one row per event
+ */
+VdayHelper.dedupeByDocument = (vDays) => {
+  const byDocument = new Map();
+  const orphans = [];
+
+  for (const vDay of vDays) {
+    if (!vDay.documentId) {
+      orphans.push(vDay);
+      continue;
+    }
+    const existing = byDocument.get(vDay.documentId);
+    if (!existing || (!existing.publishedAt && vDay.publishedAt)) {
+      byDocument.set(vDay.documentId, vDay);
+    }
+  }
+
+  return [...byDocument.values(), ...orphans];
+};
+
+/**
  * 3-4 days in the future.
  * @returns arr of volunteer-days
  */
-VdayHelper.getUpcomingVdays = () => {
+VdayHelper.getUpcomingVdays = async () => {
   const today = new Date();
   const recent = addDays(today, 8);
   const toorecent = addDays(today, 7);
-  return strapi.db.query('api::volunteer-day.volunteer-day').findMany({
+  const vDays = await strapi.db.query('api::volunteer-day.volunteer-day').findMany({
     where: {
       startDatetime: {
         $lt: recent,
@@ -98,13 +128,15 @@ VdayHelper.getUpcomingVdays = () => {
       canceled: {$ne: true}
     },
     populate: ['garden', 'garden.volunteers']
-  })
+  });
+
+  return VdayHelper.dedupeByDocument(vDays);
 }
 
-VdayHelper.getTodayVdays = () => {
+VdayHelper.getTodayVdays = async () => {
   const today = new Date();
   const tmrw = addHours(today, 14);
-  return strapi.db.query('api::volunteer-day.volunteer-day').findMany({
+  const vDays = await strapi.db.query('api::volunteer-day.volunteer-day').findMany({
     where: {
       startDatetime: {
         $lt:tmrw,
@@ -115,13 +147,15 @@ VdayHelper.getTodayVdays = () => {
       canceled: {$ne: true}
     },
     populate: ['garden', 'garden.volunteers']
-  })
+  });
+
+  return VdayHelper.dedupeByDocument(vDays);
 }
-VdayHelper.getTomorrowVdays = () => {
+VdayHelper.getTomorrowVdays = async () => {
   const today = new Date();
   const tmrw = addHours(today, 14);
   const nextDay = addHours(tmrw, 30);  //38, aka 24 hours after 14 hours: Sent an email two days before volunteer day AND day before
-  return strapi.db.query('api::volunteer-day.volunteer-day').findMany({
+  const vDays = await strapi.db.query('api::volunteer-day.volunteer-day').findMany({
     where: {
       startDatetime: {
         $lt:nextDay,
@@ -132,7 +166,9 @@ VdayHelper.getTomorrowVdays = () => {
       canceled: {$ne: true}
     },
     populate: ['garden', 'garden.volunteers']
-  })
+  });
+
+  return VdayHelper.dedupeByDocument(vDays);
 }
 
 

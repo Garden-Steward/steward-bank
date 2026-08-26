@@ -41,6 +41,7 @@ require('./tasks/publish');
 require('./tasks/user-tasks.http');
 require('./event/rsvp');
 require('./event/messages');
+require('./event/reminders');
 require('./sms-campaign-vacation');
 
 // Recurring event tests (unit tests for date calculations)
