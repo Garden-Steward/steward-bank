@@ -46,3 +46,6 @@ require('./sms-campaign-vacation');
 // Recurring event tests (unit tests for date calculations)
 require('./recurring-events/date-calculations.test');
 require('./recurring-events/instance-generation.test');
+
+require('./tasks/standing-tasks');
+require('./event/day-sheet');

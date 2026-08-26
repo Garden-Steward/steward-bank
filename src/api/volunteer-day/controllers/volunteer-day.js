@@ -32,6 +32,57 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
       return { data: entry };
     },
 
+    // Printable day-sheet JSON. Thin: parse params, delegate to the assembly
+    // service, translate errors. Never queries the DB directly — that's what
+    // keeps the JSON and HTML endpoints from drifting (see day-sheet.js).
+    getDaySheet: async (ctx) => {
+      const svc = strapi.service('api::volunteer-day.day-sheet');
+      const { id } = ctx.params;
+      if (!/^[0-9]{1,9}$/.test(String(id))) {
+        return ctx.badRequest('Invalid volunteer day id');
+      }
+      let params;
+      try {
+        params = svc.parseSheetParams(ctx.query);
+      } catch (err) {
+        if (err.sheetParamError) return ctx.badRequest(err.message);
+        throw err;
+      }
+      const sheet = await svc.assemble(Number(id), params);
+      if (!sheet) return ctx.notFound('Volunteer day not found');
+      ctx.set('Cache-Control', 'no-store');
+      return { data: sheet };
+    },
+
+    // Printable day-sheet HTML. Every failure surface is plain text with no
+    // reflection of the submitted input — set status/type/body directly
+    // rather than the Koa helpers, which produce a JSON error envelope.
+    getDaySheetHtml: async (ctx) => {
+      const fail = (status, text) => {
+        ctx.status = status;
+        ctx.type = 'text/plain; charset=utf-8';
+        ctx.body = text;
+      };
+
+      const svc = strapi.service('api::volunteer-day.day-sheet');
+      const { id } = ctx.params;
+      if (!/^[0-9]{1,9}$/.test(String(id))) {
+        return fail(400, 'Invalid volunteer day id');
+      }
+      let params;
+      try {
+        params = svc.parseSheetParams(ctx.query);
+      } catch (err) {
+        if (err.sheetParamError) return fail(400, err.message);
+        throw err;
+      }
+      const sheet = await svc.assemble(Number(id), params);
+      if (!sheet) return fail(404, 'Volunteer day not found');
+      ctx.set('Cache-Control', 'no-store');
+      ctx.type = 'text/html; charset=utf-8';
+      ctx.body = svc.renderHtml(sheet);
+    },
+
     async create(ctx) {
       const { data } = ctx.request.body || {};
 

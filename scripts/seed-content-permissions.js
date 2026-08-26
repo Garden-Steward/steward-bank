@@ -22,6 +22,11 @@ const DESIRED = {
     'api::plant.plant': ['find', 'findOne', 'create', 'update', 'delete'],
     'api::project.project': ['find', 'findOne', 'create', 'update', 'delete', 'findByGarden'],
     'api::location-tracking.location-tracking': ['find', 'findOne', 'create', 'update', 'delete'],
+    // This grant only lets an authenticated request reach the controller. The real
+    // authorization (administrator or manager of >= 1 garden) lives in the controller
+    // Task 7 writes — this grant is role-wide and would otherwise let any logged-in
+    // volunteer write the global standing-task list.
+    'api::day-sheet-standing-task.day-sheet-standing-task': ['replaceList'],
   },
 };
 

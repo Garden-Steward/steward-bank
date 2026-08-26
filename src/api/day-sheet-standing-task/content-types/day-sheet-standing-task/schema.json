@@ -1,0 +1,19 @@
+{
+  "kind": "singleType",
+  "collectionName": "day_sheet_standing_tasks",
+  "info": {
+    "singularName": "day-sheet-standing-task",
+    "pluralName": "day-sheet-standing-tasks",
+    "displayName": "Day Sheet Standing Tasks"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "standing_tasks": {
+      "type": "component",
+      "repeatable": true,
+      "component": "checklist.standing-task"
+    }
+  }
+}
