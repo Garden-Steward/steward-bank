@@ -197,7 +197,9 @@ function renderHeader(event) {
   const parts = [];
   parts.push(`<h1>${escapeHtml(event.title)}</h1>`);
 
-  if (event.garden) {
+  // On a garden-anchored sheet the heading is already the garden's name, so a
+  // subtitle repeating it is just noise.
+  if (event.garden && event.garden.title !== event.title) {
     parts.push(`<div class="sub-line">${escapeHtml(event.garden.title)}</div>`);
   }
 
@@ -263,7 +265,9 @@ ${rows.join('\n')}
   `;
 }
 
-function renderTasks(printedTasks, noteChars, omittedCount) {
+// `heading` is one of two literals chosen below, never caller input — it is
+// inserted unescaped so the apostrophe in "Today's" survives.
+function renderTasks(printedTasks, noteChars, omittedCount, heading) {
   const rows = printedTasks.map((t) => {
     const label = PRIORITY_LABEL[t.priority] || String(t.priority || '').toUpperCase();
 
@@ -312,7 +316,7 @@ function renderTasks(printedTasks, noteChars, omittedCount) {
 
   return `
     <div class="section">
-      <div class="section-head">Today's Tasks</div>
+      <div class="section-head">${heading}</div>
       ${emptyLine}
       <table class="sheet">
         <thead>
@@ -378,7 +382,14 @@ function renderDaySheetHtml(sheet) {
     renderHint(),
     renderHeader(event),
     renderEveryWorkday(printedStanding, printedExtras, density.noteChars),
-    renderTasks(printedTasks, density.noteChars, omittedCount),
+    // A garden sheet lists everything the garden has open, which is not the same
+    // claim as "today's work" — saying so on paper would be misleading.
+    renderTasks(
+      printedTasks,
+      density.noteChars,
+      omittedCount,
+      (sheet.meta && sheet.meta.anchor) === 'garden' ? 'Open Tasks' : "Today's Tasks"
+    ),
     renderNotes(),
   ];
 

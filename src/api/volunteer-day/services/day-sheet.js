@@ -126,6 +126,15 @@ module.exports = ({ strapi }) => ({
       populate: { volunteers: { select: ['id'] } },
     });
 
+    return this.dedupeByDocumentId(tasks);
+  },
+
+  /**
+   * Collapse rows sharing a documentId to one, preferring the published row,
+   * falling back to the draft when only a draft exists, and to the lower
+   * numeric id when both or neither are published.
+   */
+  dedupeByDocumentId(tasks) {
     const byDocumentId = new Map();
     tasks.forEach((task) => {
       const existing = byDocumentId.get(task.documentId);
@@ -173,6 +182,96 @@ module.exports = ({ strapi }) => ({
     if (!event) return null;
 
     const rawTasks = await this.loadTasks(event);
+
+    return this.buildPayload({
+      header: {
+        id: event.id,
+        documentId: event.documentId,
+        title: event.title,
+        startDatetime: event.startDatetime,
+        canceled: event.canceled === true,
+        garden: event.garden,
+      },
+      rawTasks,
+      anchor: 'event',
+      printPath: `/api/volunteer-days/by-id/${event.id}/day-sheet.html`,
+      excludeKeys,
+      extras,
+      hiddenTaskIds,
+    });
+  },
+
+  /**
+   * Resolve a garden by slug. Returns null when there is no such row; the
+   * controller 404s.
+   */
+  async resolveGarden(slug) {
+    return strapi.db.query('api::garden.garden').findOne({ where: { slug } });
+  },
+
+  /**
+   * Every task a garden currently has open, regardless of which volunteer day
+   * it hangs off — this is what the public tasks page shows, so it is what its
+   * print button has to produce.
+   *
+   * The same draft/publish dedupe as `loadTasks` applies: a task can exist as
+   * two rows sharing a documentId, and counting it twice would print it twice.
+   * Statuses that mean the work is over are dropped rather than printed with a
+   * line through them.
+   */
+  async loadGardenTasks(garden) {
+    const gardenRows = await strapi.db.query('api::garden.garden').findMany({
+      where: { documentId: garden.documentId },
+      select: ['id'],
+    });
+
+    const tasks = await strapi.db.query('api::garden-task.garden-task').findMany({
+      where: { garden: { id: { $in: gardenRows.map((r) => r.id) } } },
+      populate: { volunteers: { select: ['id'] } },
+    });
+
+    const done = ['FINISHED', 'ABANDONED', 'SKIPPED'];
+    return this.dedupeByDocumentId(
+      tasks.filter((t) => !done.includes(String(t.status || '').toUpperCase()))
+    );
+  },
+
+  /**
+   * The garden-anchored sheet. Same standing list, same ordering, same
+   * renderer as the event sheet — only the task source and the header differ.
+   */
+  async assembleForGarden(slug, { excludeKeys = [], extras = [], hiddenTaskIds = [] } = {}) {
+    const garden = await this.resolveGarden(slug);
+    if (!garden) return null;
+
+    const rawTasks = await this.loadGardenTasks(garden);
+
+    return this.buildPayload({
+      header: {
+        id: null,
+        documentId: garden.documentId,
+        // The garden's name is the heading; the renderer drops the subtitle
+        // when it would just repeat it.
+        title: garden.title,
+        startDatetime: null,
+        canceled: false,
+        garden,
+      },
+      rawTasks,
+      anchor: 'garden',
+      printPath: `/api/gardens/${garden.slug}/day-sheet.html`,
+      excludeKeys,
+      extras,
+      hiddenTaskIds,
+    });
+  },
+
+  /**
+   * Shared shaping for both anchors. `standing` and `tasks` are always the FULL
+   * lists — never pre-filtered by `excludeKeys` / `hiddenTaskIds`; the renderer
+   * applies those.
+   */
+  async buildPayload({ header, rawTasks, anchor, printPath, excludeKeys, extras, hiddenTaskIds }) {
     const sortedTasks = this.sortTasks(rawTasks);
 
     const { items: standing, source: standingSource } = await strapi
@@ -195,22 +294,22 @@ module.exports = ({ strapi }) => ({
       max_volunteers: typeof t.max_volunteers === 'number' ? t.max_volunteers : null,
     }));
 
-    const garden = event.garden
+    const garden = header.garden
       ? {
-        id: event.garden.id,
-        documentId: event.garden.documentId,
-        title: event.garden.title,
-        slug: event.garden.slug,
+        id: header.garden.id,
+        documentId: header.garden.documentId,
+        title: header.garden.title,
+        slug: header.garden.slug,
       }
       : null;
 
     return {
       event: {
-        id: event.id,
-        documentId: event.documentId,
-        title: event.title,
-        startDatetime: event.startDatetime,
-        canceled: event.canceled === true,
+        id: header.id,
+        documentId: header.documentId,
+        title: header.title,
+        startDatetime: header.startDatetime,
+        canceled: header.canceled,
         garden,
       },
       standing,
@@ -219,11 +318,12 @@ module.exports = ({ strapi }) => ({
       hiddenTaskIds,
       extras,
       meta: {
+        anchor,
         standingSource,
         standingCount: standing.length,
         taskCount: tasks.length,
         generatedAt: new Date().toISOString(),
-        printPath: `/api/volunteer-days/by-id/${event.id}/day-sheet.html`,
+        printPath,
       },
     };
   },
