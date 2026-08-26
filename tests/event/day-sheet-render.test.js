@@ -147,19 +147,41 @@ describe('renderDaySheetHtml', () => {
     expect(staleKey).toContain('Third standing item');
   });
 
-  test('AC24 — extras appear in Every Workday section, after standing, in submitted order', () => {
+  test("AC24 — extras land in the tasks table, after the tasks, in submitted order", () => {
     const html = renderDaySheetHtml(makeSheet({
       standing: [{ key: 'stand0001', title: 'Last standing title', note: null }],
+      tasks: [{ ...makeTasks(1)[0], id: 1, title: 'A real task' }],
       extras: ['first extra line', 'second extra line'],
     }));
 
+    const everyWorkdayIdx = html.indexOf('Every Workday');
+    const tasksHeadIdx = html.indexOf("Today's Tasks");
     const standingIdx = html.indexOf('Last standing title');
+    const taskIdx = html.indexOf('A real task');
     const extra1Idx = html.indexOf('first extra line');
     const extra2Idx = html.indexOf('second extra line');
 
-    expect(standingIdx).toBeGreaterThan(-1);
-    expect(extra1Idx).toBeGreaterThan(standingIdx);
+    // A line someone added today is not part of the every-workday routine, so it
+    // belongs under the day's tasks, not the standing list.
+    expect(standingIdx).toBeGreaterThan(everyWorkdayIdx);
+    expect(standingIdx).toBeLessThan(tasksHeadIdx);
+    expect(extra1Idx).toBeGreaterThan(tasksHeadIdx);
+
+    // After the real tasks, and in the order they were submitted.
+    expect(extra1Idx).toBeGreaterThan(taskIdx);
     expect(extra2Idx).toBeGreaterThan(extra1Idx);
+
+    // Still before the blank write-in rows at the foot of the table.
+    expect(extra2Idx).toBeLessThan(html.indexOf('class="blank-row"'));
+  });
+
+  test('an added line still prints when the day has no tasks of its own', () => {
+    const html = renderDaySheetHtml(makeSheet({
+      tasks: [],
+      extras: ['bring the wheelbarrow back'],
+    }));
+    expect(html).toContain('bring the wheelbarrow back');
+    expect(html).not.toContain('No tasks on this sheet.');
   });
 
   describe('AC25 — density tiers derived from printed row counts', () => {
