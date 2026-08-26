@@ -154,7 +154,7 @@ describe('PROBE: contract shape, field by field', () => {
     expect(Object.keys(d.tasks[0]).sort()).toEqual(
       ['documentId', 'id', 'max_volunteers', 'overview', 'priority', 'status', 'title', 'type', 'volunteer_count'].sort());
     expect(Object.keys(d.meta).sort()).toEqual(
-      ['generatedAt', 'printPath', 'standingCount', 'standingSource', 'taskCount'].sort());
+      ['anchor', 'generatedAt', 'printPath', 'standingCount', 'standingSource', 'taskCount'].sort());
     expect(Object.keys(d.standing[0]).sort()).toEqual(['key', 'note', 'title'].sort());
     expect(d.excludedKeys).toEqual(['aaaaaaaa']);
     expect(d.extras).toEqual(['x']);
@@ -447,5 +447,117 @@ describe('PROBE: standing-list write edge cases', () => {
     });
     console.log('P24 registered day-sheet routes =', JSON.stringify(routes));
     expect(g.status).toBe(404);
+  });
+});
+
+describe('PROBE: garden-anchored day sheet', () => {
+  // Its own garden, so the tasks the other probes create don't leak in.
+  let gGarden;
+  const mkGardenTask = (o = {}) => strapi.db.query(GT).create({
+    data: {
+      title: 'Garden probe task', type: 'General', priority: 'Normal',
+      garden: gGarden.id, publishedAt: new Date().toISOString(), ...o,
+    },
+  });
+
+  beforeAll(async () => {
+    await resetStanding();
+    gGarden = await strapi.db.query('api::garden.garden').create({
+      data: { title: 'Slug Probe Garden', slug: 'slug-probe-garden' },
+    });
+  });
+
+  it('G1: prints every open task for the garden, priority-ordered, with no event needed', async () => {
+    await mkGardenTask({ title: 'GLow', priority: 'Low' });
+    await mkGardenTask({ title: 'GHigh', priority: 'High' });
+    await mkGardenTask({ title: 'GNorm', priority: 'Normal' });
+
+    const res = await get('/api/gardens/slug-probe-garden/day-sheet');
+    expect(res.status).toBe(200);
+    const titles = res.body.data.tasks.map((t) => t.title);
+    expect(titles).toEqual(['GHigh', 'GNorm', 'GLow']);
+    expect(res.body.data.meta.anchor).toBe('garden');
+    expect(res.body.data.meta.printPath).toBe('/api/gardens/slug-probe-garden/day-sheet.html');
+    // The standing checklist is the same one the event sheet prints.
+    expect(res.body.data.standing.length).toBeGreaterThan(0);
+  });
+
+  it('G1b: the heading says Open Tasks, since these are not scheduled for today', async () => {
+    const res = await get('/api/gardens/slug-probe-garden/day-sheet.html');
+    expect(res.text).toContain('Open Tasks');
+    expect(res.text).not.toContain("Today's Tasks");
+
+    // The event-anchored sheet is unchanged.
+    const ev = await mkEvent({ title: 'Heading Event' });
+    const evRes = await get(`/api/volunteer-days/by-id/${ev.id}/day-sheet.html`);
+    expect(evRes.text).toContain("Today's Tasks");
+    expect(evRes.text).not.toContain('Open Tasks');
+  });
+
+  it('G2: finished, abandoned and skipped work is not printed', async () => {
+    await mkGardenTask({ title: 'GDone', status: 'FINISHED' });
+    await mkGardenTask({ title: 'GGone', status: 'ABANDONED' });
+    await mkGardenTask({ title: 'GSkip', status: 'SKIPPED' });
+    await mkGardenTask({ title: 'GOpen', status: 'PENDING' });
+
+    const res = await get('/api/gardens/slug-probe-garden/day-sheet.html');
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('GOpen');
+    ['GDone', 'GGone', 'GSkip'].forEach((t) => expect(res.text).not.toContain(t));
+  });
+
+  it('G3: a task existing as both a draft and a published row prints once', async () => {
+    const pub = await mkGardenTask({ title: 'GPUBLISHED', publishedAt: new Date().toISOString() });
+    await mkGardenTask({ title: 'GDRAFTONLY', documentId: pub.documentId, publishedAt: null });
+
+    const res = await get('/api/gardens/slug-probe-garden/day-sheet');
+    const matches = res.body.data.tasks.filter((t) => t.documentId === pub.documentId);
+    expect(matches).toHaveLength(1);
+    expect(matches[0].id).toBe(pub.id);
+    expect(res.text).not.toContain('GDRAFTONLY');
+  });
+
+  it('G4: the heading is the garden name and is not repeated underneath it', async () => {
+    const res = await get('/api/gardens/slug-probe-garden/day-sheet.html');
+    // The name is the heading. It also appears in <title> for the browser tab,
+    // which is not a duplicate on the page.
+    expect(res.text).toContain('<h1>Slug Probe Garden</h1>');
+    // No subtitle element is emitted at all, so the name is never printed twice.
+    expect(res.text).not.toMatch(/class="sub-line"/);
+    expect((res.text.match(/Slug Probe Garden/g) || []).length).toBe(2);
+  });
+
+  it('G5: unauthenticated, no-store, and carries no volunteer identity', async () => {
+    const res = await get('/api/gardens/slug-probe-garden/day-sheet.html');
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toMatch(/^text\/html/);
+    expect(res.headers['cache-control']).toBe('no-store');
+    ['firstName', 'lastName', 'phoneNumber', 'username'].forEach((f) => {
+      expect(res.text).not.toContain(f);
+    });
+  });
+
+  it('G6: skip, hide and extra behave exactly as they do on the event sheet', async () => {
+    const json = await get('/api/gardens/slug-probe-garden/day-sheet');
+    const key = json.body.data.standing[0].key;
+    const hideId = json.body.data.tasks[0].id;
+    const hiddenTitle = json.body.data.tasks[0].title;
+
+    const res = await get(`/api/gardens/slug-probe-garden/day-sheet.html?exclude=${key}&hideTasks=${hideId}&extra=bring%20the%20wheelbarrow`);
+    expect(res.status).toBe(200);
+    expect(res.text).not.toContain(json.body.data.standing[0].title);
+    expect(res.text).not.toContain(hiddenTitle);
+    expect(res.text).toContain('bring the wheelbarrow');
+  });
+
+  it('G7: unknown slug 404s, malformed slug 400s, and neither echoes the input', async () => {
+    const missing = await get('/api/gardens/no-such-garden-here/day-sheet.html');
+    expect(missing.status).toBe(404);
+    expect(missing.headers['content-type']).toMatch(/^text\/plain/);
+    expect(missing.text).toBe('Garden not found');
+
+    const bad = await get('/api/gardens/slug-probe-garden/day-sheet.html?exclude=notahex');
+    expect(bad.status).toBe(400);
+    expect(bad.text).not.toContain('notahex');
   });
 });

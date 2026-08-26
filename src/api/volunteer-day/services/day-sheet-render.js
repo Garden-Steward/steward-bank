@@ -84,10 +84,10 @@ function densityFor(printedRows) {
   if (printedRows <= 10) {
     return { bodyClass: 'density-normal', rowPad: '0.058in', noteChars: 180, noteGap: '0.32in' };
   }
-  if (printedRows <= 15) {
-    return { bodyClass: 'density-compact', rowPad: '0.030in', noteChars: 64, noteGap: '0.21in' };
+  if (printedRows <= 16) {
+    return { bodyClass: 'density-compact', rowPad: '0.026in', noteChars: 60, noteGap: '0.19in' };
   }
-  if (printedRows <= 20) {
+  if (printedRows <= 21) {
     return { bodyClass: 'density-dense', rowPad: '0.020in', noteChars: 0, noteGap: '0.15in' };
   }
   if (printedRows <= 25) {
@@ -197,7 +197,9 @@ function renderHeader(event) {
   const parts = [];
   parts.push(`<h1>${escapeHtml(event.title)}</h1>`);
 
-  if (event.garden) {
+  // On a garden-anchored sheet the heading is already the garden's name, so a
+  // subtitle repeating it is just noise.
+  if (event.garden && event.garden.title !== event.title) {
     parts.push(`<div class="sub-line">${escapeHtml(event.garden.title)}</div>`);
   }
 
@@ -219,7 +221,7 @@ function renderHeader(event) {
   return parts.join('\n');
 }
 
-function renderEveryWorkday(printedStanding, printedExtras, noteChars) {
+function renderEveryWorkday(printedStanding, noteChars) {
   const rows = [];
 
   printedStanding.forEach((s) => {
@@ -231,15 +233,6 @@ function renderEveryWorkday(printedStanding, printedExtras, noteChars) {
       <tr>
         <td class="col-box"><span class="checkbox"></span></td>
         <td><div class="title">${escapeHtml(s.title)}</div>${noteHtml}</td>
-      </tr>
-    `);
-  });
-
-  printedExtras.forEach((line) => {
-    rows.push(`
-      <tr>
-        <td class="col-box"><span class="checkbox"></span></td>
-        <td><div class="title">${escapeHtml(line)}</div></td>
       </tr>
     `);
   });
@@ -263,7 +256,9 @@ ${rows.join('\n')}
   `;
 }
 
-function renderTasks(printedTasks, noteChars, omittedCount) {
+// `heading` is one of two literals chosen below, never caller input — it is
+// inserted unescaped so the apostrophe in "Today's" survives.
+function renderTasks(printedTasks, printedExtras, noteChars, omittedCount, heading) {
   const rows = printedTasks.map((t) => {
     const label = PRIORITY_LABEL[t.priority] || String(t.priority || '').toUpperCase();
 
@@ -286,6 +281,16 @@ function renderTasks(printedTasks, noteChars, omittedCount) {
     `;
   });
 
+  printedExtras.forEach((line) => {
+    rows.push(`
+      <tr>
+        <td class="col-box"><span class="checkbox"></span></td>
+        <td class="col-pri"><span class="pri">&nbsp;</span></td>
+        <td><div class="title">${escapeHtml(line)}</div></td>
+      </tr>
+    `);
+  });
+
   // Blank rows mirror the shape of a real task row at this density — title line,
   // plus a note line when the printed tasks carry one — so they stand the same
   // height as the rows above them. A shorter line is awkward to write on.
@@ -302,7 +307,7 @@ function renderTasks(printedTasks, noteChars, omittedCount) {
     `);
   }
 
-  const emptyLine = printedTasks.length === 0
+  const emptyLine = printedTasks.length === 0 && printedExtras.length === 0
     ? '<div class="empty">No tasks on this sheet.</div>'
     : '';
 
@@ -312,7 +317,7 @@ function renderTasks(printedTasks, noteChars, omittedCount) {
 
   return `
     <div class="section">
-      <div class="section-head">Today's Tasks</div>
+      <div class="section-head">${heading}</div>
       ${emptyLine}
       <table class="sheet">
         <thead>
@@ -377,8 +382,16 @@ function renderDaySheetHtml(sheet) {
   const bodySections = [
     renderHint(),
     renderHeader(event),
-    renderEveryWorkday(printedStanding, printedExtras, density.noteChars),
-    renderTasks(printedTasks, density.noteChars, omittedCount),
+    renderEveryWorkday(printedStanding, density.noteChars),
+    // A garden sheet lists everything the garden has open, which is not the same
+    // claim as "today's work" — saying so on paper would be misleading.
+    renderTasks(
+      printedTasks,
+      printedExtras,
+      density.noteChars,
+      omittedCount,
+      (sheet.meta && sheet.meta.anchor) === 'garden' ? 'Open Tasks' : "Today's Tasks"
+    ),
     renderNotes(),
   ];
 

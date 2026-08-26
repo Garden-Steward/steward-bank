@@ -6,7 +6,61 @@
 
 const { createCoreController } = require('@strapi/strapi').factories;
 
+const SLUG_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
+
 module.exports = createCoreController('api::garden.garden', ({ strapi }) => ({
+  // Day-sheet JSON for a whole garden: the standing checklist plus every task
+  // the garden currently has open, priority-ordered. Shares its assembly
+  // service with the volunteer-day sheet, so the two cannot drift.
+  async getDaySheet(ctx) {
+    const svc = strapi.service('api::volunteer-day.day-sheet');
+    const { slug } = ctx.params;
+    if (!SLUG_PATTERN.test(String(slug))) {
+      return ctx.badRequest('Invalid garden slug');
+    }
+    let params;
+    try {
+      params = svc.parseSheetParams(ctx.query);
+    } catch (err) {
+      if (err.sheetParamError) return ctx.badRequest(err.message);
+      throw err;
+    }
+    const sheet = await svc.assembleForGarden(String(slug), params);
+    if (!sheet) return ctx.notFound('Garden not found');
+    ctx.set('Cache-Control', 'no-store');
+    return { data: sheet };
+  },
+
+  // Printable HTML for the same sheet. Every failure surface is plain text with
+  // no reflection of the submitted input — status/type/body are set directly
+  // rather than via the Koa helpers, which produce a JSON error envelope.
+  async getDaySheetHtml(ctx) {
+    const fail = (status, text) => {
+      ctx.status = status;
+      ctx.type = 'text/plain; charset=utf-8';
+      ctx.body = text;
+    };
+
+    const svc = strapi.service('api::volunteer-day.day-sheet');
+    const { slug } = ctx.params;
+    if (!SLUG_PATTERN.test(String(slug))) {
+      return fail(400, 'Invalid garden slug');
+    }
+    let params;
+    try {
+      params = svc.parseSheetParams(ctx.query);
+    } catch (err) {
+      if (err.sheetParamError) return fail(400, err.message);
+      throw err;
+    }
+    const sheet = await svc.assembleForGarden(String(slug), params);
+    if (!sheet) return fail(404, 'Garden not found');
+    ctx.set('Cache-Control', 'no-store');
+    ctx.status = 200;
+    ctx.type = 'text/html; charset=utf-8';
+    ctx.body = svc.renderHtml(sheet);
+  },
+
   // Method 1: Creating an entirely custom action
   async fullSlug(ctx) {
     const entity = await strapi.db.query('api::garden.garden').findOne({
