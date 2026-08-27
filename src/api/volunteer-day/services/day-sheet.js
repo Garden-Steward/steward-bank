@@ -274,9 +274,12 @@ module.exports = ({ strapi }) => ({
   async buildPayload({ header, rawTasks, anchor, printPath, excludeKeys, extras, hiddenTaskIds }) {
     const sortedTasks = this.sortTasks(rawTasks);
 
+    // Resolved from the sheet's garden, so a manager editing their garden's
+    // checklist changes what that garden prints and nothing else. Falls back to
+    // the legacy org-wide list, then the built-in defaults.
     const { items: standing, source: standingSource } = await strapi
       .service(STANDING_UID)
-      .getList();
+      .getListForGarden(header.garden);
 
     // PII (D2b): volunteers is populated solely to count it and is never
     // spread into the payload. Every field is built explicitly — no raw
