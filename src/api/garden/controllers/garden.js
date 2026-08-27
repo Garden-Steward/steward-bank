@@ -61,6 +61,57 @@ module.exports = createCoreController('api::garden.garden', ({ strapi }) => ({
     ctx.body = svc.renderHtml(sheet);
   },
 
+  // This garden's every-volunteer-day checklist.
+  async getStandingTasks(ctx) {
+    const { slug } = ctx.params;
+    if (!SLUG_PATTERN.test(String(slug))) {
+      return ctx.badRequest('Invalid garden slug');
+    }
+    const garden = await strapi.db.query('api::garden.garden').findOne({ where: { slug: String(slug) } });
+    if (!garden) return ctx.notFound('Garden not found');
+
+    const svc = strapi.service('api::day-sheet-standing-task.day-sheet-standing-task');
+    const { items, source } = await svc.getListForGarden(garden);
+    ctx.set('Cache-Control', 'no-store');
+    return { data: { standing: items, meta: { source, gardenSlug: garden.slug } } };
+  },
+
+  // Replace this garden's checklist. Only a manager of THIS garden may write
+  // it — being a manager somewhere else is not enough, or one garden's manager
+  // could rewrite another's.
+  async replaceStandingTasks(ctx) {
+    const user = ctx.state.user;
+    if (!user) return ctx.unauthorized('You must be logged in');
+
+    const { slug } = ctx.params;
+    if (!SLUG_PATTERN.test(String(slug))) {
+      return ctx.badRequest('Invalid garden slug');
+    }
+
+    const garden = await strapi.db.query('api::garden.garden').findOne({
+      where: { slug: String(slug) },
+      populate: ['managers'],
+    });
+    if (!garden) return ctx.notFound('Garden not found');
+
+    const isAdmin = user.role?.type === 'administrator';
+    const managesThisGarden = (garden.managers || []).some((m) => m.id === user.id);
+    if (!isAdmin && !managesThisGarden) {
+      return ctx.forbidden('Only managers of this garden can edit its standing task list');
+    }
+
+    const body = ctx.request.body?.data || ctx.request.body || {};
+    const svc = strapi.service('api::day-sheet-standing-task.day-sheet-standing-task');
+    try {
+      const { items, source } = await svc.replaceListForGarden(garden, body.standing_tasks);
+      ctx.set('Cache-Control', 'no-store');
+      return { data: { standing: items, meta: { source, gardenSlug: garden.slug } } };
+    } catch (e) {
+      if (e.standingValidationError) return ctx.badRequest(e.message);
+      throw e;
+    }
+  },
+
   // Method 1: Creating an entirely custom action
   async fullSlug(ctx) {
     const entity = await strapi.db.query('api::garden.garden').findOne({

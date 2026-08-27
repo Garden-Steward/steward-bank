@@ -105,6 +105,13 @@
       "relation": "oneToMany",
       "target": "api::location-tracking.location-tracking",
       "mappedBy": "garden"
+    },
+    "standing_tasks": {
+      "displayName": "Standing Tasks",
+      "type": "component",
+      "repeatable": true,
+      "component": "checklist.standing-task",
+      "description": "The every-volunteer-day checklist printed at the top of this garden's day sheet. Order here is the order it prints."
     }
   }
 }
