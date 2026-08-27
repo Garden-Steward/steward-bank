@@ -561,3 +561,62 @@ describe('PROBE: garden-anchored day sheet', () => {
     expect(bad.text).not.toContain('notahex');
   });
 });
+
+describe('PROBE: recurring-generated tasks stay off the sheet', () => {
+  let recGarden;
+  let recTask;
+
+  beforeAll(async () => {
+    await resetStanding();
+    recGarden = await strapi.db.query('api::garden.garden').create({
+      data: { title: 'Recurring Probe Garden', slug: 'recurring-probe-garden' },
+    });
+    recTask = await strapi.db.query('api::recurring-task.recurring-task').create({
+      data: { title: 'Water the beds', scheduler_type: 'No Schedule', garden: recGarden.id },
+    });
+  });
+
+  const mk = (o = {}) => strapi.db.query(GT).create({
+    data: {
+      title: 'Rec probe task', type: 'General', priority: 'Normal',
+      garden: recGarden.id, status: 'PENDING',
+      publishedAt: new Date().toISOString(), ...o,
+    },
+  });
+
+  it('R1: a task generated from a recurring task is not printed; a hand-made one is', async () => {
+    await mk({ title: 'RGenerated', recurring_task: recTask.id });
+    await mk({ title: 'RHandMade' });
+
+    const json = await get('/api/gardens/recurring-probe-garden/day-sheet');
+    const titles = json.body.data.tasks.map((t) => t.title);
+    expect(titles).toContain('RHandMade');
+    expect(titles).not.toContain('RGenerated');
+
+    const html = await get('/api/gardens/recurring-probe-garden/day-sheet.html');
+    expect(html.text).toContain('RHandMade');
+    expect(html.text).not.toContain('RGenerated');
+  });
+
+  it('R2: the same holds on an event sheet', async () => {
+    const ev = await strapi.db.query(VD).create({
+      data: {
+        title: 'Recurring Probe Event', startDatetime: '2026-08-22T16:00:00.000Z',
+        garden: recGarden.id, canceled: false, disabled: false, confirmed: [],
+      },
+    });
+    await mk({ title: 'EGenerated', recurring_task: recTask.id, volunteer_day: ev.id });
+    await mk({ title: 'EHandMade', volunteer_day: ev.id });
+
+    const json = await get(`/api/volunteer-days/by-id/${ev.id}/day-sheet`);
+    const titles = json.body.data.tasks.map((t) => t.title);
+    expect(titles).toContain('EHandMade');
+    expect(titles).not.toContain('EGenerated');
+  });
+
+  it('R3: taskCount reflects what actually prints', async () => {
+    const json = await get('/api/gardens/recurring-probe-garden/day-sheet');
+    expect(json.body.data.meta.taskCount).toBe(json.body.data.tasks.length);
+    expect(json.body.data.tasks.every((t) => t.title !== 'RGenerated')).toBe(true);
+  });
+});
