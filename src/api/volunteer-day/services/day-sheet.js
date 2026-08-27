@@ -123,10 +123,25 @@ module.exports = ({ strapi }) => ({
 
     const tasks = await strapi.db.query('api::garden-task.garden-task').findMany({
       where: { volunteer_day: { id: { $in: eventRows.map((r) => r.id) } } },
-      populate: { volunteers: { select: ['id'] } },
+      populate: { volunteers: { select: ['id'] }, recurring_task: { select: ['id'] } },
     });
 
-    return this.dedupeByDocumentId(tasks);
+    return this.dedupeByDocumentId(tasks.filter((t) => !this.isRecurringInstance(t)));
+  },
+
+  /**
+   * A task spun up from a recurring task is the routine, and the routine is
+   * already on the sheet as the every-volunteer-day checklist. Printing both
+   * says the same work twice, and the generated copies pile up daily, so they
+   * are left off entirely.
+   *
+   * `cron-helper` sets `recurring_task` on everything it generates, so the
+   * relation is the whole test.
+   */
+  isRecurringInstance(task) {
+    const rel = task?.recurring_task;
+    if (!rel) return false;
+    return typeof rel === 'object' ? rel.id != null : true;
   },
 
   /**
@@ -227,12 +242,13 @@ module.exports = ({ strapi }) => ({
 
     const tasks = await strapi.db.query('api::garden-task.garden-task').findMany({
       where: { garden: { id: { $in: gardenRows.map((r) => r.id) } } },
-      populate: { volunteers: { select: ['id'] } },
+      populate: { volunteers: { select: ['id'] }, recurring_task: { select: ['id'] } },
     });
 
     const done = ['FINISHED', 'ABANDONED', 'SKIPPED'];
     return this.dedupeByDocumentId(
       tasks.filter((t) => !done.includes(String(t.status || '').toUpperCase()))
+        .filter((t) => !this.isRecurringInstance(t))
     );
   },
 
