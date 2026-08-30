@@ -122,9 +122,12 @@ module.exports = ({ strapi }) => ({
     });
 
     const tasks = await strapi.db.query('api::garden-task.garden-task').findMany({
-      where: { volunteer_day: { id: { $in: eventRows.map((r) => r.id) } } },
-      populate: { volunteers: { select: ['id'] } },
-    });
+          where: {
+            volunteer_day: { id: { $in: eventRows.map((r) => r.id) } },
+            recurring_task: { $null: true },
+          },
+          populate: { volunteers: { select: ['id'] } },
+        });
 
     return this.dedupeByDocumentId(tasks);
   },
@@ -226,9 +229,12 @@ module.exports = ({ strapi }) => ({
     });
 
     const tasks = await strapi.db.query('api::garden-task.garden-task').findMany({
-      where: { garden: { id: { $in: gardenRows.map((r) => r.id) } } },
-      populate: { volunteers: { select: ['id'] } },
-    });
+          where: {
+            garden: { id: { $in: gardenRows.map((r) => r.id) } },
+            recurring_task: { $null: true },
+          },
+          populate: { volunteers: { select: ['id'] } },
+        });
 
     const done = ['FINISHED', 'ABANDONED', 'SKIPPED'];
     return this.dedupeByDocumentId(
