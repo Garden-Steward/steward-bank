@@ -122,9 +122,12 @@ module.exports = ({ strapi }) => ({
     });
 
     const tasks = await strapi.db.query('api::garden-task.garden-task').findMany({
-      where: { volunteer_day: { id: { $in: eventRows.map((r) => r.id) } } },
-      populate: { volunteers: { select: ['id'] }, recurring_task: { select: ['id'] } },
-    });
+          where: {
+            volunteer_day: { id: { $in: eventRows.map((r) => r.id) } },
+            recurring_task: { $null: true },
+          },
+          populate: { volunteers: { select: ['id'] }, recurring_task: { select: ['id'] } },
+        });
 
     return this.dedupeByDocumentId(tasks.filter((t) => !this.isRecurringInstance(t)));
   },
@@ -241,9 +244,12 @@ module.exports = ({ strapi }) => ({
     });
 
     const tasks = await strapi.db.query('api::garden-task.garden-task').findMany({
-      where: { garden: { id: { $in: gardenRows.map((r) => r.id) } } },
-      populate: { volunteers: { select: ['id'] }, recurring_task: { select: ['id'] } },
-    });
+          where: {
+            garden: { id: { $in: gardenRows.map((r) => r.id) } },
+            recurring_task: { $null: true },
+          },
+          populate: { volunteers: { select: ['id'] }, recurring_task: { select: ['id'] } },
+        });
 
     const done = ['FINISHED', 'ABANDONED', 'SKIPPED'];
     return this.dedupeByDocumentId(
@@ -290,9 +296,12 @@ module.exports = ({ strapi }) => ({
   async buildPayload({ header, rawTasks, anchor, printPath, excludeKeys, extras, hiddenTaskIds }) {
     const sortedTasks = this.sortTasks(rawTasks);
 
+    // Resolved from the sheet's garden, so a manager editing their garden's
+    // checklist changes what that garden prints and nothing else. Falls back to
+    // the legacy org-wide list, then the built-in defaults.
     const { items: standing, source: standingSource } = await strapi
       .service(STANDING_UID)
-      .getList();
+      .getListForGarden(header.garden);
 
     // PII (D2b): volunteers is populated solely to count it and is never
     // spread into the payload. Every field is built explicitly — no raw

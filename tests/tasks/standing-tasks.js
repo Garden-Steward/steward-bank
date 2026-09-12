@@ -341,3 +341,124 @@ describe('Standing task write endpoint (PUT /api/day-sheet-standing-tasks/list)'
     expect(res.body.data.standing.map((i) => i.title)).toEqual(['Bare body item']);
   });
 });
+
+/**
+ * Per-garden standing lists. The interesting boundary is that managing SOME
+ * garden is no longer enough to write a given garden's list — the old global
+ * endpoint accepted that, and this one must not, or one garden's manager could
+ * rewrite another's checklist.
+ */
+describe('Per-garden standing tasks (/api/gardens/:slug/standing-tasks)', function () {
+  const request = require('supertest');
+  const { createUser } = require('../user/factory');
+
+  const ACTION = 'api::garden.garden.replaceStandingTasks';
+
+  const grant = async (roleId) => {
+    const existing = await strapi.db.query('plugin::users-permissions.permission').findOne({
+      where: { action: ACTION, role: { id: roleId } },
+    });
+    if (!existing) {
+      await strapi.db.query('plugin::users-permissions.permission').create({
+        data: { action: ACTION, role: roleId },
+      });
+    }
+  };
+
+  let ownGarden;
+  let otherGarden;
+  let ownManagerJwt;
+  let otherManagerJwt;
+
+  const put = (slug, jwt, body) => {
+    const r = request(strapi.server.httpServer).put(`/api/gardens/${slug}/standing-tasks`);
+    if (jwt) r.set('Authorization', `Bearer ${jwt}`);
+    return r.send(body);
+  };
+  const get = (slug) => request(strapi.server.httpServer).get(`/api/gardens/${slug}/standing-tasks`);
+
+  beforeAll(async () => {
+    const authRole = await strapi.db.query('plugin::users-permissions.role').findOne({ where: { type: 'authenticated' } });
+    await grant(authRole.id);
+
+    const ownManager = await createUser({ username: 'pg-own', email: 'pg-own@example.com' });
+    const otherManager = await createUser({ username: 'pg-other', email: 'pg-other@example.com' });
+
+    ownGarden = await strapi.db.query('api::garden.garden').create({
+      data: { title: 'Per Garden One', slug: 'per-garden-one', managers: [ownManager.id] },
+    });
+    otherGarden = await strapi.db.query('api::garden.garden').create({
+      data: { title: 'Per Garden Two', slug: 'per-garden-two', managers: [otherManager.id] },
+    });
+
+    ownManagerJwt = strapi.plugins['users-permissions'].services.jwt.issue({ id: ownManager.id });
+    otherManagerJwt = strapi.plugins['users-permissions'].services.jwt.issue({ id: otherManager.id });
+  });
+
+  it('a manager of THIS garden can save its list', async () => {
+    const res = await put('per-garden-one', ownManagerJwt, {
+      data: { standing_tasks: [{ title: 'Open the gate', note: null }, { title: 'Check the pump', note: 'By the shed' }] },
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.data.standing.map((i) => i.title)).toEqual(['Open the gate', 'Check the pump']);
+    expect(res.body.data.meta.source).toBe('garden');
+  });
+
+  it('a manager of a DIFFERENT garden is refused, and the list is untouched', async () => {
+    const before = await get('per-garden-one');
+    const res = await put('per-garden-one', otherManagerJwt, {
+      data: { standing_tasks: [{ title: 'Should never land', note: null }] },
+    });
+    expect(res.status).toBe(403);
+    expect(res.body.error.message).toBe('Only managers of this garden can edit its standing task list');
+
+    const after = await get('per-garden-one');
+    expect(after.body.data.standing).toEqual(before.body.data.standing);
+  });
+
+  it('an anonymous write is refused', async () => {
+    const res = await put('per-garden-one', null, { data: { standing_tasks: [] } });
+    expect([401, 403]).toContain(res.status);
+  });
+
+  it('each garden keeps its own list', async () => {
+    await put('per-garden-two', otherManagerJwt, {
+      data: { standing_tasks: [{ title: 'Two only task', note: null }] },
+    });
+    const one = await get('per-garden-one');
+    const two = await get('per-garden-two');
+    expect(one.body.data.standing.map((i) => i.title)).toEqual(['Open the gate', 'Check the pump']);
+    expect(two.body.data.standing.map((i) => i.title)).toEqual(['Two only task']);
+  });
+
+  it("the garden's own sheet prints its own list", async () => {
+    const html = await request(strapi.server.httpServer).get('/api/gardens/per-garden-two/day-sheet.html');
+    expect(html.status).toBe(200);
+    expect(html.text).toContain('Two only task');
+    expect(html.text).not.toContain('Open the gate');
+  });
+
+  it('a garden that has never saved falls back, so nothing changes for it', async () => {
+    const fresh = await strapi.db.query('api::garden.garden').create({
+      data: { title: 'Never Edited', slug: 'never-edited-garden' },
+    });
+    expect(fresh.slug).toBe('never-edited-garden');
+    const res = await get('never-edited-garden');
+    expect(res.status).toBe(200);
+    expect(res.body.data.standing.length).toBeGreaterThan(0);
+    expect(res.body.data.meta.source).not.toBe('garden');
+  });
+
+  it('validation is refused without echoing what was submitted', async () => {
+    const res = await put('per-garden-one', ownManagerJwt, {
+      data: { standing_tasks: [{ title: 'x'.repeat(121), note: null }] },
+    });
+    expect(res.status).toBe(400);
+    expect(JSON.stringify(res.body)).not.toContain('x'.repeat(121));
+  });
+
+  it('an unknown garden 404s', async () => {
+    const res = await get('no-such-garden-at-all');
+    expect(res.status).toBe(404);
+  });
+});

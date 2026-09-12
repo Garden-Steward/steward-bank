@@ -21,6 +21,20 @@ module.exports = {
       path: '/gardens/:slug/day-sheet.html',
       handler: 'garden.getDaySheetHtml',
       config: { auth: false },
+    },
+    { // This garden's every-volunteer-day checklist, for the editor to load.
+      // Unauthenticated like the sheet it feeds, and for the same reason.
+      method: 'GET',
+      path: '/gardens/:slug/standing-tasks',
+      handler: 'garden.getStandingTasks',
+      config: { auth: false },
+    },
+    { // Replace this garden's checklist. Authorization is in the controller,
+      // not here: users-permissions grants are role-wide, so this route only
+      // gets a logged-in request as far as the manager check.
+      method: 'PUT',
+      path: '/gardens/:slug/standing-tasks',
+      handler: 'garden.replaceStandingTasks',
     }
   ]
 }
