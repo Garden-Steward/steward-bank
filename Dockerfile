@@ -1,4 +1,8 @@
-FROM debian:bullseye as builder
+# Debian 12 (bookworm). Do not move back to bullseye: deb.debian.org stopped
+# serving its package pool, so `apt install` 404s on base packages (libc6-dev,
+# curl, gnupg) even though the index still resolves. That broke every deploy
+# from 2026-09-12 with no change to this file.
+FROM debian:bookworm as builder
 
 ARG NODE_VERSION=20.18.1
 ARG YARN_VERSION=1.22.22
@@ -23,7 +27,7 @@ ENV NODE_ENV production
 COPY . .
 
 RUN yarn install && yarn run build
-FROM debian:bullseye
+FROM debian:bookworm
 
 LABEL fly_launch_runtime="nodejs"
 
