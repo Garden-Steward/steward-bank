@@ -169,6 +169,9 @@ describe('reminder filters treat a NULL boolean as not-canceled', function () {
     const garden = await strapi.db.query('api::garden.garden').findOne({
       where: { sms_slug: SLUG, publishedAt: { $notNull: true } },
     });
+    if (!garden) {
+      throw new Error(`reminders test setup: no published garden for slug ${SLUG}`);
+    }
     gardenId = garden.id;
 
     // A recurring instance written before `canceled` existed leaves the column
@@ -219,7 +222,10 @@ describe('reminder filters treat a NULL boolean as not-canceled', function () {
   });
 
   it('texts volunteers for the NULL-column event on the daily run', async function () {
+    // The first describe leaves a 7-day-out event for this same garden and
+    // phone number, so `toContain(PHONE)` would pass whether or not the NULL
+    // event was found. Count the sends: 1 for the 7-day event, 1 for this one.
     const sent = await Helper.handleVolunteerReminders();
-    expect(sent).toContain(PHONE);
+    expect(sent.filter(p => p === PHONE)).toHaveLength(2);
   });
 });
