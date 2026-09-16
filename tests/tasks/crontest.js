@@ -49,7 +49,7 @@ describe('cronHelper', function() {
     const mockStartedTasks = [
       {
         id: 1,
-        status: 'STARTED',
+        task_status: 'STARTED',
         complete_once: true,
         title: 'Water Task 1',
         type: 'Water',

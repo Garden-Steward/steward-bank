@@ -145,7 +145,7 @@ describe('garden task images (Strapi v5 draft/published split)', function () {
     await strapi.db.query('api::garden-task.garden-task').create({
       data: {
         title: 'Trim the Passionflower',
-        status: 'INITIALIZED',
+        task_status: 'INITIALIZED',
         type: 'Weeding',
         recurring_task: draftRecTask.id,
         garden: draftGarden.id,
@@ -166,7 +166,7 @@ describe('garden task images (Strapi v5 draft/published split)', function () {
     const legacy = await strapi.db.query('api::garden-task.garden-task').create({
       data: {
         title: 'Trim the Passionflower',
-        status: 'INITIALIZED',
+        task_status: 'INITIALIZED',
         type: 'Weeding',
         recurring_task: draftRecTask.id,
         garden: draftGarden.id,
@@ -204,7 +204,7 @@ describe('garden task images (Strapi v5 draft/published split)', function () {
     const task = await strapi.db.query('api::garden-task.garden-task').create({
       data: {
         title: 'Trim the Passionflower',
-        status: 'INITIALIZED',
+        task_status: 'INITIALIZED',
         type: 'Weeding',
         recurring_task: publishedRecTask.id,
         garden: publishedGarden.id,

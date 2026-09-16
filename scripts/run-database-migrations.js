@@ -12,10 +12,14 @@
 const { createStrapi } = require('@strapi/strapi');
 const seedContentPermissionsInternal = require('./seed-content-permissions-internal');
 const preMigrateV5Columns = require('./pre-migrate-v5-columns');
+const renameReservedStatusColumns = require('./rename-reserved-status-columns');
 
 async function runMigrations() {
   console.log('Running pre-v5 column migration...');
   await preMigrateV5Columns();
+
+  console.log('Renaming reserved `status` columns...');
+  await renameReservedStatusColumns();
 
   console.log('Starting Strapi to run database migrations...');
   let strapi;

@@ -25,8 +25,8 @@ describe('getTask', function() {
 
     // Clean up any other tasks
     await strapi.db.query('api::garden-task.garden-task').deleteMany({
-      where: { 
-        status: {
+      where: {
+        task_status: {
           $in: ['INITIALIZED', 'STARTED', 'PENDING']
         }
       }
@@ -76,7 +76,7 @@ describe('getTask', function() {
     await strapi.db.query('api::garden-task.garden-task').create({
       data: {
         title: 'SMS Test Task',
-        status: 'INITIALIZED',
+        task_status: 'INITIALIZED',
         type: 'General',
         recurring_task: recurringTask.id,
         garden: userMock.user.activeGarden
@@ -138,7 +138,7 @@ describe('skipTask', function() {
     await strapi.db.query('api::garden-task.garden-task').create({
       data: {
         title: 'SMS Water Task',
-        status: 'INITIALIZED',
+        task_status: 'INITIALIZED',
         type: 'Water',
         volunteers: [userMock.user.id],
         recurring_task: recurringTask.id,

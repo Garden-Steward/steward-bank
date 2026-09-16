@@ -74,16 +74,16 @@ taskHelper.rsvpTask = async (taskId, data) => {
   }
 
   // Update status to STARTED if not already started/finished
-  const needsStatusUpdate = ['INITIALIZED', 'PENDING', 'INTERESTED'].includes(task.status);
+  const needsStatusUpdate = ['INITIALIZED', 'PENDING', 'INTERESTED'].includes(task.task_status);
   if (needsStatusUpdate) {
     // Prepare update data
     const updateData = {
-      status: 'STARTED',
+      task_status: 'STARTED',
       started_at: new Date()
     };
 
     // If status is changing from INITIALIZED, publish the task
-    if (task.status === 'INITIALIZED') {
+    if (task.task_status === 'INITIALIZED') {
       updateData.publishedAt = new Date();
     }
 
@@ -92,7 +92,7 @@ taskHelper.rsvpTask = async (taskId, data) => {
       data: updateData
     });
 
-    task.status = 'STARTED';
+    task.task_status = 'STARTED';
     task.started_at = updateData.started_at;
   }
 

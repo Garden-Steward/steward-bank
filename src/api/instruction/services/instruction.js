@@ -42,7 +42,7 @@ module.exports = createCoreService('api::instruction.instruction', ({ strapi }) 
    */
   async managePendingTask(user, instruction, task) {
     console.log("sending instruction: ", instruction.slug, user.id);
-    if (task.status == 'INITIALIZED') {
+    if (task.task_status == 'INITIALIZED') {
       try {
         await strapi.service('api::garden-task.garden-task').updateTaskStatus(task, 'PENDING');
       } catch (error) {

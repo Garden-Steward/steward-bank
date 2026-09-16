@@ -22,10 +22,10 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
     });
 
     // Prepare update data
-    const updateData = { status };
+    const updateData = { task_status: status };
 
     // If status is changing from INITIALIZED to anything else (except PENDING), publish the task
-    if (currentTask.status === 'INITIALIZED' && status !== 'INITIALIZED' && status !== 'PENDING') {
+    if (currentTask.task_status === 'INITIALIZED' && status !== 'INITIALIZED' && status !== 'PENDING') {
       updateData.publishedAt = new Date();
     }
 
@@ -74,7 +74,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
     
     // Find first task matching priority order
     for (const status of statusOrder) {
-      const filteredTask = tasks.find(t => t.status === status && t.complete_once === true);
+      const filteredTask = tasks.find(t => t.task_status === status && t.complete_once === true);
       if (filteredTask) {
         return filteredTask;
       }
@@ -86,7 +86,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
     const tasks = await strapi.db.query('api::garden-task.garden-task').findMany({
       where: {
         volunteers: user.id,
-        status: {
+        task_status: {
           $in: statusArr
         }
       },
@@ -99,7 +99,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
   async getTasksByStatusAndRecurringTask(statusArr, recurringTask) {
     const tasks = await strapi.db.query('api::garden-task.garden-task').findMany({
       where: {
-        status: { $in: statusArr },
+        task_status: { $in: statusArr },
         recurring_task: recurringTask.id
       }
     });
@@ -137,7 +137,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
     const tasks = await strapi.db.query('api::garden-task.garden-task').findMany({
       where: {
         garden: user.activeGarden?.id,
-        status: {
+        task_status: {
           $in: statusArr
         }
       },
@@ -164,7 +164,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
         volunteers: {
           $null: true
         },
-        status: {
+        task_status: {
           $in: statusArr
         }
       },
@@ -181,12 +181,12 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
     
     // Prepare update data
     const updateData = {
-      status,
+      task_status: status,
       volunteers: user
     };
-    
+
     // If status is changing from INITIALIZED to anything else (except PENDING), publish the task
-    if (currentTask.status === 'INITIALIZED' && status !== 'INITIALIZED' && status !== 'PENDING') {
+    if (currentTask.task_status === 'INITIALIZED' && status !== 'INITIALIZED' && status !== 'PENDING') {
       updateData.publishedAt = new Date();
     }
     
@@ -215,7 +215,7 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
     const recTaskIds = await documentRowIds('api::recurring-task.recurring-task', recTask);
 
     const where = {
-      status:{$notIn: ['FINISHED', 'SKIPPED', 'ABANDONED']}, //$notIn: ['Hello', 'Hola', 'Bonjour']
+      task_status:{$notIn: ['FINISHED', 'SKIPPED', 'ABANDONED']}, //$notIn: ['Hello', 'Hola', 'Bonjour']
       recurring_task: recTaskIds.length ? { id: { $in: recTaskIds } } : recTask.id,
     };
 

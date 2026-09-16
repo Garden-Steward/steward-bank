@@ -49,7 +49,7 @@ const setupTask = async (addInst) => {
     data: {
       title: 'Water the Garden',
       type: 'Water',
-      status: 'INITIALIZED',
+      task_status: 'INITIALIZED',
       user: 1,
       recurring_task: recurringTask.id
     },

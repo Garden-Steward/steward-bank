@@ -24,7 +24,7 @@ module.exports = createCoreController('api::garden-task.garden-task', ({ strapi 
     const tasks = await strapi.db.query('api::garden-task.garden-task').findMany({
       where: {
         volunteers: user.id,
-        status: { $in: ['INITIALIZED', 'STARTED', 'PENDING'] }
+        task_status: { $in: ['INITIALIZED', 'STARTED', 'PENDING'] }
       },
       populate: ['garden', 'primary_image', 'volunteers', 'instruction', 'recurring_task']
     });

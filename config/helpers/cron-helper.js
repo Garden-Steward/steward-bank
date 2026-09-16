@@ -21,7 +21,7 @@ Helper.handleInitialTasks = async() => {
   
   let initTasks = await strapi.db.query('api::garden-task.garden-task').findMany({
     where: {
-      status: {$in:['INITIALIZED','PENDING']},
+      task_status: {$in:['INITIALIZED','PENDING']},
       volunteers: { $not:null },
     },
     populate: ["garden", "volunteers", "instruction", "recurring_task", "recurring_task.instruction", "volunteers.instructions"]
@@ -31,7 +31,7 @@ Helper.handleInitialTasks = async() => {
 
 
   for (let initTask of initTasks) {
-    console.log(`Processing task ${initTask.id} (${initTask.title}) - Status: ${initTask.status}, Recurring Task: ${initTask.recurring_task?.id || 'none'}`);
+    console.log(`Processing task ${initTask.id} (${initTask.title}) - Status: ${initTask.task_status}, Recurring Task: ${initTask.recurring_task?.id || 'none'}`);
     let abandoned = await Helper.validateAbandon(initTask);
     if (abandoned) {
           continue;
@@ -49,7 +49,7 @@ Helper.handleInitialTasks = async() => {
       const gardenId = initTask.garden?.id || initTask.garden;
       const finishedTask = await strapi.db.query('api::garden-task.garden-task').findOne({
         where: {
-          status: 'FINISHED',
+          task_status: 'FINISHED',
           recurring_task: initTask.recurring_task.id,
           garden: gardenId,
           completed_at: { $notNull: true }
@@ -161,7 +161,7 @@ Helper.sendingWindow = (task) => {
   console.log("hour: ", hour)
 
   // If the task has been started in the last 4 hours, don't send
-  if (task.status === 'STARTED' && Date.parse(task.started_at) > Date.parse(fourAgo)) {
+  if (task.task_status === 'STARTED' && Date.parse(task.started_at) > Date.parse(fourAgo)) {
     console.log('%s recently updated! no SMS sending for now.', task.id, hour);
     // if the hour is past 19 we should send - or else they won't be reminded until too late
     if (hour > 19) {
@@ -311,12 +311,12 @@ Helper.realignGeneratedTask = async(task, recTask) => {
 };
 
 Helper.buildSchedulerTask = async(curTask, recTask, scheduledUser) => {
-    console.log(`[buildSchedulerTask] Processing recurring task ${recTask.id} (${recTask.title}), curTask: ${curTask?.id || 'none'}, status: ${curTask?.status || 'N/A'}`);
+    console.log(`[buildSchedulerTask] Processing recurring task ${recTask.id} (${recTask.title}), curTask: ${curTask?.id || 'none'}, status: ${curTask?.task_status || 'N/A'}`);
     // ASSIGN && SKIP IF ALREADY INITIALIZED
     if (curTask && curTask.recurring_task) {
       // FIX: Check if this task is FINISHED - if so, we should create a new one
-      if (curTask.status === 'FINISHED' || curTask.status === 'SKIPPED' || curTask.status === 'ABANDONED') {
-        console.log(`[buildSchedulerTask] Task ${curTask.id} is ${curTask.status}, creating new task for recurring task ${recTask.id}`);
+      if (curTask.task_status === 'FINISHED' || curTask.task_status === 'SKIPPED' || curTask.task_status === 'ABANDONED') {
+        console.log(`[buildSchedulerTask] Task ${curTask.id} is ${curTask.task_status}, creating new task for recurring task ${recTask.id}`);
         // Fall through to create new task
       } else {
         // Task exists and is not finished, just assign volunteer if needed
@@ -354,7 +354,7 @@ Helper.buildSchedulerTask = async(curTask, recTask, scheduledUser) => {
     let newTask = await strapi.db.query('api::garden-task.garden-task').create({
       data: {
         title:recTask.title,
-        status:'INITIALIZED',
+        task_status:'INITIALIZED',
         garden:recTask.garden,
         overview:recTask.overview,
         recurring_task:recTask.id,
@@ -432,7 +432,7 @@ Helper.getScheduledVolunteer = async(recTask) => {
 
 Helper.updateTask = async(task, status) => {
   return strapi.db.query('api::garden-task.garden-task').update({
-    data:{ status },
+    data:{ task_status: status },
     where: {id: task.id}
   });
 };
@@ -459,7 +459,7 @@ Helper.handleStartedTasks = async() => {
   let started = await strapi.db.query('api::garden-task.garden-task')
   .findMany({
     where: {
-      status:{$eq:'STARTED'},
+      task_status:{$eq:'STARTED'},
       volunteers: {$not:null},
       complete_once: {$ne:false}
     },

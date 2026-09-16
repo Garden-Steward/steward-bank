@@ -141,7 +141,7 @@ describe('PROBE: contract shape, field by field', () => {
     await resetStanding();
     const ev = await mkEvent({ title: 'Shape Event' });
     await mkTask(ev, {
-      title: 'Shape task', overview: 'o', max_volunteers: 3, status: 'INITIALIZED',
+      title: 'Shape task', overview: 'o', max_volunteers: 3, task_status: 'INITIALIZED',
     });
     const res = await get(`/api/volunteer-days/by-id/${ev.id}/day-sheet?exclude=aaaaaaaa&extra=x&hideTasks=7`);
     expect(res.status).toBe(200);
@@ -152,7 +152,7 @@ describe('PROBE: contract shape, field by field', () => {
       ['canceled', 'documentId', 'garden', 'id', 'startDatetime', 'title'].sort());
     expect(Object.keys(d.event.garden).sort()).toEqual(['documentId', 'id', 'slug', 'title'].sort());
     expect(Object.keys(d.tasks[0]).sort()).toEqual(
-      ['documentId', 'id', 'max_volunteers', 'overview', 'priority', 'status', 'title', 'type', 'volunteer_count'].sort());
+      ['documentId', 'id', 'max_volunteers', 'overview', 'priority', 'task_status', 'title', 'type', 'volunteer_count'].sort());
     expect(Object.keys(d.meta).sort()).toEqual(
       ['anchor', 'generatedAt', 'printPath', 'standingCount', 'standingSource', 'taskCount'].sort());
     expect(Object.keys(d.standing[0]).sort()).toEqual(['key', 'note', 'title'].sort());
@@ -495,10 +495,10 @@ describe('PROBE: garden-anchored day sheet', () => {
   });
 
   it('G2: finished, abandoned and skipped work is not printed', async () => {
-    await mkGardenTask({ title: 'GDone', status: 'FINISHED' });
-    await mkGardenTask({ title: 'GGone', status: 'ABANDONED' });
-    await mkGardenTask({ title: 'GSkip', status: 'SKIPPED' });
-    await mkGardenTask({ title: 'GOpen', status: 'PENDING' });
+    await mkGardenTask({ title: 'GDone', task_status: 'FINISHED' });
+    await mkGardenTask({ title: 'GGone', task_status: 'ABANDONED' });
+    await mkGardenTask({ title: 'GSkip', task_status: 'SKIPPED' });
+    await mkGardenTask({ title: 'GOpen', task_status: 'PENDING' });
 
     const res = await get('/api/gardens/slug-probe-garden/day-sheet.html');
     expect(res.status).toBe(200);

@@ -100,7 +100,7 @@
       "type": "boolean",
       "default": false
     },
-    "status": {
+    "review_status": {
       "type": "enumeration",
       "enum": [
         "CREATED",

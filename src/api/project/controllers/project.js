@@ -6,16 +6,27 @@
 
 const { createCoreController } = require('@strapi/strapi').factories;
 
+// Review-workflow states. `review_status` (not `status`) because Strapi v5
+// reserves `status` for the draft/publish selector.
 const PUBLIC_STATUSES = ['APPROVED', 'COMPLETED'];
+const REVIEW_STATUSES = ['CREATED', 'APPROVED', 'REJECTED', 'COMPLETED', 'ARCHIVED'];
 
-// Filter that limits non-admins to public projects plus ones they created or manage.
+// Non-admins see: publicly-visible projects (APPROVED/COMPLETED), projects they
+// created or manage directly, and — so the garden's manage view can list
+// pending pitches for approval — every project on a garden they manage,
+// regardless of review_status.
 function visibilityFilter(user) {
-  const publicOnly = { status: { $in: PUBLIC_STATUSES } };
+  const publicOnly = { review_status: { $in: PUBLIC_STATUSES } };
   if (!user) {
     return publicOnly;
   }
   return {
-    $or: [publicOnly, { created_by: user.id }, { managers: user.id }],
+    $or: [
+      publicOnly,
+      { created_by: user.id },
+      { managers: user.id },
+      { garden: { managers: user.id } },
+    ],
   };
 }
 
@@ -23,7 +34,56 @@ function isAdmin(user) {
   return user?.role?.type === 'administrator';
 }
 
+// Pull a numeric garden id out of whatever shape the write payload used
+// (104, "104", { id: 104 }, { connect: [{ id: 104 }] }, { connect: [104] }).
+function extractGardenId(garden) {
+  if (garden == null || garden === '') {
+    return null;
+  }
+  if (typeof garden === 'object') {
+    const first = Array.isArray(garden.connect) ? garden.connect[0] : undefined;
+    return (
+      garden.id ??
+      (first && typeof first === 'object' ? first.id : first) ??
+      null
+    );
+  }
+  return garden;
+}
+
 module.exports = createCoreController('api::project.project', ({ strapi }) => ({
+  // The public create route is what both the "New project" and "Pitch a project"
+  // modals actually call. Core create leaves created_by / managers empty, so the
+  // brand-new project (status CREATED, which is hidden from the public find)
+  // becomes invisible to the very person who made it and to the garden's
+  // managers. Stamp the creator and inherit the garden's managers here so it
+  // still shows up in `find` and `/projects/user`.
+  async create(ctx) {
+    const user = ctx.state.user;
+    const data = ctx.request.body?.data;
+    if (!user || !data) {
+      return await super.create(ctx);
+    }
+
+    const gardenId = extractGardenId(data.garden);
+
+    data.created_by = user.id;
+
+    if (data.managers == null) {
+      if (gardenId) {
+        const garden = await strapi.db.query('api::garden.garden').findOne({
+          where: { id: gardenId },
+          populate: ['managers'],
+        });
+        data.managers = (garden?.managers || []).map((m) => m.id);
+      } else {
+        data.managers = [user.id];
+      }
+    }
+
+    return await super.create(ctx);
+  },
+
   async find(ctx) {
     const user = ctx.state.user;
     if (!isAdmin(user)) {
@@ -44,8 +104,9 @@ module.exports = createCoreController('api::project.project', ({ strapi }) => ({
       return response;
     }
 
-    const status = entity.attributes?.status;
-    if (PUBLIC_STATUSES.includes(status)) {
+    // v5 responses are flat; older `entity.attributes` kept as a fallback.
+    const reviewStatus = entity.review_status ?? entity.attributes?.review_status;
+    if (PUBLIC_STATUSES.includes(reviewStatus)) {
       return response;
     }
 
@@ -153,7 +214,7 @@ module.exports = createCoreController('api::project.project', ({ strapi }) => ({
     const data = {
       title,
       short_description,
-      status: 'CREATED',
+      review_status: 'CREATED',
       created_by: user.id,
       managers,
       garden: gardenId,
@@ -246,6 +307,56 @@ module.exports = createCoreController('api::project.project', ({ strapi }) => ({
       where: { id },
       data: { managers: managerIds },
       populate: ['managers'],
+    });
+
+    return this.transformResponse(updated);
+  },
+
+  // Move a project through the review workflow (approve / reject / etc).
+  // Allowed for an admin, a manager of the project's garden, or a manager /
+  // creator of a garden-less project.
+  async review(ctx) {
+    const user = ctx.state.user;
+    if (!user) {
+      return ctx.unauthorized('You must be logged in');
+    }
+
+    const { id } = ctx.params;
+    const body = ctx.request.body?.data || ctx.request.body || {};
+    const nextStatus = body.review_status;
+    if (!REVIEW_STATUSES.includes(nextStatus)) {
+      return ctx.badRequest(
+        `review_status must be one of: ${REVIEW_STATUSES.join(', ')}`
+      );
+    }
+
+    const project = await strapi.db.query('api::project.project').findOne({
+      where: { id },
+      populate: {
+        created_by: true,
+        managers: true,
+        garden: { populate: ['managers'] },
+      },
+    });
+    if (!project) {
+      return ctx.notFound();
+    }
+
+    const managesGarden = (project.garden?.managers || []).some(
+      (m) => m.id === user.id
+    );
+    const managesProject = (project.managers || []).some((m) => m.id === user.id);
+    const isCreator = project.created_by?.id === user.id;
+    if (!isAdmin(user) && !managesGarden && !managesProject && !isCreator) {
+      return ctx.forbidden(
+        'Only a garden manager or an administrator can review this project'
+      );
+    }
+
+    const updated = await strapi.db.query('api::project.project').update({
+      where: { id },
+      data: { review_status: nextStatus },
+      populate: ['hero_image', 'featured_gallery', 'garden', 'managers', 'created_by'],
     });
 
     return this.transformResponse(updated);

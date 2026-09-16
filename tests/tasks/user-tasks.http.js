@@ -35,7 +35,7 @@ describe('GET /garden-tasks/user', () => {
     const t = await taskQuery().create({
       data: {
         title,
-        status,
+        task_status: status,
         type: 'Water',
         garden: garden.id,
         volunteers: [volunteer.id],

@@ -313,7 +313,7 @@ module.exports = ({ strapi }) => ({
       title: t.title,
       priority: ['High', 'Normal', 'Low'].includes(t.priority) ? t.priority : 'Normal',
       type: t.type ?? null,
-      status: t.status ?? null,
+      task_status: t.task_status ?? null,
       overview: t.overview ?? null,
       volunteer_count: Array.isArray(t.volunteers) ? t.volunteers.length : 0,
       max_volunteers: typeof t.max_volunteers === 'number' ? t.max_volunteers : null,

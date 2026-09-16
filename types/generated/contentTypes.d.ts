@@ -543,6 +543,35 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiDaySheetStandingTaskDaySheetStandingTask
+  extends Struct.SingleTypeSchema {
+  collectionName: 'day_sheet_standing_tasks';
+  info: {
+    displayName: 'Day Sheet Standing Tasks';
+    pluralName: 'day-sheet-standing-tasks';
+    singularName: 'day-sheet-standing-task';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::day-sheet-standing-task.day-sheet-standing-task'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    standing_tasks: Schema.Attribute.Component<'checklist.standing-task', true>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiGardenTaskGardenTask extends Struct.CollectionTypeSchema {
   collectionName: 'garden_tasks';
   info: {
@@ -577,6 +606,8 @@ export interface ApiGardenTaskGardenTask extends Struct.CollectionTypeSchema {
     primary_image: Schema.Attribute.Media<
       'images' | 'files' | 'videos' | 'audios'
     >;
+    priority: Schema.Attribute.Enumeration<['High', 'Normal', 'Low']> &
+      Schema.Attribute.DefaultTo<'Normal'>;
     publishedAt: Schema.Attribute.DateTime;
     recurring_task: Schema.Attribute.Relation<
       'oneToOne',
@@ -584,7 +615,7 @@ export interface ApiGardenTaskGardenTask extends Struct.CollectionTypeSchema {
     >;
     resources_section: Schema.Attribute.RichText;
     started_at: Schema.Attribute.DateTime;
-    status: Schema.Attribute.Enumeration<
+    task_status: Schema.Attribute.Enumeration<
       [
         'INITIALIZED',
         'PENDING',
@@ -672,6 +703,7 @@ export interface ApiGardenGarden extends Struct.CollectionTypeSchema {
     sms_slug: Schema.Attribute.String &
       Schema.Attribute.Required &
       Schema.Attribute.Unique;
+    standing_tasks: Schema.Attribute.Component<'checklist.standing-task', true>;
     title: Schema.Attribute.String & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -1017,17 +1049,17 @@ export interface ApiProjectProject extends Struct.CollectionTypeSchema {
       'manyToMany',
       'api::volunteer-day.volunteer-day'
     >;
+    review_status: Schema.Attribute.Enumeration<
+      ['CREATED', 'APPROVED', 'REJECTED', 'COMPLETED', 'ARCHIVED']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'CREATED'>;
     short_description: Schema.Attribute.Text &
       Schema.Attribute.Required &
       Schema.Attribute.SetMinMaxLength<{
         maxLength: 350;
       }>;
     slug: Schema.Attribute.String & Schema.Attribute.Unique;
-    status: Schema.Attribute.Enumeration<
-      ['CREATED', 'APPROVED', 'REJECTED', 'COMPLETED', 'ARCHIVED']
-    > &
-      Schema.Attribute.Required &
-      Schema.Attribute.DefaultTo<'CREATED'>;
     title: Schema.Attribute.String & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -2098,6 +2130,7 @@ declare module '@strapi/strapi' {
       'api::application.application': ApiApplicationApplication;
       'api::blog.blog': ApiBlogBlog;
       'api::category.category': ApiCategoryCategory;
+      'api::day-sheet-standing-task.day-sheet-standing-task': ApiDaySheetStandingTaskDaySheetStandingTask;
       'api::garden-task.garden-task': ApiGardenTaskGardenTask;
       'api::garden.garden': ApiGardenGarden;
       'api::instruction.instruction': ApiInstructionInstruction;

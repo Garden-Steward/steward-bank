@@ -60,7 +60,7 @@ describe('Yes Response on SmsHelper', () => {
       firstName: 'John',
       lastName: 'Doe'
     }
-    testTask.status = 'PENDING'
+    testTask.task_status = 'PENDING'
     testTask.volunteers = [user];
     patchService('api::garden-task.garden-task', 'getUserTasksByStatus', jest.fn().mockResolvedValue(
       [
