@@ -7,7 +7,10 @@ module.exports = ({ env }) => ({
     keys: env.array('APP_KEYS'),
   },
   cron: {
-    enabled: true,
+    // Strapi arms and starts crons during bootstrap, which runs inside
+    // strapi.load() - so any script that boots the app starts firing real jobs,
+    // SMS included. Scripts that only want to read set CRON_ENABLED=false.
+    enabled: env.bool('CRON_ENABLED', true),
     tasks: cronTasks,
   },
 });
