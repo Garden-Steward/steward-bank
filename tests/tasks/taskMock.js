@@ -3,7 +3,7 @@ module.exports = {
     id: 65,
     test: true,
     title: 'Water the garden',
-    status: 'STARTED',
+    task_status: 'STARTED',
     overview: 'hiii',
     started_at: '2024-06-16T21:00:00.307Z',
     completed_at: null,

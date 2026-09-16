@@ -67,7 +67,7 @@ describe('Garden Task Publishing', function() {
     gardenTask = await strapi.db.query('api::garden-task.garden-task').create({
       data: {
         title: 'Test Task',
-        status: 'INITIALIZED',
+        task_status: 'INITIALIZED',
         type: 'General',
         recurring_task: recurringTask.id,
         garden: garden.id,
@@ -80,7 +80,7 @@ describe('Garden Task Publishing', function() {
     it('should publish task when status changes from INITIALIZED to STARTED', async function() {
       const updatedTask = await strapi.service('api::garden-task.garden-task').updateTaskStatus(gardenTask, 'STARTED');
       
-      expect(updatedTask.status).toBe('STARTED');
+      expect(updatedTask.task_status).toBe('STARTED');
       expect(updatedTask.publishedAt).toBeDefined();
       expect(updatedTask.publishedAt).not.toBeNull();
     });
@@ -88,7 +88,7 @@ describe('Garden Task Publishing', function() {
     it('should publish task when status changes from INITIALIZED to FINISHED', async function() {
       const updatedTask = await strapi.service('api::garden-task.garden-task').updateTaskStatus(gardenTask, 'FINISHED');
       
-      expect(updatedTask.status).toBe('FINISHED');
+      expect(updatedTask.task_status).toBe('FINISHED');
       expect(updatedTask.publishedAt).toBeDefined();
       expect(updatedTask.publishedAt).not.toBeNull();
     });
@@ -96,7 +96,7 @@ describe('Garden Task Publishing', function() {
     it('should publish task when status changes from INITIALIZED to SKIPPED', async function() {
       const updatedTask = await strapi.service('api::garden-task.garden-task').updateTaskStatus(gardenTask, 'SKIPPED');
       
-      expect(updatedTask.status).toBe('SKIPPED');
+      expect(updatedTask.task_status).toBe('SKIPPED');
       expect(updatedTask.publishedAt).toBeDefined();
       expect(updatedTask.publishedAt).not.toBeNull();
     });
@@ -104,7 +104,7 @@ describe('Garden Task Publishing', function() {
     it('should publish task when status changes from INITIALIZED to ABANDONED', async function() {
       const updatedTask = await strapi.service('api::garden-task.garden-task').updateTaskStatus(gardenTask, 'ABANDONED');
       
-      expect(updatedTask.status).toBe('ABANDONED');
+      expect(updatedTask.task_status).toBe('ABANDONED');
       expect(updatedTask.publishedAt).toBeDefined();
       expect(updatedTask.publishedAt).not.toBeNull();
     });
@@ -112,7 +112,7 @@ describe('Garden Task Publishing', function() {
     it('should NOT publish task when status changes from INITIALIZED to PENDING', async function() {
       const updatedTask = await strapi.service('api::garden-task.garden-task').updateTaskStatus(gardenTask, 'PENDING');
       
-      expect(updatedTask.status).toBe('PENDING');
+      expect(updatedTask.task_status).toBe('PENDING');
       expect(updatedTask.publishedAt).toBeNull();
     });
 
@@ -128,7 +128,7 @@ describe('Garden Task Publishing', function() {
       // Update to FINISHED - publishedAt should remain the same
       const finishedTask = await strapi.service('api::garden-task.garden-task').updateTaskStatus(startedTask, 'FINISHED');
       
-      expect(finishedTask.status).toBe('FINISHED');
+      expect(finishedTask.task_status).toBe('FINISHED');
       // publishedAt should remain unchanged (not republished)
       expect(finishedTask.publishedAt).toEqual(originalPublishedAt);
     });
@@ -142,7 +142,7 @@ describe('Garden Task Publishing', function() {
         testUser.id
       );
       
-      expect(updatedTask.status).toBe('STARTED');
+      expect(updatedTask.task_status).toBe('STARTED');
       expect(updatedTask.publishedAt).toBeDefined();
       expect(updatedTask.publishedAt).not.toBeNull();
     });
@@ -154,7 +154,7 @@ describe('Garden Task Publishing', function() {
         testUser.id
       );
       
-      expect(updatedTask.status).toBe('PENDING');
+      expect(updatedTask.task_status).toBe('PENDING');
       expect(updatedTask.publishedAt).toBeNull();
     });
   });
@@ -194,7 +194,7 @@ describe('Garden Task Publishing', function() {
 
       // Check that the task was published
       const updatedTask = await strapi.db.query('api::garden-task.garden-task').findOne({ where: { id: gardenTask.id } });
-      expect(updatedTask.status).toBe('STARTED');
+      expect(updatedTask.task_status).toBe('STARTED');
       expect(updatedTask.publishedAt).toBeDefined();
       expect(updatedTask.publishedAt).not.toBeNull();
     });
@@ -217,7 +217,7 @@ describe('Garden Task Publishing', function() {
 
       // Check that the task was published
       const updatedTask = await strapi.db.query('api::garden-task.garden-task').findOne({ where: { id: gardenTask.id } });
-      expect(updatedTask.status).toBe('FINISHED');
+      expect(updatedTask.task_status).toBe('FINISHED');
       expect(updatedTask.publishedAt).toBeDefined();
       expect(updatedTask.publishedAt).not.toBeNull();
     });
@@ -244,7 +244,7 @@ describe('Garden Task Publishing', function() {
 
       // Check that publishedAt remains the same (not republished)
       const finishedTask = await strapi.db.query('api::garden-task.garden-task').findOne({ where: { id: gardenTask.id } });
-      expect(finishedTask.status).toBe('FINISHED');
+      expect(finishedTask.task_status).toBe('FINISHED');
       expect(finishedTask.publishedAt).toEqual(originalPublishedAt);
     });
   });

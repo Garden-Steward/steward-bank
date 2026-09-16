@@ -15,7 +15,7 @@
     "title": {
       "type": "string"
     },
-    "status": {
+    "task_status": {
       "type": "enumeration",
       "enum": [
         "INITIALIZED",

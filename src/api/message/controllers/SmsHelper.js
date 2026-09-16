@@ -50,7 +50,7 @@ SmsHelper.handleGardenTask = async(smsText, user, question) => {
     let origStatus = '';
     if (smsText === 'yes') {
       data = {
-        status: 'STARTED',
+        task_status: 'STARTED',
         started_at: new Date(new Date().getTime())
       }
       // origStatus = 'INITIALIZED'
@@ -67,9 +67,9 @@ SmsHelper.handleGardenTask = async(smsText, user, question) => {
 
     // The user has a task ready to be updated!
     if (gardenTask) {
-      if (gardenTask.status == 'INITIALIZED' || gardenTask.status == 'PENDING') {
+      if (gardenTask.task_status == 'INITIALIZED' || gardenTask.task_status == 'PENDING') {
         // If status is changing from INITIALIZED to anything else (except PENDING), publish the task
-        if (gardenTask.status === 'INITIALIZED' && data.status && data.status !== 'INITIALIZED' && data.status !== 'PENDING') {
+        if (gardenTask.task_status === 'INITIALIZED' && data.task_status && data.task_status !== 'INITIALIZED' && data.task_status !== 'PENDING') {
           data.publishedAt = new Date();
         }
         await strapi.db.query('api::garden-task.garden-task').update({
@@ -79,9 +79,9 @@ SmsHelper.handleGardenTask = async(smsText, user, question) => {
           }
         });
         return {body: 'That\'s great! Let me know you\'re DONE :)', type:'reply', task: gardenTask}
-      } else if (gardenTask.status == 'STARTED' && gardenTask.volunteers.some(v => v.id === user.id)) {
+      } else if (gardenTask.task_status == 'STARTED' && gardenTask.volunteers.some(v => v.id === user.id)) {
         return {body: 'Looks like you\'ve already started! Let me know with FINISHED once you\'re done :)', type:'reply', task: gardenTask}
-      } else if (gardenTask.status == 'STARTED') {
+      } else if (gardenTask.task_status == 'STARTED') {
         return {body: 'We\'ve added you to the group task! There may be others working on it right now. Let me know with FINISHED once you\'re done :)', type:'reply', task: gardenTask}
       } else {
         return {body: 'Unsure what to do with this task! :)', type:'reply', task: gardenTask}
@@ -327,19 +327,19 @@ SmsHelper.getHelp = async(user) => {
         volunteers: {
           phoneNumber: user.phoneNumber
         },
-        status:{$in:['INITIALIZED', 'PENDING', 'STARTED']}
+        task_status:{$in:['INITIALIZED', 'PENDING', 'STARTED']}
       }
     });
 
-    if (tasks.length == 1 && tasks[0].status == 'PENDING') {
+    if (tasks.length == 1 && tasks[0].task_status == 'PENDING') {
       let instructionUrl = strapi.service('api::instruction.instruction').getInstructionUrl(tasks[0].recurring_task.instruction, user);
       return `Hi ${user.firstName}. We are waiting on task ${tasks[0].title}. Please respond to the instruction: YES if you agree you can manage the task. NO will allow you to transfer the task to someone else. You will be resent this instruction each time until approval.\n\n ${instructionUrl}`;
     } else if (tasks.length == 1) {
-      return `Hi ${user.firstName}, you have the task of "${tasks[0].title}" it is in status: ${tasks[0].status}. YES if you can do the task. NO if want to transfer. SKIP if it isn't needed. `;
+      return `Hi ${user.firstName}, you have the task of "${tasks[0].title}" it is in status: ${tasks[0].task_status}. YES if you can do the task. NO if want to transfer. SKIP if it isn't needed. `;
     } else if (tasks.length) {
       let taskBody = '';
       for (const task of tasks) {
-        taskBody += `\n${task.title} - ${task.status}`;
+        taskBody += `\n${task.title} - ${task.task_status}`;
       }
       return `Hi ${user.firstName}, you have ${tasks.length} open tasks. ${taskBody} \n\nYES works for the INITIALIZED and PENDING tasks. NO if want to transfer. SKIP if it isn't needed. `;
     } else if (user.activeGarden) {
@@ -363,7 +363,7 @@ SmsHelper.waterSchedule = async(user) => {
   for (task of tasks) {
     const nameCopy = task.volunteers.map((v)=> {return `${v.firstName} ${v.lastName.charAt(0)}`}).join('& ');
     const dateReady = utcToZonedTime(new Date(task.updatedAt), 'America/Los_Angeles');
-    resp += `${dateReady.toDateString().slice(0,10)} by ${nameCopy}: ${task.status}\n`
+    resp += `${dateReady.toDateString().slice(0,10)} by ${nameCopy}: ${task.task_status}\n`
   }
   const recTasks = await strapi.service('api::recurring-task.recurring-task').getTypeRecurringTask(user.activeGarden, 'Water', 3);
   const weeklyTask = recTasks.find(task => task.scheduler_type === 'Weekly Shuffle');
@@ -422,7 +422,7 @@ SmsHelper.finishTask = async(user) => {
     // Users might respond FINISHED before the task is marked as STARTED
     let task = await gardenTaskService.findOne({
       where: {
-        status: {$in: ['STARTED', 'INITIALIZED', 'PENDING']},
+        task_status: {$in: ['STARTED', 'INITIALIZED', 'PENDING']},
         complete_once: {$eq: true},
         volunteers: {
           phoneNumber: user.phoneNumber
@@ -436,7 +436,7 @@ SmsHelper.finishTask = async(user) => {
     if (!task) {
       let startedGroupTask = await gardenTaskService.findOne({
         where: {
-          status: {$in: ['STARTED', 'INITIALIZED', 'PENDING']},
+          task_status: {$in: ['STARTED', 'INITIALIZED', 'PENDING']},
           complete_once: {$eq: false},
           started_at: {$gte: weekAgo},
           volunteers: {
@@ -458,12 +458,12 @@ SmsHelper.finishTask = async(user) => {
     if (task) {
       // Prepare update data
       const updateData = {
-        status: 'FINISHED',
+        task_status: 'FINISHED',
         completed_at: new Date(new Date().getTime())
       };
-      
+
       // If status is changing from INITIALIZED to anything else, publish the task
-      if (task.status === 'INITIALIZED') {
+      if (task.task_status === 'INITIALIZED') {
         updateData.publishedAt = new Date();
       }
       
@@ -480,7 +480,7 @@ SmsHelper.finishTask = async(user) => {
       if (task.recurring_task) {
         const duplicateTasks = await gardenTaskService.findMany({
           where: {
-            status: {$in: ['INITIALIZED', 'PENDING']},
+            task_status: {$in: ['INITIALIZED', 'PENDING']},
             recurring_task: task.recurring_task.id,
             garden: task.garden?.id || task.garden,
             id: {$ne: task.id}

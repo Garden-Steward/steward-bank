@@ -20,7 +20,11 @@ const DESIRED = {
   },
   authenticated: {
     'api::plant.plant': ['find', 'findOne', 'create', 'update', 'delete'],
-    'api::project.project': ['find', 'findOne', 'create', 'update', 'delete', 'findByGarden'],
+    'api::project.project': [
+      'find', 'findOne', 'create', 'update', 'delete',
+      'findByGarden', 'findUserProjects', 'pitch', 'toggleInterest',
+      'updateManagers', 'review',
+    ],
     'api::location-tracking.location-tracking': ['find', 'findOne', 'create', 'update', 'delete'],
     // This grant only lets an authenticated request reach the controller. The real
     // authorization (administrator or manager of >= 1 garden) lives in the controller

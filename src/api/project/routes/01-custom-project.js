@@ -25,5 +25,10 @@ module.exports = {
       path: '/projects/:id/managers',
       handler: 'project.updateManagers',
     },
+    {
+      method: 'PUT',
+      path: '/projects/:id/review',
+      handler: 'project.review',
+    },
   ],
 };

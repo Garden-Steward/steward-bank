@@ -1,5 +1,17 @@
 import type { Schema, Struct } from '@strapi/strapi';
 
+export interface ChecklistStandingTask extends Struct.ComponentSchema {
+  collectionName: 'components_checklist_standing_tasks';
+  info: {
+    description: 'One line on the every-workday checklist';
+    displayName: 'Standing Task';
+  };
+  attributes: {
+    note: Schema.Attribute.Text;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
+  };
+}
+
 export interface EducationCard extends Struct.ComponentSchema {
   collectionName: 'components_education_cards';
   info: {
@@ -117,6 +129,7 @@ export interface SeoSeoInformation extends Struct.ComponentSchema {
 declare module '@strapi/strapi' {
   export module Public {
     export interface ComponentSchemas {
+      'checklist.standing-task': ChecklistStandingTask;
       'education.card': EducationCard;
       'plants.benefits': PlantsBenefits;
       'plants.planting': PlantsPlanting;

@@ -11,7 +11,7 @@ primary_region = "sjc"
 swap_size_mb = 512
 
 [deploy]
-  release_command = "node scripts/pre-migrate-v5-columns.js"
+  release_command = "sh -c 'node scripts/pre-migrate-v5-columns.js && node scripts/rename-reserved-status-columns.js'"
 
 
 [env]
