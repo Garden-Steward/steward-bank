@@ -91,6 +91,22 @@ VdayHelper.buildTodayCopy = (vDay) => {
 VdayHelper.dedupeByDocument = (vDays) => dedupeByDocument(vDays);
 
 /**
+ * `canceled: {$ne: true}` looks safe but silently drops rows where the column
+ * is NULL: in SQL `NULL != true` is unknown, not true, so the row never matches.
+ * An event row written before these boolean columns existed - or by a code path
+ * that omits them - is invisible to the reminder cron, with no error and nothing
+ * in the logs.
+ *
+ * Match "not explicitly true" instead, so a NULL counts as not-canceled.
+ *
+ * @param {string} field
+ * @returns {obj} query-engine clause
+ */
+VdayHelper.notTrue = (field) => ({
+  $or: [{ [field]: { $ne: true } }, { [field]: { $null: true } }],
+});
+
+/**
  * 3-4 days in the future.
  * @returns arr of volunteer-days
  */
@@ -105,8 +121,7 @@ VdayHelper.getUpcomingVdays = async () => {
         $gt: toorecent
       },
       // publishedAt: {$ne: null},
-      disabled: {$ne: true},
-      canceled: {$ne: true}
+      $and: [VdayHelper.notTrue('disabled'), VdayHelper.notTrue('canceled')]
     },
     populate: ['garden', 'garden.volunteers']
   });
@@ -124,8 +139,7 @@ VdayHelper.getTodayVdays = async () => {
         $gte:today
       },
       // publishedAt: {$ne: null},
-      disabled: {$ne: true},
-      canceled: {$ne: true}
+      $and: [VdayHelper.notTrue('disabled'), VdayHelper.notTrue('canceled')]
     },
     populate: ['garden', 'garden.volunteers']
   });
@@ -143,8 +157,7 @@ VdayHelper.getTomorrowVdays = async () => {
         $gte:tmrw
       },
       // publishedAt: {$ne: null},
-      disabled: {$ne: true},
-      canceled: {$ne: true}
+      $and: [VdayHelper.notTrue('disabled'), VdayHelper.notTrue('canceled')]
     },
     populate: ['garden', 'garden.volunteers']
   });

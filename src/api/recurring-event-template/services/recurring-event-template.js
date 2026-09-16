@@ -207,6 +207,9 @@ module.exports = createCoreService('api::recurring-event-template.recurring-even
           type: template.type,
           hero_image: template.hero_image?.id || template.hero_image,
           disabled: false,
+          // Set explicitly: a NULL here is invisible to the reminder cron's
+          // `canceled` filter, so the instance would never be texted out.
+          canceled: false,
           recurring_template: template.id,
           is_recurring_instance: true,
           publishedAt: new Date().toISOString()

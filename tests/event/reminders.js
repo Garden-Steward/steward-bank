@@ -160,3 +160,66 @@ describe('volunteer day reminders (Strapi v5 draft/published split)', function (
     expect(cached.publishedAt).toBeTruthy();
   });
 });
+
+describe('reminder filters treat a NULL boolean as not-canceled', function () {
+  const NULL_DOC = 'remindernullcanceleddoc01';
+  let gardenId;
+
+  beforeAll(async function () {
+    const garden = await strapi.db.query('api::garden.garden').findOne({
+      where: { sms_slug: SLUG, publishedAt: { $notNull: true } },
+    });
+    gardenId = garden.id;
+
+    // A recurring instance written before `canceled` existed leaves the column
+    // NULL. `canceled: {$ne: true}` drops those rows, so the cron never sees
+    // the event at all - no error, nothing in the logs.
+    await strapi.db.query('api::volunteer-day.volunteer-day').create({
+      data: {
+        documentId: NULL_DOC,
+        title: 'Null Canceled Day',
+        blurb: 'Come help.',
+        endText: 'noon',
+        interest: 'Everyone',
+        startDatetime: addHours(addDays(new Date(), 1), 4).toISOString(),
+        garden: gardenId,
+        disabled: false,
+        canceled: false,
+        publishedAt: new Date().toISOString(),
+      },
+    });
+
+    await strapi.db.connection('volunteer_days')
+      .where({ document_id: NULL_DOC })
+      .update({ canceled: null, disabled: null });
+  });
+
+  afterAll(async function () {
+    await strapi.db.query('api::volunteer-day.volunteer-day').delete({ where: { documentId: NULL_DOC } });
+  });
+
+  it('still finds a day-before event whose canceled/disabled columns are NULL', async function () {
+    const tomorrow = await VdayHelper.getTomorrowVdays();
+    expect(tomorrow.map(v => v.documentId)).toContain(NULL_DOC);
+  });
+
+  it('still excludes an event that is genuinely canceled', async function () {
+    await strapi.db.connection('volunteer_days')
+      .where({ document_id: NULL_DOC })
+      .update({ canceled: true });
+
+    try {
+      const tomorrow = await VdayHelper.getTomorrowVdays();
+      expect(tomorrow.map(v => v.documentId)).not.toContain(NULL_DOC);
+    } finally {
+      await strapi.db.connection('volunteer_days')
+        .where({ document_id: NULL_DOC })
+        .update({ canceled: null });
+    }
+  });
+
+  it('texts volunteers for the NULL-column event on the daily run', async function () {
+    const sent = await Helper.handleVolunteerReminders();
+    expect(sent).toContain(PHONE);
+  });
+});

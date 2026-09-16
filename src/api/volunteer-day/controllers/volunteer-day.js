@@ -165,7 +165,7 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
           startDatetime: {
             $gt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString()
           },
-          canceled: { $ne: true }
+          $and: [VdayHelper.notTrue('canceled')]
         }
       };
 
@@ -197,7 +197,7 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
         startDatetime: {
           $gt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
         },
-        canceled: { $ne: true }
+        $and: [VdayHelper.notTrue('canceled')]
       };
 
       const populate = ['hero_image', 'garden', 'garden.hero_image', 'garden.organization'];
