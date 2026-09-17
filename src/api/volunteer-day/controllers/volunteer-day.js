@@ -8,6 +8,20 @@ const { normalizePhoneNumber } = require('../../../utils/phone');
 const { createCoreController } = require('@strapi/strapi').factories;
 const VdayHelper = require('./VdayHelper');
 
+// Resolve a volunteer day for the SMS endpoints by documentId (preferred) or
+// numeric id. Every REST save re-publishes the document, which deletes the
+// published row and inserts a new one, so a numeric id held by an open editor
+// goes stale after the first save — documentId is the stable key.
+const findSmsDay = (strapi, idOrDocumentId) => {
+  const where = /^[0-9]+$/.test(String(idOrDocumentId))
+    ? { id: idOrDocumentId }
+    : { documentId: idOrDocumentId, publishedAt: { $notNull: true } };
+  return strapi.db.query('api::volunteer-day.volunteer-day').findOne({
+    where,
+    populate: ['garden', 'garden.volunteers']
+  });
+};
+
 
 module.exports = createCoreController('api::volunteer-day.volunteer-day', ({strapi}) => ({
 
@@ -388,10 +402,10 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
 
     testSms: async ctx => {
       try {
-        const vDay = await strapi.db.query('api::volunteer-day.volunteer-day').findOne({
-          where: {id: ctx.params.id},
-          populate: ['garden', 'garden.volunteers']
-        });
+        const vDay = await findSmsDay(strapi, ctx.params.id);
+        if (!vDay) {
+          return ctx.notFound('Volunteer day not found');
+        }
         const vGroup = await strapi.service('api::volunteer-day.volunteer-day').getVolunteerGroup(vDay);
         const copy = VdayHelper.buildUpcomingDayCopy(vDay);
         console.log("copy: ", copy);
@@ -405,12 +419,12 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
 
     groupSms: async ctx => {
       console.log("Endpoint triggered group SMS");
-      const vDay = await strapi.db.query('api::volunteer-day.volunteer-day').findOne({
-        where: {id: ctx.params.id},
-        populate: ['garden', 'garden.volunteers']
-      });
+      const vDay = await findSmsDay(strapi, ctx.params.id);
+      if (!vDay) {
+        return ctx.notFound('Volunteer day not found');
+      }
 
-      if (vDay?.canceled) {
+      if (vDay.canceled) {
         return ctx.badRequest('Cannot send SMS for a canceled event');
       }
 
