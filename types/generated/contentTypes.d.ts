@@ -590,6 +590,7 @@ export interface ApiGardenTaskGardenTask extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     current_section: Schema.Attribute.RichText;
+    deferred_until: Schema.Attribute.DateTime;
     garden: Schema.Attribute.Relation<'oneToOne', 'api::garden.garden'>;
     instruction: Schema.Attribute.Relation<
       'oneToOne',

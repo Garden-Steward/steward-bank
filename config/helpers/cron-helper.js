@@ -3,7 +3,7 @@ const { addDays, addHours } = require('date-fns');
 
 const Weather = require('./weather.js');
 const VdayHelper = require('../../src/api/volunteer-day/controllers/VdayHelper')
-const {utcToZonedTime,} = require("date-fns-tz");
+const {utcToZonedTime, zonedTimeToUtc} = require("date-fns-tz");
 /**
  * An asynchronous bootstrap function that runs before
  * your application gets started.
@@ -40,6 +40,12 @@ Helper.handleInitialTasks = async() => {
         // Guard: skip if no volunteers assigned to this task
         if (!initTask.volunteers?.length) {
           console.log(`handleInitialTasks: Task ${initTask.id} has no volunteers, skipping`);
+          continue;
+        }
+
+        // Taken for tomorrow morning: they've answered, so leave them alone until then.
+        if (Helper.isDeferred(initTask)) {
+          console.log(`handleInitialTasks: Task ${initTask.id} held until ${initTask.deferred_until}, skipping`);
           continue;
         }
 
@@ -143,6 +149,71 @@ Helper.handleVolunteerReminders = async() => {
   return messagesSent
 };
 
+const PACIFIC_TZ = 'America/Los_Angeles';
+
+/**
+ * Watering is a morning job. Past mid-afternoon the sun is still high, and a
+ * garden watered now stays wet into the evening, which is how mildew gets
+ * started. So after this hour we stop asking anyone to water today and offer
+ * them tomorrow morning instead - the better watering anyway.
+ */
+Helper.WATER_CUTOFF_HOUR = 15;
+
+/** The hour a deferred watering task comes due again. */
+Helper.WATER_MORNING_HOUR = 6;
+
+Helper.pacificHour = (now = new Date()) => utcToZonedTime(now, PACIFIC_TZ).getHours();
+
+/**
+ * @param {Date} now
+ * @returns {bool} too late in the day to send anyone out to water
+ */
+Helper.pastWateringCutoff = (now = new Date()) => Helper.pacificHour(now) >= Helper.WATER_CUTOFF_HOUR;
+
+/**
+ * Tomorrow morning, as a UTC instant. Set before the reminder cron's first run
+ * of the day (8am Pacific) so a deferred task is already due when that run
+ * comes around, rather than waiting for the one after it.
+ *
+ * @param {Date} now
+ * @returns {Date}
+ */
+Helper.nextWateringMorning = (now = new Date()) => {
+  const morning = addDays(utcToZonedTime(now, PACIFIC_TZ), 1);
+  morning.setHours(Helper.WATER_MORNING_HOUR, 0, 0, 0);
+  return zonedTimeToUtc(morning, PACIFIC_TZ);
+};
+
+/**
+ * A volunteer who has taken a task for the morning has answered us - they get
+ * no more reminders until the morning they committed to.
+ *
+ * @param {obj} task
+ * @param {Date} now
+ * @returns {bool}
+ */
+Helper.isDeferred = (task, now = new Date()) =>
+  !!task.deferred_until && Date.parse(task.deferred_until) > now.getTime();
+
+/**
+ * The watering reminder that fits the time of day.
+ *
+ * @param {obj} waterTask populated with volunteers
+ * @param {Date} now
+ * @returns {string}
+ */
+Helper.buildWaterBody = (waterTask, now = new Date()) => {
+  const firstName = waterTask.volunteers[0].firstName;
+
+  if (Helper.pastWateringCutoff(now)) {
+    return `Hi ${firstName}, it's getting late in the day to water - the plants take it better in the morning, and leaves left wet overnight invite mildew. Can you water tomorrow morning instead? Reply MORNING if you can, or SKIP if you can't.`;
+  }
+  if (waterTask.deferred_until) {
+    return `Good morning ${firstName}! You're on to water "${waterTask.title}" this morning. Are you able to? Reply YES, or SKIP if your plans changed.`;
+  }
+  return `Hi ${firstName}, it's your watering day! Are you able to water today? You have some OPTIONS.`;
+};
+
 /**
  * Sending Window - 
  * Don't send late at night or early morning, Not before 8am or after 7pm
@@ -197,12 +268,18 @@ Helper.sendWaterSms = async(waterTask, skipWindow) => {
 
   if (!skipWindow && !Helper.sendingWindow(waterTask)) { return }
 
+  // They already told us they'd take it in the morning - nothing to ask until then.
+  if (Helper.isDeferred(waterTask)) {
+    console.log('Task %s is held for the morning of %s, no SMS for now', waterTask.id, waterTask.deferred_until);
+    return {success: false, message: 'Deferred until ' + waterTask.deferred_until, task: waterTask};
+  }
+
   const weather = await Weather.getGardenWeather(waterTask.garden);
 
   if (!weather || weather.water) {
     await strapi.service('api::sms.sms').handleSms({
       task: waterTask, 
-      body: `Hi ${waterTask.volunteers[0].firstName}, it's your watering day! Are you able to water today? You have some OPTIONS.`, 
+      body: Helper.buildWaterBody(waterTask), 
       type: 'question'
     }
     );
@@ -478,6 +555,12 @@ Helper.handleStartedTasks = async() => {
       continue;
     }
 
+    // Taken for tomorrow morning: they've answered, so leave them alone until then.
+    if (Helper.isDeferred(task)) {
+      console.log(`handleStartedTasks: Task ${task.id} held until ${task.deferred_until}, skipping`);
+      continue;
+    }
+
     if (!Helper.sendingWindow(task)) { return }
 
     if (!task.volunteers[0].phoneNumber) {
@@ -486,11 +569,21 @@ Helper.handleStartedTasks = async() => {
     }
 
     if (task.type === 'Water') {
-      strapi.service('api::sms.sms').handleSms({  
-        task, 
-        body: `Hey there ${task.volunteers[0].firstName}, once you're DONE with "${task.title}" let me know you're FINISHED :) ...you always have OPTIONS`,
-        type: 'followup'
-    });
+      // Past the cutoff there's no point pushing them out with a hose today, so
+      // the nudge turns into the same offer the initial reminder would make.
+      if (Helper.pastWateringCutoff()) {
+        strapi.service('api::sms.sms').handleSms({
+          task,
+          body: `Hi ${task.volunteers[0].firstName}, did you get "${task.title}" done? Reply DONE if so. If not, no worries - a morning watering is better for the plants anyway. Reply MORNING to take it tomorrow morning, or SKIP if you can't.`,
+          type: 'question'
+        });
+      } else {
+        strapi.service('api::sms.sms').handleSms({
+          task,
+          body: `Hey there ${task.volunteers[0].firstName}, once you're DONE with "${task.title}" let me know you're FINISHED :) ...you always have OPTIONS`,
+          type: 'followup'
+        });
+      }
     } else {
       strapi.service('api::sms.sms').handleSms({  
         task, 
