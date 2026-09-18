@@ -38,7 +38,9 @@ function sendingWindow(task, envOverride) {
 function validateAbandon(task) {
   const today = new Date();
   const yesterday = addDays(today, -1);
-  return (Date.parse(task.started_at) || Date.parse(task.updatedAt)) < Date.parse(yesterday);
+  const lastActivity = Date.parse(task.started_at) || Date.parse(task.updatedAt);
+  const heldFor = Date.parse(task.deferred_until) || 0;
+  return Math.max(lastActivity, heldFor) < Date.parse(yesterday);
 }
 
 // ---------- pollOptionDesc (extracted from sms-campaign for unit testing) ----------
@@ -228,6 +230,25 @@ describe('cron-helper validateAbandon', () => {
     const task = {};
     // No started_at, no updatedAt → Date.parse(undefined) → NaN → NaN < number → false
     expect(validateAbandon(task)).toBe(false);
+  });
+
+  it('should keep a task held for tomorrow morning, answered yesterday afternoon', () => {
+    // MORNING sets deferred_until; without it the 24h clock runs from the
+    // afternoon they answered and the cron abandons the task hours after
+    // reminding them to go water.
+    const task = {
+      updatedAt: addHours(new Date(), -20).toISOString(),
+      deferred_until: addHours(new Date(), 10).toISOString()
+    };
+    expect(validateAbandon(task)).toBe(false);
+  });
+
+  it('should still age out a held task whose morning came and went', () => {
+    const task = {
+      updatedAt: addDays(new Date(), -4).toISOString(),
+      deferred_until: addDays(new Date(), -3).toISOString()
+    };
+    expect(validateAbandon(task)).toBe(true);
   });
 
   it('should handle the exact boundary (exactly 24 hours ago)', () => {

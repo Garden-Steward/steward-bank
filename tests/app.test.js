@@ -38,6 +38,7 @@ require('./tasks/crontest');
 require('./tasks/instruction');
 require('./tasks/smsTask');
 require('./tasks/water-morning');
+require('./tasks/finish-late');
 require('./tasks/publish');
 require('./tasks/task-images');
 require('./tasks/user-tasks.http');

@@ -415,6 +415,7 @@ SmsHelper.finishTask = async(user) => {
   const gardenTaskService = strapi.db.query('api::garden-task.garden-task');
   console.log(`[finishTask] User ${user.email} (${user.phoneNumber}) attempting to finish task`);
   const weekAgo = addDays(new Date(),-7)
+  const twoDaysAgo = addDays(new Date(),-2)
 
   // TODO: Update status of task if complete_once is true on the garden task. Everyone gets the opportunity to complete it themselves
   // TODO: Add new switch trigger for "ready for next task" to trigger "READY/NEXT" to SMS in. Something more natural than DONE for these complete_once false tasks.
@@ -427,7 +428,10 @@ SmsHelper.finishTask = async(user) => {
     let task = await gardenTaskService.findOne({
       where: {
         task_status: {$in: ['STARTED', 'INITIALIZED', 'PENDING']},
-        complete_once: {$eq: true},
+        // A null reads as the schema default, true. SQL drops nulls from both
+        // `= true` and `!= false`, so rows predating the column used to fall
+        // through every branch here and out to "nothing to finish".
+        $or: [{complete_once: true}, {complete_once: null}],
         volunteers: {
           phoneNumber: user.phoneNumber
         }
@@ -459,6 +463,28 @@ SmsHelper.finishTask = async(user) => {
       }
     }
 
+    // Still nothing: the cron abandons an open task 24 hours after its last
+    // activity, silently. A volunteer told last evening to "let me know you're
+    // FINISHED", who waters the next morning and texts DONE, was being told
+    // their task no longer existed. They did the work - take it.
+    if (!task) {
+      task = await gardenTaskService.findOne({
+        where: {
+          task_status: 'ABANDONED',
+          updatedAt: {$gte: twoDaysAgo},
+          $or: [{complete_once: true}, {complete_once: null}],
+          volunteers: {
+            phoneNumber: user.phoneNumber
+          }
+        },
+        populate: ['recurring_task', 'garden'],
+        orderBy: { updatedAt: 'DESC' }
+      });
+      if (task) {
+        console.log(`[finishTask] Task ${task.id} was abandoned by the cron; finishing it for ${user.email}`);
+      }
+    }
+
     if (task) {
       // Prepare update data
       const updateData = {
@@ -467,7 +493,7 @@ SmsHelper.finishTask = async(user) => {
       };
 
       // If status is changing from INITIALIZED to anything else, publish the task
-      if (task.task_status === 'INITIALIZED') {
+      if (task.task_status === 'INITIALIZED' || !task.publishedAt) {
         updateData.publishedAt = new Date();
       }
       

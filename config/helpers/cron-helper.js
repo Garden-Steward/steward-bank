@@ -517,8 +517,13 @@ Helper.updateTask = async(task, status) => {
 Helper.validateAbandon = async(task) => {
   const today = new Date();
   const yesterday = addDays(today, -1);
-  // If started_at is more than 24 hours ago, abandon
-  if ((Date.parse(task.started_at) || Date.parse(task.updatedAt)) < Date.parse(yesterday)) {
+  const lastActivity = Date.parse(task.started_at) || Date.parse(task.updatedAt);
+  // A task held for the morning is still live. Its clock runs from the morning
+  // it was moved to, not from the afternoon the volunteer answered us - or the
+  // cron would abandon it within hours of reminding them to go water.
+  const heldFor = Date.parse(task.deferred_until) || 0;
+  // If there's been no activity for more than 24 hours, abandon
+  if (Math.max(lastActivity, heldFor) < Date.parse(yesterday)) {
     console.log("abandoning")
     try {
       // Started but never finished: ABANDONED
