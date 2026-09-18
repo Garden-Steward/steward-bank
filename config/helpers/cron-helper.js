@@ -462,12 +462,7 @@ Helper.getScheduledVolunteer = async(recTask) => {
   console.log("Getting %s Schedule", dayOfWeekName, recTask.scheduler_type);
 
   if (recTask.scheduler_type == 'Weekly Shuffle') {
-    const weeklySchedule = await strapi.db.query('api::weekly-schedule.weekly-schedule')
-    .findOne({
-      where: {recurring_task: recTask.id},
-      orderBy: { createdAt: 'DESC' },
-      populate: ["assignees", "assignees.assignee"]
-    });
+    const weeklySchedule = await strapi.service('api::weekly-schedule.weekly-schedule').getWeeklySchedule(recTask);
     if (weeklySchedule) {
       scheduledUser = weeklySchedule.assignees.find(a=> a.day == dayOfWeekName)?.assignee
       console.log("weekly schedule latest: ", weeklySchedule)
