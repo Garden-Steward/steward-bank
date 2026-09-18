@@ -141,6 +141,9 @@ SmsHelper.simplifySms = ( smsText, garden ) => {
   if (smsText.toLowerCase() === 'correct') {
     return smsText;
   }
+  // "MORNING" moves a watering task to tomorrow morning. Deliberately not
+  // matching "good morning" - that's a greeting, not an answer.
+  smsText = /^(tomorrow ?)?morning[.!]*$/.test(smsText) || /^tomorrow( ?am)?[.!]*$/.test(smsText) ? 'morning' : smsText
   smsText = (smsText.startsWith('ye') || smsText.startsWith('yas')) ? 'yes' : smsText
   smsText = (smsText.startsWith('done') || smsText.startsWith('finished')) ? 'finished' : smsText
   smsText = (smsText.startsWith(':')) ? 'smiles' : smsText
@@ -335,7 +338,8 @@ SmsHelper.getHelp = async(user) => {
       let instructionUrl = strapi.service('api::instruction.instruction').getInstructionUrl(tasks[0].recurring_task.instruction, user);
       return `Hi ${user.firstName}. We are waiting on task ${tasks[0].title}. Please respond to the instruction: YES if you agree you can manage the task. NO will allow you to transfer the task to someone else. You will be resent this instruction each time until approval.\n\n ${instructionUrl}`;
     } else if (tasks.length == 1) {
-      return `Hi ${user.firstName}, you have the task of "${tasks[0].title}" it is in status: ${tasks[0].task_status}. YES if you can do the task. NO if want to transfer. SKIP if it isn't needed. `;
+      const morningCopy = tasks[0].type === 'Water' ? 'MORNING if you\'d rather water tomorrow morning. ' : '';
+      return `Hi ${user.firstName}, you have the task of "${tasks[0].title}" it is in status: ${tasks[0].task_status}. YES if you can do the task. NO if want to transfer. ${morningCopy}SKIP if it isn't needed. `;
     } else if (tasks.length) {
       let taskBody = '';
       for (const task of tasks) {

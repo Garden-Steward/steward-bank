@@ -35,6 +35,10 @@
     "started_at": {
       "type": "datetime"
     },
+    "deferred_until": {
+      "type": "datetime",
+      "description": "Hold reminders until this moment - set when a watering volunteer takes the task for the next morning"
+    },
     "completed_at": {
       "type": "datetime"
     },

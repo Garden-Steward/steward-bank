@@ -234,6 +234,70 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
     return dedupeByDocument(tasks)[0] || null;
   },
 
+  /**
+   * "MORNING" - the volunteer can't water today but will in the morning.
+   *
+   * Watering late in the day is worse than not watering: the leaves stay wet
+   * into the evening and mildew follows. So instead of a skip we offer them
+   * tomorrow morning, and holding the task is the whole answer - reminders stay
+   * off until `deferred_until` passes, when the morning reminder goes out.
+   *
+   * A task they'd already said YES to goes back to INITIALIZED with its
+   * started_at cleared, so it isn't chased overnight as a task in progress, and
+   * isn't abandoned in the morning for having been started the day before.
+   *
+   * @param {obj} user
+   * @returns {obj} SMS response
+   */
+  async deferWaterToMorning(user) {
+    const latestQuestion = await strapi.service('api::message.message').validateQuestion(user);
+    const task = latestQuestion
+      ? latestQuestion.garden_task
+      : await strapi.service('api::garden-task.garden-task').findTaskFromUser(user);
+
+    if (!task) {
+      return {
+        body: 'I don\'t have a task waiting on you right now, so there\'s nothing to move to the morning.',
+        type: 'reply'
+      };
+    }
+
+    if (task.type !== 'Water') {
+      return {
+        body: `MORNING is just for watering - "${task.title}" isn't a watering task. YES if you can do it, SKIP if it isn't needed.`,
+        type: 'reply'
+      };
+    }
+
+    const data = { deferred_until: Helper.nextWateringMorning() };
+
+    // Only a task they'd already started needs winding back; a PENDING one is
+    // still waiting on its instruction and should stay that way.
+    if (task.task_status === 'STARTED') {
+      data.task_status = 'INITIALIZED';
+      data.started_at = null;
+    }
+
+    try {
+      await strapi.db.query('api::garden-task.garden-task').update({
+        where: { id: task.id },
+        data
+      });
+    } catch (err) {
+      console.error('morning defer error: ', err);
+      return {
+        body: 'Problem updating the task!',
+        type: 'complete'
+      };
+    }
+
+    return {
+      body: `Perfect, thank you ${user.firstName}! I'll hold "${task.title}" for tomorrow morning - the plants would rather have it then anyway. Talk to you in the morning!`,
+      type: 'complete',
+      task
+    };
+  },
+
   async skipTask(user) {
     const latestQuestion = await strapi.service('api::message.message').validateQuestion(user);
     let task;

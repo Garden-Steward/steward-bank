@@ -113,6 +113,10 @@ module.exports = {
       case 'skip':
         smsInfo = await strapi.service('api::garden-task.garden-task').skipTask(user);
         break;
+
+      case 'morning':
+        smsInfo = await strapi.service('api::garden-task.garden-task').deferWaterToMorning(user);
+        break;
       
       case 'no':
         smsInfo = await SmsHelper.findBackupUsers(user);
