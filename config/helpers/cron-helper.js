@@ -4,6 +4,7 @@ const { addDays, addHours } = require('date-fns');
 const Weather = require('./weather.js');
 const VdayHelper = require('../../src/api/volunteer-day/controllers/VdayHelper')
 const {utcToZonedTime, zonedTimeToUtc} = require("date-fns-tz");
+const { documentRowIds } = require('../../src/utils/documents');
 /**
  * An asynchronous bootstrap function that runs before
  * your application gets started.
@@ -318,7 +319,15 @@ Helper.setWeeklySchedule = async(recTask) => {
   }
 
     console.log("Setting weekly schedule for %s of type ", dayOfWeekName, recTask.scheduler_type)
-  let weeklySchedule = await strapi.service('api::weekly-schedule.weekly-schedule').createWeeklySchedule(recTask);
+  // Same draft/published split as getScheduledVolunteer: the schedulers
+  // populated on the row in hand can be empty while the document's other row
+  // holds them all, which draws a roster with nobody on it.
+  const schedulers = await Helper.getRecurringTaskSchedulers(recTask);
+  if (!schedulers.length) {
+    console.warn(`setWeeklySchedule: recTask ${recTask.id} ("${recTask.title}") has no schedulers, skipping`);
+    return;
+  }
+  let weeklySchedule = await strapi.service('api::weekly-schedule.weekly-schedule').createWeeklySchedule({ ...recTask, schedulers });
 
   if (!weeklySchedule) {
     console.warn('setWeeklySchedule: no schedule created for recTask %s, skipping SMS', recTask.id);
@@ -387,6 +396,40 @@ Helper.realignGeneratedTask = async(task, recTask) => {
   return repaired;
 };
 
+/**
+ * A generated task from a day gone by that nobody ever took.
+ *
+ * This is how task generation stops dead. No volunteer means no reminder cron
+ * ever looks at it (they all filter on volunteers), so nothing moves it to a
+ * status the open-task lookup ignores - and while it sits there open, every
+ * later day's task is skipped as "already have one". One empty task in June
+ * and a garden goes the summer without a single new one.
+ *
+ * Only for tasks a schedule generates: an unclaimed task on a recurring task
+ * with no schedule is the open pool that TASK hands out, and is meant to wait.
+ *
+ * @param {obj} task the open task blocking creation
+ * @param {obj} recTask the recurring task it came from
+ * @returns {bool}
+ */
+Helper.isStaleUnclaimed = (task, recTask) => {
+  if (!task || task.volunteers?.length) {
+    return false;
+  }
+  if (!recTask?.scheduler_type || recTask.scheduler_type === 'No Schedule') {
+    return false;
+  }
+
+  const madeOn = Date.parse(task.createdAt) || Date.parse(task.updatedAt);
+  if (!madeOn) {
+    return false;
+  }
+
+  const startOfToday = utcToZonedTime(new Date(), PACIFIC_TZ);
+  startOfToday.setHours(0, 0, 0, 0);
+  return madeOn < zonedTimeToUtc(startOfToday, PACIFIC_TZ).getTime();
+};
+
 Helper.buildSchedulerTask = async(curTask, recTask, scheduledUser) => {
     console.log(`[buildSchedulerTask] Processing recurring task ${recTask.id} (${recTask.title}), curTask: ${curTask?.id || 'none'}, status: ${curTask?.task_status || 'N/A'}`);
     // ASSIGN && SKIP IF ALREADY INITIALIZED
@@ -395,6 +438,18 @@ Helper.buildSchedulerTask = async(curTask, recTask, scheduledUser) => {
       if (curTask.task_status === 'FINISHED' || curTask.task_status === 'SKIPPED' || curTask.task_status === 'ABANDONED') {
         console.log(`[buildSchedulerTask] Task ${curTask.id} is ${curTask.task_status}, creating new task for recurring task ${recTask.id}`);
         // Fall through to create new task
+      } else if (Helper.isStaleUnclaimed(curTask, recTask)) {
+        // Retire it and make today's, rather than let an empty task from an
+        // earlier day block this recurring task for good.
+        console.log(`[buildSchedulerTask] Task ${curTask.id} was never taken by anyone, skipping it and generating today's`);
+        try {
+          await strapi.service('api::garden-task.garden-task').updateTaskStatus(curTask, 'SKIPPED');
+        } catch (err) {
+          console.error(`[buildSchedulerTask] could not retire stale task ${curTask.id}`, err);
+          return {success: false, message: 'Could not retire stale task: ' + curTask.id};
+        }
+        curTask = null;
+        // Fall through to create today's task
       } else {
         // Task exists and is not finished, just assign volunteer if needed
         if (scheduledUser && !curTask.volunteers.length) {
@@ -454,6 +509,37 @@ Helper.buildSchedulerTask = async(curTask, recTask, scheduledUser) => {
  * @param {obj} recTask: Full Recurring Task Obj
  * @returns 
  */
+/**
+ * A filter matching anything related to *any* row of a recurring task's
+ * document.
+ *
+ * Strapi v5 keeps a draft row and a published row per recurring task, and a
+ * relation points at one specific row. The cron iterates the published row
+ * (dedupeByDocument prefers it) while a schedule attached in the admin lands on
+ * the draft - so a filter written against the row in hand finds no schedule at
+ * all, and the day's task is generated with nobody on it.
+ *
+ * @param {obj} recTask
+ * @returns {obj|num} a `recurring_task` filter
+ */
+Helper.recurringTaskFilter = async(recTask) => {
+  const rowIds = await documentRowIds('api::recurring-task.recurring-task', recTask);
+  return rowIds.length ? { id: { $in: rowIds } } : recTask.id;
+};
+
+/**
+ * Every scheduler row for a recurring task, across both rows of its document.
+ *
+ * @param {obj} recTask
+ * @returns {arr} scheduler rows, with volunteers populated
+ */
+Helper.getRecurringTaskSchedulers = async(recTask) => {
+  return strapi.db.query('api::scheduler.scheduler').findMany({
+    where: { recurring_task: await Helper.recurringTaskFilter(recTask) },
+    populate: { volunteer: true, backup_volunteers: true }
+  });
+};
+
 Helper.getScheduledVolunteer = async(recTask) => {
   let scheduledUser;
   const dayOfWeekName = new Date().toLocaleString(
@@ -464,7 +550,7 @@ Helper.getScheduledVolunteer = async(recTask) => {
   if (recTask.scheduler_type == 'Weekly Shuffle') {
     const weeklySchedule = await strapi.db.query('api::weekly-schedule.weekly-schedule')
     .findOne({
-      where: {recurring_task: recTask.id},
+      where: {recurring_task: await Helper.recurringTaskFilter(recTask)},
       orderBy: { createdAt: 'DESC' },
       populate: ["assignees", "assignees.assignee"]
     });
@@ -475,11 +561,7 @@ Helper.getScheduledVolunteer = async(recTask) => {
 
   } else if (recTask.scheduler_type == 'Daily Primary') {
 
-    const schedulers = await strapi.db.query('api::scheduler.scheduler')
-    .findMany({
-      where: {recurring_task: recTask.id},
-      populate: { volunteer: true, backup_volunteers: true }
-    });
+    const schedulers = await Helper.getRecurringTaskSchedulers(recTask);
 
     if (schedulers && schedulers.length > 0) {
       for (let scheduledDay of schedulers) {

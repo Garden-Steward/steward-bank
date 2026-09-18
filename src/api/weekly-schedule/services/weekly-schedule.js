@@ -5,6 +5,7 @@ const { format } = require('date-fns');
 const twilioNum =process.env.TWILIONUM;
 const client = require('twilio')(accountSid, authToken);
 const weeklyScheduleHelper = require('./helper');
+const { documentRowIds } = require('../../../utils/documents');
 
 /**
  * weekly-schedule service
@@ -53,7 +54,15 @@ module.exports = createCoreService('api::weekly-schedule.weekly-schedule', ({ st
         limit: 1,
       });
       const candidate = schedules?.[0];
-      if (candidate && candidate.recurring_task?.id === recTaskId) {
+      if (!candidate) {
+        return null;
+      }
+      // v5 keeps a draft and a published row per recurring task, and the
+      // schedule's relation points at one of them. Comparing against the single
+      // id we were handed reports "no schedule" whenever they differ.
+      const recTask = await strapi.db.query('api::recurring-task.recurring-task').findOne({ where: { id: recTaskId } });
+      const rowIds = recTask ? await documentRowIds('api::recurring-task.recurring-task', recTask) : [recTaskId];
+      if (rowIds.includes(candidate.recurring_task?.id)) {
         return candidate;
       }
       return null;
