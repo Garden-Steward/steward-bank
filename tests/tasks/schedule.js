@@ -50,13 +50,10 @@ describe('getScheduledVolunteer respects vacation', function () {
   };
 
   const mockWeekly = (assignee) => {
-    strapi.db.query = jest.fn().mockReturnValue({
-      findMany: jest.fn().mockResolvedValue([]),
-      findOne: jest.fn().mockResolvedValue({
-        id: 1,
-        assignees: [{ id: 9, day: today, assignee }],
-      }),
-    });
+    patchService('api::weekly-schedule.weekly-schedule', 'getWeeklySchedule', jest.fn().mockResolvedValue({
+      id: 1,
+      assignees: [{ id: 9, day: today, assignee }],
+    }));
   };
 
   it('Daily Primary: assigns the primary when they are not on vacation', async () => {
@@ -114,3 +111,68 @@ describe('getScheduledVolunteer respects vacation', function () {
   });
 });
 
+
+// The cron hands createWeeklySchedule the *published* recurring task row. The
+// new (draft) schedule has to link to the draft recurring task, or the admin
+// shows recurring_task as empty and publishing the schedule drops the link.
+describe('weekly schedule recurring_task link', function () {
+  const REC = 'api::recurring-task.recurring-task';
+  const WS = 'api::weekly-schedule.weekly-schedule';
+  let recDoc;
+  let published;
+
+  beforeAll(async () => {
+    recDoc = await strapi.documents(REC).create({
+      data: { title: 'Link Test Water', scheduler_type: 'Weekly Shuffle', type: 'Water' },
+      status: 'published',
+    });
+    published = await strapi.db.query(REC).findOne({
+      where: { documentId: recDoc.documentId, publishedAt: { $notNull: true } },
+    });
+  });
+
+  afterAll(async () => {
+    const schedules = await strapi.db.query(WS).findMany({
+      where: { recurring_task: { documentId: recDoc.documentId } },
+    });
+    for (const documentId of new Set(schedules.map(s => s.documentId))) {
+      await strapi.documents(WS).delete({ documentId });
+    }
+    await strapi.documents(REC).delete({ documentId: recDoc.documentId });
+  });
+
+  it('links the draft schedule to the draft recurring task and finds it by the published id', async () => {
+    const created = await strapi.service(WS).createWeeklySchedule({ ...published, schedulers: [] });
+    expect(created).toBeTruthy();
+
+    const draft = await strapi.db.query(WS).findOne({
+      where: { documentId: created.documentId, publishedAt: null },
+      populate: ['recurring_task'],
+    });
+    expect(draft.recurring_task).toBeTruthy();
+    expect(draft.recurring_task.documentId).toBe(recDoc.documentId);
+    expect(draft.recurring_task.publishedAt).toBeNull();
+
+    // Admin view of the draft: relation resolves draft -> draft.
+    const viaDocs = await strapi.documents(WS).findOne({
+      documentId: created.documentId,
+      populate: ['recurring_task'],
+    });
+    expect(viaDocs.recurring_task?.documentId).toBe(recDoc.documentId);
+
+    const found = await strapi.service(WS).getWeeklySchedule(published.id);
+    expect(found?.documentId).toBe(created.documentId);
+  });
+
+  it('keeps the link when the schedule is published', async () => {
+    const created = await strapi.service(WS).createWeeklySchedule({ ...published, schedulers: [] });
+    await strapi.documents(WS).publish({ documentId: created.documentId });
+
+    const pub = await strapi.documents(WS).findOne({
+      documentId: created.documentId,
+      status: 'published',
+      populate: ['recurring_task'],
+    });
+    expect(pub.recurring_task?.documentId).toBe(recDoc.documentId);
+  });
+});

@@ -2,7 +2,7 @@
 const weeklyScheduleHelper = {};
 
 
-weeklyScheduleHelper.getAssignees = async ({id, schedulers})=> {
+weeklyScheduleHelper.getAssignees = async ({id, documentId, schedulers})=> {
       // Logic for picking a volunteer out of a batch of volunteers.
       function chooseVolunteer(volunteers, {chosenArr, flatSchedulerList, lastWeekSchedulers}) {
 
@@ -33,9 +33,9 @@ weeklyScheduleHelper.getAssignees = async ({id, schedulers})=> {
       }).flat(1)
       let lastWeekSchedulers = []
       try {
-        const weeklySchedule = await strapi.service('api::weekly-schedule.weekly-schedule').getWeeklySchedule(id);
+        const weeklySchedule = await strapi.service('api::weekly-schedule.weekly-schedule').getWeeklySchedule({id, documentId});
         if (weeklySchedule) {
-          lastWeekSchedulers = weeklySchedule.assignees.map(a=> {return a.assignee.id})
+          lastWeekSchedulers = weeklySchedule.assignees.filter(a => a.assignee).map(a=> {return a.assignee.id})
         }
       } catch (err) {
         console.error(err);
