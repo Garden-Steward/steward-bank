@@ -21,6 +21,12 @@ module.exports = {
       handler: 'project.toggleInterest',
     },
     {
+      method: 'POST',
+      path: '/projects/:id/express-interest',
+      handler: 'project.expressInterest',
+      config: { auth: false },
+    },
+    {
       method: 'PUT',
       path: '/projects/:id/managers',
       handler: 'project.updateManagers',

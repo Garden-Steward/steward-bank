@@ -361,4 +361,67 @@ module.exports = createCoreController('api::project.project', ({ strapi }) => ({
 
     return this.transformResponse(updated);
   },
+
+  // Express interest in a project without requiring a full account.
+  // Soft-creates a user record from email (+ optional phone/name) so the person
+  // is tracked as an interested party and can later be promoted / SMS'd.
+  async expressInterest(ctx) {
+    const { id } = ctx.params;
+    const body = ctx.request.body?.data || ctx.request.body || {};
+    const email = (body.email || '').trim().toLowerCase();
+    const phone = (body.phone || '').trim();
+    const name = (body.name || '').trim();
+
+    if (!email) {
+      return ctx.badRequest('Email is required');
+    }
+
+    const project = await strapi.db.query('api::project.project').findOne({
+      where: { id },
+      populate: ['interested'],
+    });
+    if (!project) {
+      return ctx.notFound('Project not found');
+    }
+
+    // Find or create the user by email (case-insensitive).
+    const userService = strapi.plugins['users-permissions']?.services?.user;
+    let user = await strapi.db
+      .query('plugin::users-permissions.user')
+      .findOne({ where: { email } });
+
+    if (!user) {
+      if (!userService) {
+        return ctx.internalServerError('User service unavailable');
+      }
+      // Soft account: random unusable password. The person never logs in
+      // with it; they can set a password later via the normal flow.
+      const randomPassword = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+      user = await userService.add({
+        email,
+        username: email,
+        password: randomPassword,
+        confirmed: true,
+        firstName: name || email.split('@')[0] || 'Supporter',
+        phone: phone || null,
+      });
+    } else if (phone && !user.phone) {
+      // Backfill a phone number onto an existing interested user.
+      await strapi.db.query('plugin::users-permissions.user').update({
+        where: { id: user.id },
+        data: { phone },
+      });
+    }
+
+    // Attach to the project's interested relation (dedup).
+    const current = (project.interested || []).map((u) => u.id);
+    if (!current.includes(user.id)) {
+      await strapi.db.query('api::project.project').update({
+        where: { id },
+        data: { interested: [...current, user.id] },
+      });
+    }
+
+    return { count: current.length + (current.includes(user.id) ? 0 : 1), isInterested: true };
+  },
 }));
