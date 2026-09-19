@@ -19,9 +19,9 @@ module.exports = {
     await strapi.db.query('api::project.project').update({
       where: { id: project.id },
       data: {
-        status: 'APPROVED',
-        verification_token: null,
-      },
+              review_status: 'APPROVED',
+              verification_token: null,
+            },
     });
 
     ctx.body = {

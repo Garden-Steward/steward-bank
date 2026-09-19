@@ -101,34 +101,25 @@
           "default": false
         },
         "review_status": {
-          "type": "enumeration",
-          "enum": [
-            "Pending Review",
-            "Approved",
-            "Changes Requested"
-          ],
-          "default": "Pending Review"
-        },
-        "verification_token": {
+              "type": "enumeration",
+              "enum": [
+                "CREATED",
+                "APPROVED",
+                "REJECTED",
+                "COMPLETED",
+                "ARCHIVED"
+              ],
+              "default": "CREATED",
+              "required": true
+            },
+            "verification_token": {
           "type": "string",
           "private": true
         },
         "submitter_email": {
-          "type": "email"
-        },
-        "status": {
-      "type": "enumeration",
-      "enum": [
-        "CREATED",
-        "APPROVED",
-        "REJECTED",
-        "COMPLETED",
-        "ARCHIVED"
-      ],
-      "default": "CREATED",
-      "required": true
-    },
-    "latitude": {
+              "type": "email"
+            },
+            "latitude": {
       "type": "float"
     },
     "longitude": {
