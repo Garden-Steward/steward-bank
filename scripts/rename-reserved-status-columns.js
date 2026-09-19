@@ -9,6 +9,8 @@
  * schema; this migration carries each existing column (and its data) across so
  * schema sync doesn't drop the old column and recreate an empty one.
  *
+ * Also backfills NULL `projects.review_status` to the schema default.
+ *
  * Idempotent: skips any rename whose target column already exists.
  *
  * Usage:
@@ -63,6 +65,17 @@ async function renameReservedStatusColumns() {
       }
       await client.query(`ALTER TABLE "${table}" RENAME COLUMN "${from}" TO "${to}"`);
       console.log(`  Renamed ${table}.${from} -> ${table}.${to}.`);
+    }
+
+    // `review_status` is required, but rows that predate the rename carry NULL,
+    // which makes every core update on them fail validation ("review_status must
+    // be a `string` type"). CREATED is the schema default and, like NULL, is
+    // hidden from the public find — so this changes no one's visibility.
+    if (await columnExists(client, 'projects', 'review_status')) {
+      const result = await client.query(
+        `UPDATE "projects" SET "review_status" = 'CREATED' WHERE "review_status" IS NULL`
+      );
+      console.log(`  Backfilled ${result.rowCount} NULL projects.review_status -> CREATED.`);
     }
   } finally {
     await client.end();
