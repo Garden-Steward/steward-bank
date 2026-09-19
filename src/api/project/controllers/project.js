@@ -403,13 +403,13 @@ module.exports = createCoreController('api::project.project', ({ strapi }) => ({
         password: randomPassword,
         confirmed: true,
         firstName: name || email.split('@')[0] || 'Supporter',
-        phone: phone || null,
+        phoneNumber: phone || null,
       });
-    } else if (phone && !user.phone) {
+    } else if (phone && !user.phoneNumber) {
       // Backfill a phone number onto an existing interested user.
       await strapi.db.query('plugin::users-permissions.user').update({
         where: { id: user.id },
-        data: { phone },
+        data: { phoneNumber: phone },
       });
     }
 
