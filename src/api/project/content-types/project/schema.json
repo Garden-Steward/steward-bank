@@ -97,10 +97,26 @@
       "description": "Extracted Google Photos album ID"
     },
     "featured": {
-      "type": "boolean",
-      "default": false
-    },
-    "review_status": {
+          "type": "boolean",
+          "default": false
+        },
+        "review_status": {
+          "type": "enumeration",
+          "enum": [
+            "Pending Review",
+            "Approved",
+            "Changes Requested"
+          ],
+          "default": "Pending Review"
+        },
+        "verification_token": {
+          "type": "string",
+          "private": true
+        },
+        "submitter_email": {
+          "type": "email"
+        },
+        "status": {
       "type": "enumeration",
       "enum": [
         "CREATED",
