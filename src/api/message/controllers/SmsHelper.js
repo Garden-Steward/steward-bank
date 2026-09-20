@@ -197,6 +197,10 @@ SmsHelper.joinGarden = async(user, phoneNumber, garden) => {
         provider: 'local'
       }
     });
+    // New volunteers never reach the existing-user branch below, so send the
+    // contact card here too - the end-of-registration welcome tells them it
+    // was "sent earlier".
+    SmsHelper.sendContactCard(phoneNumber);
     return {body: `Welcome to Garden Steward SMS App! So glad to hear you\'re interested in volunteering for ${garden.title}. To start could we have your email?`,type:'registration'};
 
   } else if (user.email == 'test@test.com') {
@@ -257,8 +261,13 @@ SmsHelper.saveVolunteerEmail = async(user, email) => {
 };
 
 SmsHelper.sendContactCard = async(phoneNumber) => {
-  const resp = await strapi.service('api::sms.sms').sendContactCard(phoneNumber);
-  return resp;
+  try {
+    return await strapi.service('api::sms.sms').sendContactCard(phoneNumber);
+  } catch (err) {
+    // Never let a Twilio failure break the SMS reply the volunteer is waiting on.
+    console.error('Problem sending contact card to ', phoneNumber, err);
+    return null;
+  }
 }
 
 SmsHelper.saveVolunteerName = async(user, msgTxt) => {

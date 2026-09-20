@@ -6,7 +6,7 @@ const request = require("supertest");
 
 const SmsHelper = require('../../src/api/message/controllers/SmsHelper');
 const { createUser, defaultData, mockUserData } = require("./factory");
-const { patch } = require('../helpers/patch');
+const { patch, patchQuery } = require('../helpers/patch');
 
 // Mock Mailchimp module
 jest.mock('@mailchimp/mailchimp_marketing', () => ({
@@ -49,34 +49,35 @@ describe("Join Garden", () => {
     expect(response.body).toBe('Looks like we still need an email, what email would you like to be informed about volunteering?');
   });
 
-  it('should send contact card when joining garden as new user', async () => {
-    const phoneNumber = '+13038833330';
-    const mockGarden = {
+  it('should send the contact card to a brand new volunteer', async () => {
+    const phoneNumber = '+13038833331';
+    const mockGarden = { id: 1, title: 'Test Garden' };
+
+    const sendContactCard = patch(SmsHelper, 'sendContactCard', jest.fn().mockResolvedValue(true));
+    patchQuery('plugin::users-permissions.user', 'create', jest.fn().mockResolvedValue({ id: 99 }));
+
+    const response = await SmsHelper.joinGarden(null, phoneNumber, mockGarden);
+
+    expect(response.type).toBe('registration');
+    expect(sendContactCard).toHaveBeenCalledWith(phoneNumber);
+  });
+
+  it('should send the contact card when an existing volunteer joins a new garden', async () => {
+    const phoneNumber = '+13038833332';
+    const mockGarden = { id: 2, title: 'Second Garden' };
+    const mockUser = {
       id: 1,
-      title: 'Test Garden'
+      email: 'real@example.com',
+      phoneNumber,
+      gardens: [{ id: 1 }],
     };
-    
-    // Store original methods
-    const originalJoinGarden = SmsHelper.joinGarden;
-    const originalSendContactCard = SmsHelper.sendContactCard;
-    
-    // Mock sendContactCard
-    patch(SmsHelper, 'sendContactCard', jest.fn().mockResolvedValue(true));
-    
-    // Create simplified version of joinGarden that only tests the contact card flow
-    SmsHelper.joinGarden = async (user, phone, garden) => {
-      await SmsHelper.sendContactCard(phone);
-      return { type: 'success' };
-    };
-    
-    await SmsHelper.joinGarden({ phoneNumber }, phoneNumber, mockGarden);
-    
-    // Verify sendContactCard was called with the correct phone number
-    expect(SmsHelper.sendContactCard).toHaveBeenCalledWith(phoneNumber);
-    
-    // Restore original methods
-    SmsHelper.joinGarden = originalJoinGarden;
-    SmsHelper.sendContactCard = originalSendContactCard;
+
+    const sendContactCard = patch(SmsHelper, 'sendContactCard', jest.fn().mockResolvedValue(true));
+    patchQuery('plugin::users-permissions.user', 'update', jest.fn().mockResolvedValue(mockUser));
+
+    await SmsHelper.joinGarden(mockUser, phoneNumber, mockGarden);
+
+    expect(sendContactCard).toHaveBeenCalledWith(phoneNumber);
   });
   
 });
