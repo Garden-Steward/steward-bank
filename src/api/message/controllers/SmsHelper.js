@@ -197,10 +197,6 @@ SmsHelper.joinGarden = async(user, phoneNumber, garden) => {
         provider: 'local'
       }
     });
-    // New volunteers never reach the existing-user branch below, so send the
-    // contact card here too - the end-of-registration welcome tells them it
-    // was "sent earlier".
-    SmsHelper.sendContactCard(phoneNumber);
     return {body: `Welcome to Garden Steward SMS App! So glad to hear you\'re interested in volunteering for ${garden.title}. To start could we have your email?`,type:'registration'};
 
   } else if (user.email == 'test@test.com') {
@@ -220,7 +216,6 @@ SmsHelper.joinGarden = async(user, phoneNumber, garden) => {
         } else {
           smsBody = {body: `Thanks for signing up for ${garden.title}. You\'ll start to receive notification about volunteer days. \n\nYou can STOP messages any time.`,type:'registration'};
         }
-        SmsHelper.sendContactCard(phoneNumber);
         return smsBody;
       }
       await strapi.db.query("plugin::users-permissions.user").update({where:{id: user.id}, data: user});
@@ -286,7 +281,10 @@ SmsHelper.saveVolunteerName = async(user, msgTxt) => {
     console.log(err);
     return {body: `Sorry we can't accept this name: ${fullName} - You could already be signed up.`, type:'reply'};
   }
-  return {body: `Welcome to the team ${userName}! \n\nIf you haven't already, please click on and add my contact card, sent earlier.`, type:'complete'};
+  // Sent here, immediately before the welcome text below mentions it - this is
+  // the first and only time a volunteer hears about the contact card.
+  await SmsHelper.sendContactCard(user.phoneNumber);
+  return {body: `Welcome to the team ${userName}! \n\nI've just sent you my contact card - please click on it and add me to your contacts.`, type:'complete'};
 };
 
 SmsHelper.getSchedulerFromTask = async(task) => {

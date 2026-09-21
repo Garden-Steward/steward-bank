@@ -6,7 +6,7 @@ const request = require("supertest");
 
 const SmsHelper = require('../../src/api/message/controllers/SmsHelper');
 const { createUser, defaultData, mockUserData } = require("./factory");
-const { patch, patchQuery } = require('../helpers/patch');
+const { patch, patchQuery, patchService } = require('../helpers/patch');
 
 // Mock Mailchimp module
 jest.mock('@mailchimp/mailchimp_marketing', () => ({
@@ -49,7 +49,7 @@ describe("Join Garden", () => {
     expect(response.body).toBe('Looks like we still need an email, what email would you like to be informed about volunteering?');
   });
 
-  it('should send the contact card to a brand new volunteer', async () => {
+  it('should not send the contact card before it is mentioned', async () => {
     const phoneNumber = '+13038833331';
     const mockGarden = { id: 1, title: 'Test Garden' };
 
@@ -59,25 +59,49 @@ describe("Join Garden", () => {
     const response = await SmsHelper.joinGarden(null, phoneNumber, mockGarden);
 
     expect(response.type).toBe('registration');
-    expect(sendContactCard).toHaveBeenCalledWith(phoneNumber);
+    expect(sendContactCard).not.toHaveBeenCalled();
   });
+});
 
-  it('should send the contact card when an existing volunteer joins a new garden', async () => {
-    const phoneNumber = '+13038833332';
-    const mockGarden = { id: 2, title: 'Second Garden' };
-    const mockUser = {
-      id: 1,
-      email: 'real@example.com',
-      phoneNumber,
-      gardens: [{ id: 1 }],
-    };
+describe('Contact card', () => {
+  it('should send the card with the welcome text that mentions it', async () => {
+    const phoneNumber = '+13038833331';
+    const mockUser = { id: 1, phoneNumber };
 
     const sendContactCard = patch(SmsHelper, 'sendContactCard', jest.fn().mockResolvedValue(true));
     patchQuery('plugin::users-permissions.user', 'update', jest.fn().mockResolvedValue(mockUser));
 
-    await SmsHelper.joinGarden(mockUser, phoneNumber, mockGarden);
+    const response = await SmsHelper.saveVolunteerName(mockUser, 'ada lovelace');
 
     expect(sendContactCard).toHaveBeenCalledWith(phoneNumber);
+    expect(response.body).toContain("I've just sent you my contact card");
+    expect(response.type).toBe('complete');
+  });
+
+  it('should not send the card when the name is rejected', async () => {
+    const phoneNumber = '+13038833331';
+    const mockUser = { id: 1, phoneNumber };
+
+    const sendContactCard = patch(SmsHelper, 'sendContactCard', jest.fn().mockResolvedValue(true));
+    patchQuery('plugin::users-permissions.user', 'update', jest.fn().mockRejectedValue(new Error('duplicate username')));
+
+    const response = await SmsHelper.saveVolunteerName(mockUser, 'ada lovelace');
+
+    expect(sendContactCard).not.toHaveBeenCalled();
+    expect(response.body).toContain("Sorry we can't accept this name");
+  });
+
+  it('should still return the welcome text when Twilio fails', async () => {
+    const phoneNumber = '+13038833331';
+    const mockUser = { id: 1, phoneNumber };
+
+    patchService('api::sms.sms', 'sendContactCard', jest.fn().mockRejectedValue(new Error('Twilio 500')));
+    patchQuery('plugin::users-permissions.user', 'update', jest.fn().mockResolvedValue(mockUser));
+
+    const response = await SmsHelper.saveVolunteerName(mockUser, 'ada lovelace');
+
+    expect(response.type).toBe('complete');
+    expect(response.body).toContain('Welcome to the team');
   });
   
 });
