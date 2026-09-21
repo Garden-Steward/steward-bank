@@ -6,6 +6,10 @@ const twilioNum =process.env.TWILIONUM;
 let sendContactCard = function(toNum){
   const client = require('twilio')(accountSid, authToken);
   console.log('sending contact card to ', toNum);
+  if (process.env.ENVIRONMENT == 'test') {
+    console.log("Test Sending: contact card", `to ${toNum}`);
+    return Promise.resolve(null);
+  }
   return client.messages
     .create({
       body: '',

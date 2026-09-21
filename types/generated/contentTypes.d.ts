@@ -1061,10 +1061,12 @@ export interface ApiProjectProject extends Struct.CollectionTypeSchema {
         maxLength: 350;
       }>;
     slug: Schema.Attribute.String & Schema.Attribute.Unique;
+    submitter_email: Schema.Attribute.Email;
     title: Schema.Attribute.String & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    verification_token: Schema.Attribute.String & Schema.Attribute.Private;
     volunteer_count: Schema.Attribute.Integer &
       Schema.Attribute.SetMinMax<
         {
