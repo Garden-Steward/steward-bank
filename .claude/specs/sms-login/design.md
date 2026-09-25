@@ -323,8 +323,9 @@ The frontend must branch only on HTTP status, never on `error.message`
 (except to display it).
 
 ### Compatibility and deploy order
-- **Backend changes are purely additive.** There are two new routes and four
-  new private, nullable columns. No existing response shape changes.
+- **Backend schema and API changes are additive.** There are two new routes and
+  five new private, nullable columns. No existing response shape changes. The
+  one data-level behavior change is the role grant described below.
 - The success `user` is a **superset** of what `/auth/local` returns today: it
   adds `role`. Any code reading `user` from localStorage keeps working, and
   `isAdmin` starts working correctly for SMS logins.
@@ -336,8 +337,7 @@ The frontend must branch only on HTTP status, never on `error.message`
   not reverted by logout. Nothing else in the codebase keys on "role is null"
   (the SMS bot identifies new/unfinished users by `email == 'test@test.com'` and
   `phoneNumber == username`), so the bot's registration flow is unaffected.
-- The new columns are private, nullable and additive (five in total, including
-  `sms_login_send_log`).
+
 - **Deploy order: backend first** (`fly deploy`; the schema sync adds the
   columns on boot), then garden-vue (`firebase deploy`).
   - Skew window (new backend, old frontend): no impact, because the old
