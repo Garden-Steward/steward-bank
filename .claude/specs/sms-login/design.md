@@ -1,6 +1,7 @@
 # SMS One-Time-Code Login for the Management Dashboard
 Status: DESIGNED
 Requested by / date: Cameron (cameron@oufp.org) / 2026-09-25
+Revision 2 (2026-09-25, approved by Cameron with revisions): added per-user send caps (5/rolling hour, 10/rolling day); role-less users are now eligible and get the `authenticated` role on their first successful verify.
 Type: COMBO feature (steward-bank backend + garden-vue frontend), plus one unrelated FE bugfix (AC-F13)
 
 ## Intent
@@ -12,9 +13,15 @@ also lands them on that page. The backend never says whether a phone number is
 registered: requesting a code for a registered number, an unregistered number, a
 blocked account or a throttled resend all return the same response. Codes are
 single-use, expire after 10 minutes, are stored only as hashes, allow at most 5
-wrong guesses, and can be re-sent at most once every 60 seconds per user. A
-successful code login returns the same `{ jwt, user }` shape as email login, so
-the rest of the dashboard works unchanged. `/login` keeps working, and public
+wrong guesses, and can be re-sent at most once every 60 seconds per user. On
+top of that, a user gets at most 5 codes per rolling hour and 10 per rolling
+day; a capped request looks exactly like a throttled one. Volunteers who were
+created by text message and have no role can also log in this way: the first
+time they verify a code they are given the standard "authenticated" role. A
+role is only ever granted after the code is proven, never when a code is
+requested, and an existing role is never changed. A successful code login
+returns the same `{ jwt, user }` shape as email login, so the rest of the
+dashboard works unchanged. `/login` keeps working, and public
 pages (e.g. `/gardens/:slug/tasks`) stay public and never show the dialog.
 
 ## Current state
@@ -51,7 +58,8 @@ Backend (steward-bank):
   authenticated request. A user with a null role (users created by SMS
   `SmsHelper.joinGarden`, `src/api/message/controllers/SmsHelper.js:190-199`,
   are created with no role) gets 401 on every call. Issuing them a JWT would
-  just start a logout loop in the frontend.
+  just start a logout loop in the frontend. That is why this design assigns the
+  `authenticated` role on successful verify (Revision 2).
 - The server has no `proxy: true` (`config/server.js`), so `ctx.request.ip` on
   Fly is the proxy's IP. IP-based limiting like `src/api/project/middlewares/rate-limit.js`
   would in practice be a single global bucket.
@@ -104,11 +112,14 @@ Frontend (garden-vue):
       real one.
     - Both endpoints must use this one resolver so the request and the verify
       always pick the same user.
-  - `isEligible(user)`: true only if the user would pass the users-permissions
-    auth strategy. That means `!user.blocked`, `user.role` is non-null, and, when
-    the plugin's advanced setting `email_confirmation` is on, `user.confirmed === true`.
+  - `isEligible(user)`: true if `!user.blocked` and, when the plugin's advanced
+    setting `email_confirmation` is on, `user.confirmed === true`.
+    **`role` is not part of eligibility** (Revision 2). A user with
+    `role = null` is eligible; they get a role at verify time (see Verify flow).
+  - `authenticatedRoleId()`: `strapi.db.query('plugin::users-permissions.role').findOne({ where: { type: 'authenticated' } })`,
+    returning its numeric `id`. Look it up by `type`; never hard-code `1`.
   - `requestCode(rawPhone)`: returns `{ invalid, message }`, or an internal
-    outcome of `sent` / `unknown` / `ineligible` / `throttled`. The outcome is
+    outcome of `sent` / `unknown` / `ineligible` / `throttled` / `capped`. The outcome is
     for logs only; the controller turns every non-invalid outcome into the same
     200 response.
   - `verifyCode(rawPhone, code)`: returns `{ ok: true, user }` or `{ ok: false, reason }`.
@@ -120,7 +131,7 @@ Frontend (garden-vue):
   - `sms.js` must not be changed.
 
 ### Schema change (users-permissions user extension)
-Add four attributes, all `"private": true`, named like `email_verification_*`:
+Add five attributes, all `"private": true`, named like `email_verification_*`:
 
 | attribute | type | notes |
 |---|---|---|
@@ -128,6 +139,16 @@ Add four attributes, all `"private": true`, named like `email_verification_*`:
 | `sms_login_code_expires` | datetime | issue time + 10 min. Null when no active code |
 | `sms_login_attempts` | integer, default 0 | failed verifies against the current code. Treat null as 0 |
 | `sms_login_last_sent` | datetime | time of the last code actually sent. Used for the 60 s throttle. **Not** cleared on success or exhaustion |
+| `sms_login_send_log` | json | array of ISO-8601 timestamps of codes actually sent, oldest first, pruned to the last 24 h on every send (so at most 10 entries). Used for the hourly and daily caps. Null/missing = `[]`. **Not** cleared on success or exhaustion |
+
+Cap representation (Revision 2): the request suggested two fields such as
+window-start + counter pairs. I chose one json timestamp log instead because
+fixed windows are not *rolling*: with window counters, 5 sends at 10:59 and 5
+more at 11:01 would pass an "hourly" cap. A log of at most 10 timestamps gives
+exact rolling-hour and rolling-day counts, stays tiny, and needs one column. If
+Cameron prefers the two-counter form, only the internals of the cap check
+change; the contract and ACs stay the same. Timestamps that fail to parse are
+ignored (treated as outside every window).
 
 Migration: these are nullable, additive columns. Strapi's schema sync creates
 them on boot in both Postgres and sqlite. No backfill and no script are needed.
@@ -147,14 +168,21 @@ responses) but not from the admin Content Manager. That is acceptable.
      numbers can be throttled.
    - The code already on the account stays valid. The frontend enforces the
      60 s wait with its own countdown.
-4. Generate `code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0')`.
-5. Save with one `db.query().update`:
+4. **Send caps (Revision 2):** read `sms_login_send_log`. If it has **≥ 5**
+   entries newer than now − 60 min, or **≥ 10** entries newer than now − 24 h,
+   stop: no write, no SMS, return the generic 200. This is exactly the throttled
+   behavior: same body, stored code and all `sms_login_*` columns unchanged.
+   Log `capped` at `info` with the user id only.
+5. Generate `code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0')`.
+6. Save with one `db.query().update`:
    `sms_login_code_hash`, `sms_login_code_expires = now + 10 min`,
-   `sms_login_attempts = 0`, `sms_login_last_sent = now`. Any earlier code is
-   replaced and becomes invalid.
-6. Send the SMS after the save. Body (fixed text; tests extract `\d{6}`):
+   `sms_login_attempts = 0`, `sms_login_last_sent = now`, and
+   `sms_login_send_log = [...entries newer than now − 24 h, now]`. Any earlier
+   code is replaced and becomes invalid. **The role is never touched here**, even
+   for a role-less user.
+7. Send the SMS after the save. Body (fixed text; tests extract `\d{6}`):
    `Your Garden Steward login code is 123456. It expires in 10 minutes. If you didn't request it, ignore this text.`
-7. Never write the plaintext code to logs, `message` rows, or the response.
+8. Never write the plaintext code to logs, `message` rows, or the response.
 
 ### Verify flow (`verifyCode`)
 Every failure path returns the **same** 400 body (see contract). The order of
@@ -174,6 +202,15 @@ checks:
    - Then fail.
 7. On a match, clear `sms_login_code_hash`, `sms_login_code_expires` and
    `sms_login_attempts` (set to 0). Keep `sms_login_last_sent`.
+   - **Role assignment (Revision 2):** if `user.role` is null, set
+     `role = authenticatedRoleId()` in the **same** update that clears the code.
+     If `user.role` is non-null, do not include `role` in the update at all, so
+     an existing role (Authenticated, a manager role, an admin role, anything)
+     is never changed. If the `authenticated` role cannot be found, treat it as
+     a server misconfiguration: log `error`, leave the user unchanged, and fail
+     with the generic 400 (do not issue a JWT for a role-less user).
+   - Role is only ever assigned here, after the code matches. Failed verifies
+     (any reason) never change `role`.
    - Issue `jwt = await strapi.plugin('users-permissions').service('jwt').issue({ id: user.id })`.
      `await` is harmless in the default legacy mode and required if
      `jwtManagement: 'refresh'` is ever turned on.
@@ -193,13 +230,19 @@ wrong guesses kill the code, and even the right code then fails.
 - **No permission seeding** is needed: no change to `scripts/seed-*permissions*.js`
   and no `grantPrivileges` in tests.
 - In-controller checks are the eligibility rules above.
-- Because of the eligibility rule, SMS login **does not widen who can log
-  in**. Only users who already have a role (and would pass the strategy) can
-  get a JWT. Role-less volunteers created by SMS get the generic 200 and no
-  text.
+- **Auth model change (Revision 2, approved by Cameron):** SMS login **widens
+  who can log in**. Every non-blocked user with a phone number, including
+  role-less volunteers created by the SMS bot, can now get a JWT. On their
+  first successful verify they get the `authenticated` role, so they get
+  exactly the Authenticated role's content-API permissions, the same as any
+  email-registered user. They get nothing beyond that: garden-level checks in
+  controllers (`ctx.state.user` / garden membership) still apply.
+- Proving the phone is what gates the role grant: requests never write
+  `role`, and failed verifies never write `role`.
 
 ### Explicitly out of scope
-- Assigning a role to role-less SMS volunteers so they can log in.
+- Backfilling roles for role-less users who never SMS-login (they stay role-less).
+- Changing an existing role (upgrading or downgrading) through this flow.
 - Rate limits per IP or per hour/day (see Risks).
 - WebOTP `@domain #code` SMS suffix.
 - Changing `sendSms`, `/auth/local`, `phone-verification.js`, or refresh-token mode.
@@ -221,8 +264,10 @@ Request body:
 10-digit US number, or 11 digits with a leading 1, with any punctuation. The
 frontend sends the 10 digits only.
 
-**200**: identical for registered, unregistered, ineligible (blocked, no role,
-unconfirmed when confirmation is required), throttled, and actually-sent:
+**200**: identical for registered, unregistered, ineligible (blocked,
+unconfirmed when confirmation is required), throttled (< 60 s), capped (5/hour
+or 10/day), and actually-sent. Role-less users are eligible and are actually
+sent a code:
 ```json
 { "ok": true, "message": "If that number belongs to a Garden Steward account, a login code has been sent.", "resendAfterSeconds": 60, "expiresInSeconds": 600 }
 ```
@@ -283,6 +328,16 @@ The frontend must branch only on HTTP status, never on `error.message`
 - The success `user` is a **superset** of what `/auth/local` returns today: it
   adds `role`. Any code reading `user` from localStorage keeps working, and
   `isAdmin` starts working correctly for SMS logins.
+- A previously role-less user who verifies comes back with
+  `role.type === "authenticated"`. From then on they can also use any other
+  Authenticated-role endpoint.
+- **Data side effect (Revision 2):** the first successful SMS login of a
+  role-less user writes `role` on their row. This is a permanent data change,
+  not reverted by logout. Nothing else in the codebase keys on "role is null"
+  (the SMS bot identifies new/unfinished users by `email == 'test@test.com'` and
+  `phoneNumber == username`), so the bot's registration flow is unaffected.
+- The new columns are private, nullable and additive (five in total, including
+  `sms_login_send_log`).
 - **Deploy order: backend first** (`fly deploy`; the schema sync adds the
   columns on boot), then garden-vue (`firebase deploy`).
   - Skew window (new backend, old frontend): no impact, because the old
@@ -388,14 +443,26 @@ No new dependencies in either repo.
   - The old `/auth/phone-signup` still returns 404 for unknown numbers, so
     enumeration is already possible there. Out of scope; flagged for a
     follow-up.
-- **Brute force:**
-  - At 5 guesses per code and 1 code per 60 s, an attacker gets about 7,200
-    guesses a day against a 10^6 space, roughly a 0.7%/day chance per
-    targeted account, while the victim receives about 1,440 texts a day.
-    That is also Twilio cost abuse ("SMS pumping").
-  - Recommended follow-up (not in this spec): a rolling cap, e.g. at most 5
-    sends per user per hour and 10 per day. It needs two more private fields.
-  - A per-IP limiter is not useful until `proxy: true` is configured.
+- **Brute force (with caps, Revision 2):**
+  - Guesses are bounded by codes × 5. With at most 10 codes per rolling day,
+    an attacker gets at most **50 guesses/day** per account against 10^6
+    codes: about **0.005%/day** (1 in 20,000), about 1.8%/year of sustained
+    attack. The hourly cap bounds any single hour to 25 guesses.
+  - Before the caps it was about 7,200 guesses/day (0.7%/day).
+  - The victim receives at most 10 texts/day and 5/hour, which bounds
+    harassment and Twilio cost per account. Aggregate cost across many
+    registered numbers is still unbounded (at most 10 × number of accounts per
+    day). A per-IP or global limiter is the follow-up and is not useful until
+    `proxy: true` is configured.
+  - Side effect: an attacker can burn a real user's daily allowance, so that
+    user cannot SMS-login for up to 24 h (denial of service). They still have
+    email and password where they have one. Accepted.
+- **Role grant widens access (Revision 2):** anyone who holds a phone number on
+  file can become an Authenticated user. That includes recycled phone numbers
+  (a new owner of a volunteer's old number) and shared phones. Mitigated only
+  by the Authenticated role's permissions and the in-controller garden checks.
+  Blocking a user is the kill switch, because blocked users are ineligible.
+  Worth a review of what the Authenticated role can do before deploy.
 - **Hash choice:**
   - Plain SHA-256 of a 6-digit code can be brute-forced offline in
     milliseconds if the DB leaks. Binding the user id into the hash input stops
@@ -410,8 +477,9 @@ No new dependencies in either repo.
   bounded by request concurrency. An atomic increment
   (`attempts = attempts + 1 ... returning`) is the upgrade path.
 - **Duplicate phone numbers:** the lowest-id rule is deterministic, but it can
-  pick a stale duplicate. If the oldest match is blocked or role-less, the
-  newer valid account cannot SMS-login. That user can still use email and
+  pick a stale duplicate. If the oldest match is blocked, the newer valid
+  account cannot SMS-login; if it is a role-less SMS soft account, *that* account
+  is the one that gets logged in and receives the `authenticated` role. That user can still use email and
   password. Logged at `warn` when there is more than one match (log ids only).
 - **Non-normalized stored numbers:** express-interest stores `phone` raw, so
   those users won't match an E.164 lookup. They still have email login. No
@@ -424,7 +492,14 @@ No new dependencies in either repo.
   - (c) `users-permissions` user has `draftAndPublish: false`, so `db.query` is
     correct and matches `phone-verification.js`. Use the numeric `id` for the
     JWT and the hash input, never `documentId`.
-  - (d) No lifecycle is involved. Do not add a user lifecycle for this.
+  - (d) No lifecycle is involved. Do not add a user lifecycle for this, and do
+    not assign the role from a lifecycle or at request time.
+  - (d2) `role` is a manyToOne relation. With `db.query().update`, set it as the
+    numeric role id (`role: 3`), as `phone-verification.js` `setPassword` does.
+    Omit the key entirely when the user already has a role; do not write
+    `role: user.role.id` back.
+  - (d3) sqlite and Postgres both store `json`; compare timestamps after
+    `new Date(...)`, never as strings.
   - (e) A test file named `*.test.js` under `tests/auth/` would be run
     standalone by Jest with no Strapi boot. It must be a plain `.js` required
     from `tests/app.test.js`.
@@ -461,8 +536,7 @@ No new dependencies in either repo.
   `sendSms` 0 times, and leaves every `sms_login_*` column on the relevant user
   unchanged:
   - an unregistered number;
-  - a blocked user's number;
-  - a user with `role = null`.
+  - a blocked user's number.
 - **AC-B4 (throttle):** A second request for the same eligible user within 60 s
   returns the AC-B1 body, calls `sendSms` 0 more times, and leaves
   `sms_login_code_hash`, `sms_login_code_expires` and `sms_login_last_sent`
@@ -520,13 +594,56 @@ No new dependencies in either repo.
   lives in `api::auth.sms-login` (service), and the controller only maps
   results to responses. No `strapi.log` or `console` call includes the code or
   the hash.
-- **AC-B17:** The four new attributes exist in `schema.json` with
+- **AC-B17:** The five new attributes (including `sms_login_send_log`) exist in `schema.json` with
   `"private": true`. No new npm dependencies (`package.json` unchanged). No
   changes to `src/api/sms/services/sms.js` or `phone-verification.js`.
 - **AC-B18:** `yarn test` / `npm test` passes, including a new
   `tests/auth/sms-login.js` required from `tests/app.test.js`. It covers
-  AC-B1–B15, and at minimum: success, wrong code, expired, exhaustion,
-  throttle, blocked, unknown number.
+  AC-B1–B15 and AC-B19–B26, and at minimum: success, wrong code, expired,
+  exhaustion, throttle, hourly cap, daily cap, blocked, unknown number,
+  role-less user, existing role unchanged.
+
+Send caps (Revision 2):
+- **AC-B19 (log written):** After a successful send (AC-B1), `sms_login_send_log`
+  is an array whose last entry is within ±30 s of now. Entries older than 24 h
+  that were in the log before the send are gone.
+- **AC-B20 (hourly cap):** Set the eligible user's `sms_login_send_log` to 5
+  timestamps between 5 and 55 min ago and `sms_login_last_sent` to 5 min ago
+  (so the 60 s throttle is not the cause). A request returns the AC-B1 body
+  (deep-equal), calls `sendSms` 0 times, and leaves `sms_login_code_hash`,
+  `sms_login_code_expires`, `sms_login_attempts`, `sms_login_last_sent` and
+  `sms_login_send_log` unchanged. An existing unexpired code still verifies.
+- **AC-B21 (hourly boundary):** Same as AC-B20 but with only 4 entries in the
+  last hour → a code is sent. Separately, with 5 entries all 61–119 min ago → a
+  code is sent.
+- **AC-B22 (daily cap):** Set the log to 10 timestamps spread between 2 h and
+  23 h ago (0 in the last hour) and `sms_login_last_sent` to 2 h ago. A request
+  behaves exactly as in AC-B20: identical 200, no SMS, no column changes.
+- **AC-B23 (daily boundary):** With 9 entries in the last 24 h (0 in the last
+  hour) → a code is sent. With 10 entries all 24 h 1 min to 30 h ago → a code
+  is sent, and afterwards the log contains only the new entry.
+
+Role-less users (Revision 2):
+- **AC-B24 (role-less gets a code):** For a non-blocked user created with
+  `role: null`, a request returns the AC-B1 body and calls `sendSms` once, and
+  the code fields are set as in AC-B2. **`role` is still null after the
+  request.**
+- **AC-B25 (role granted at verify):** For the AC-B24 user, verify with the
+  correct code returns 200 with `user.role.type === 'authenticated'`. In the DB,
+  the user's role is the role whose `type` is `authenticated`. The returned
+  `jwt` works on GET `/api/users/me` → 200 with the same `id`. Before verify,
+  the same user cannot use any JWT (there isn't one), and a wrong-code verify
+  (400) leaves `role` null.
+- **AC-B26 (existing role unchanged):** Create a custom role (e.g.
+  `type: 'garden-manager'` via `strapi.plugin('users-permissions').service('role').createRole`,
+  or the `public` role if creation is impractical in the test DB) and a user
+  with it. After request + successful verify, the user's role id is unchanged
+  and `res.body.user.role.type` is that role's type. The same holds for a user
+  who already has the `authenticated` role (id unchanged, not rewritten).
+- **AC-B27 (ineligible stays ineligible):** A role-less **blocked** user gets
+  the generic 200 and no SMS; their `role` stays null. If the test sets the
+  advanced setting `email_confirmation: true`, a role-less `confirmed: false`
+  user also gets no SMS and stays role-less (restore the setting afterwards).
 
 ### Frontend (garden-vue)
 - **AC-F1:** `/login` page behaviour is unchanged. Logging in with email and
@@ -587,9 +704,11 @@ No new dependencies in either repo.
 
 | AC | How | Layer |
 |---|---|---|
-| B1–B15 | supertest in `tests/auth/sms-login.js`. Create users with `strapi.db.query(...).create` (role 1 = authenticated; one with `role: null`; one `blocked: true`). Capture the code with `patchService('api::sms.sms','sendSms', jest.fn())` and regex `\d{6}` from the body. Assert DB state via `db.query().findOne`. **Clock control:** do not use fake timers. Move `sms_login_last_sent` / `sms_login_code_expires` into the past with a direct `db.query().update`. Also assert `handleSms` is not called (patch it with a `jest.fn`). | Backend (supertest) |
+| B1–B15, B19–B27 | supertest in `tests/auth/sms-login.js`. Create users with `strapi.db.query(...).create` (authenticated role looked up by type; one with `role: null`; one `blocked: true`; one with a custom role for B26). Capture the code with `patchService('api::sms.sms','sendSms', jest.fn())` and regex `\d{6}` from the body. Assert DB state via `db.query().findOne`. **Clock control:** do not use fake timers. Move `sms_login_last_sent` / `sms_login_code_expires` into the past, and write crafted `sms_login_send_log` arrays (B20–B23), with a direct `db.query().update`. Use a fresh user per cap test so logs don't leak between tests. Also assert `handleSms` is not called (patch it with a `jest.fn`). | Backend (supertest) |
 | B7/B8 | Same suite. Check the absence of private keys on `res.body.user`, then GET `/api/users/me` with the Bearer token. Note: `/users/me` requires the Authenticated role to have `plugin::users-permissions.user.me`. Grant it in the test with `grantPrivileges(1, 'plugin::users-permissions.controllers.user.me')` if the test DB default lacks it. This is a test-setup grant, not a production seed. | Backend (supertest) |
-| B3/B15 deep-equality | `expect(resUnknown.body).toEqual(resKnown.body)` | Backend (supertest) |
+| B3/B15/B20/B22 deep-equality | `expect(resUnknown.body).toEqual(resKnown.body)`; same for capped vs sent | Backend (supertest) |
+| B24–B26 role | Read the user with `db.query('plugin::users-permissions.user').findOne({ where:{id}, populate:['role'] })` after the request (still null) and after verify (authenticated / unchanged). For B25, GET `/api/users/me` with the returned JWT; this is the proof the strategy accepts the newly granted role. Also a code-review check that `role` is written only in the verify-success update. | Backend (supertest) + code review |
+| B27 | Toggle `email_confirmation` through `strapi.store({type:'plugin',name:'users-permissions'})` `advanced` key, restoring in `finally`. | Backend (supertest) |
 | B16/B17 | Inspector code review plus `git diff --stat` (sms.js, phone-verification.js and package.json untouched), and a grep for `timingSafeEqual`, `randomInt` and `jwt').issue`. Check there is no log call interpolating the code. | Code review |
 | B18 | `npm test` green | Backend |
 | F1–F11 | Manual in a browser against both dev servers: steward-bank `npm run develop` with `ENVIRONMENT=development`. Twilio sends for real, or read the code from the DB/admin, or temporarily run with `ENVIRONMENT=test` so the body is printed to the server console. garden-vue runs with `npm run dev`, `VITE_API_URL=http://localhost:1337`. Toggle dark mode via Nav. There is no FE unit-test runner in garden-vue, so these are UI-observable only. | UI-observable |
