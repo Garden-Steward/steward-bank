@@ -630,6 +630,54 @@ describe('sms-login service concurrency', () => {
   });
 });
 
+describe('sms-login service timing uniformity', () => {
+  let sendSms;
+  let handleSms;
+
+  beforeEach(() => {
+    sendSms = patchService('api::sms.sms', 'sendSms', jest.fn());
+    handleSms = patchService('api::sms.sms', 'handleSms', jest.fn());
+  });
+
+  it('U1: verify reads advanced settings exactly once on unknown, registered-no-code and blocked paths', async () => {
+    const orig = svc().advancedSettings;
+    const spy = patchService('api::auth.sms-login', 'advancedSettings', jest.fn(function (...a) { return orig.apply(this, a); }));
+
+    let result = await svc().verifyCode(nextPhoneDigits(), '123456');
+    expect(result).toEqual({ ok: false, reason: 'unknown' });
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockClear();
+
+    const { digits: noCodeDigits } = await makeUser();
+    result = await svc().verifyCode(noCodeDigits, '123456');
+    expect(result.reason).toBe('no_code');
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockClear();
+
+    const { digits: blockedDigits } = await makeUser({ blocked: true });
+    result = await svc().verifyCode(blockedDigits, '123456');
+    expect(result.reason).toBe('ineligible');
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('U2: request reads advanced settings exactly once for unknown and blocked numbers', async () => {
+    const orig = svc().advancedSettings;
+    const spy = patchService('api::auth.sms-login', 'advancedSettings', jest.fn(function (...a) { return orig.apply(this, a); }));
+
+    let result = await svc().requestCode(nextPhoneDigits());
+    expect(result.outcome).toBe('unknown');
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockClear();
+
+    const { digits: blockedDigits } = await makeUser({ blocked: true });
+    result = await svc().requestCode(blockedDigits);
+    expect(result.outcome).toBe('ineligible');
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    expect(sendSms).not.toHaveBeenCalled();
+  });
+});
+
 const formatted = (digits) => `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
 const REQUEST_OK_BODY = {
   ok: true,

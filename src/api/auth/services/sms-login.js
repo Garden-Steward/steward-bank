@@ -22,6 +22,9 @@ const codeMatches = (storedHex, userId, code) => {
   if (typeof storedHex !== 'string' || !/^[0-9a-f]{64}$/.test(storedHex)) return false;
   return crypto.timingSafeEqual(Buffer.from(storedHex, 'hex'), Buffer.from(hashCode(userId, code), 'hex'));
 };
+// Burns one timingSafeEqual on paths that have no stored hash, so unknown/ineligible/no_code
+// verify outcomes cost the same DB reads and crypto work as a real mismatch.
+const DUMMY_HASH = hashCode(0, '000000');
 // Returns an array of valid Date objects; tolerates null, non-arrays, JSON strings and junk entries.
 const parseSendLog = (raw) => {
   let arr = raw;
@@ -66,9 +69,13 @@ module.exports = ({ strapi }) => ({
     return { invalid: false, phoneNumber: n.phoneNumber, user: rows[0] || null };
   },
 
-  async isEligible(user) {
-    const advanced = await strapi.store({ type: 'plugin', name: 'users-permissions' }).get({ key: 'advanced' });
-    return !!user && !user.blocked && (!(advanced && advanced.email_confirmation) || user.confirmed === true);
+  async advancedSettings() {
+    return strapi.store({ type: 'plugin', name: 'users-permissions' }).get({ key: 'advanced' });
+  },
+
+  async isEligible(user, advanced) {
+    const adv = advanced === undefined ? await this.advancedSettings() : advanced;
+    return !!user && !user.blocked && (!(adv && adv.email_confirmation) || user.confirmed === true);
   },
 
   async authenticatedRoleId() {
@@ -79,13 +86,14 @@ module.exports = ({ strapi }) => ({
   async requestCode(rawPhone) {
     const r = await this.resolveUser(rawPhone);
     if (r.invalid) return r;
+    const advanced = await this.advancedSettings();
 
     if (!r.user) {
       strapi.log.debug('sms-login: requestCode outcome=unknown');
       return { invalid: false, outcome: 'unknown' };
     }
 
-    if (!(await this.isEligible(r.user))) {
+    if (!(await this.isEligible(r.user, advanced))) {
       strapi.log.debug(`sms-login: requestCode outcome=ineligible user=${r.user.id}`);
       return { invalid: false, outcome: 'ineligible' };
     }
@@ -158,18 +166,22 @@ module.exports = ({ strapi }) => ({
     if (r.invalid) {
       return { ok: false, reason: 'invalid_phone' };
     }
+    const advanced = await this.advancedSettings();
     if (!r.user) {
       strapi.log.debug('sms-login: verifyCode reason=unknown');
+      codeMatches(DUMMY_HASH, 0, codeStr);
       return { ok: false, reason: 'unknown' };
     }
 
-    if (!(await this.isEligible(r.user))) {
+    if (!(await this.isEligible(r.user, advanced))) {
       strapi.log.debug(`sms-login: verifyCode reason=ineligible user=${r.user.id}`);
+      codeMatches(DUMMY_HASH, 0, codeStr);
       return { ok: false, reason: 'ineligible' };
     }
 
     if (!r.user.sms_login_code_hash) {
       strapi.log.debug(`sms-login: verifyCode reason=no_code user=${r.user.id}`);
+      codeMatches(DUMMY_HASH, 0, codeStr);
       return { ok: false, reason: 'no_code' };
     }
 
