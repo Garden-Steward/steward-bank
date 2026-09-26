@@ -171,6 +171,7 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
       const gardenIds = fullUser.gardens.map(garden => garden.id);
       const queryOptions = {
         where: {
+          publishedAt: { $notNull: true },
           garden: {
             id: {
               $in: gardenIds
@@ -206,7 +207,10 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
         pageSize = parseInt(ctx.query['pagination[pageSize]']) || null;
       }
 
+      // v5 keeps a draft row and a published row per document; raw db.query
+      // returns both, so restrict to the published row or events show twice.
       const where = {
+        publishedAt: { $notNull: true },
         accessibility: 'Public',
         startDatetime: {
           $gt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
@@ -294,6 +298,7 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
         };
 
         const where = {
+          publishedAt: { $notNull: true },
           garden: {
             slug: ctx.params.slug,
           }
