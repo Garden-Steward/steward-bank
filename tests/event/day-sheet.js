@@ -124,6 +124,24 @@ describe('Day sheet assembly service', function () {
     });
   });
 
+  describe('garden-anchored sheet', function () {
+    it('leaves finished, abandoned and skipped tasks off', async () => {
+      const event = await makeEvent();
+      await makeTask(event, { title: 'Still open', task_status: 'INITIALIZED' });
+      await makeTask(event, { title: 'Already done', task_status: 'FINISHED' });
+      await makeTask(event, { title: 'Gave up', task_status: 'ABANDONED' });
+      await makeTask(event, { title: 'Passed on', task_status: 'SKIPPED' });
+
+      const sheet = await sheetSvc().assembleForGarden(garden.slug);
+      const titles = sheet.tasks.map((t) => t.title);
+
+      expect(titles).toContain('Still open');
+      expect(titles).not.toContain('Already done');
+      expect(titles).not.toContain('Gave up');
+      expect(titles).not.toContain('Passed on');
+    });
+  });
+
   describe('priority normalization (AC3)', function () {
     it('schema declares the enum and default', () => {
       const attr = strapi.contentType('api::garden-task.garden-task').attributes.priority;
