@@ -187,7 +187,7 @@ responses) but not from the admin Content Manager. That is acceptable.
 ### Verify flow (`verifyCode`)
 Every failure path returns the **same** 400 body (see contract). The order of
 checks:
-1. Normalize the phone. `code = String(code ?? '').trim()` must match `/^\d{6}$/`.
+1. Normalize the phone. `code` must be a JSON string, and `code.trim()` must match `/^\d{6}$/`.
    Malformed input fails **without** using up an attempt.
 2. Call `resolveUser`. Fail if there is no user.
 3. Fail if `!isEligible(user)`. This covers a user blocked after the code was
@@ -285,8 +285,9 @@ Request body:
 ```json
 { "phoneNumber": "5551234567", "code": "012345" }
 ```
-`code` must be a **string**, so leading zeros survive. A JSON number is turned
-into a string and fails if it has fewer than 6 digits.
+`code` must be a JSON **string**, so leading zeros survive. Any other type
+(number, array, object, boolean, null) or a missing `code` gets the generic
+400 below and does not use up an attempt.
 
 **200**:
 ```json
@@ -586,6 +587,7 @@ No new dependencies in either repo.
   - `code: "12345"`;
   - `code: "abcdef"`;
   - a missing `code`.
+  - a non-string `code` (a number, an array such as `["123456"]`, or an object).
 
   A malformed code does not change `sms_login_attempts`.
 - **AC-B16:** The comparison uses `crypto.timingSafeEqual`; code generation

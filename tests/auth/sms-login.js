@@ -1,7 +1,6 @@
 'use strict';
 const request = require('supertest');
 const { patchService } = require('../helpers/patch');
-const { grantPrivileges } = require('../helpers/strapi');
 
 const USER_UID = 'plugin::users-permissions.user';
 const ROLE_UID = 'plugin::users-permissions.role';
@@ -86,8 +85,17 @@ describe('sms-login service', () => {
     expect(unregistered).toEqual({ invalid: false, outcome: 'unknown' });
     expect(sendSms).not.toHaveBeenCalled();
 
-    const { user, digits: blockedDigits } = await makeUser({ blocked: true });
+    const seeded = {
+      sms_login_code_hash: 'a'.repeat(64),
+      sms_login_code_expires: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      sms_login_attempts: 2,
+      sms_login_last_sent: agoIso(2 * 60 * 60 * 1000),
+      sms_login_send_log: [agoIso(2 * 60 * 60 * 1000)],
+    };
+    const { user, digits: blockedDigits } = await makeUser({ blocked: true, extra: seeded });
     const before = await readUser(user.id);
+    expect(before.sms_login_code_hash).toBe('a'.repeat(64));
+    expect(before.sms_login_attempts).toBe(2);
     const result = await svc().requestCode(blockedDigits);
     expect(result).toEqual({ invalid: false, outcome: 'ineligible' });
     expect(sendSms).not.toHaveBeenCalled();
@@ -251,6 +259,31 @@ describe('sms-login service', () => {
     expect(after.sms_login_attempts).toBe(before.sms_login_attempts);
   });
 
+  it('B15b: non-string codes fail without touching attempts or the code', async () => {
+    const { user, digits } = await makeUser();
+    await svc().requestCode(digits);
+    const code = codeFrom(sendSms);
+    const before = await readUser(user.id);
+
+    const cases = [
+      await svc().verifyCode(digits, [code]),
+      await svc().verifyCode(digits, Number(code)),
+      await svc().verifyCode(digits, { code }),
+      await svc().verifyCode(digits, null),
+      await svc().verifyCode(digits, true),
+    ];
+    for (const r of cases) {
+      expect(r).toEqual({ ok: false, reason: 'malformed' });
+    }
+
+    const after = await readUser(user.id);
+    expect(after.sms_login_attempts).toBe(before.sms_login_attempts);
+    expect(after.sms_login_code_hash).toBe(before.sms_login_code_hash);
+
+    const result = await svc().verifyCode(digits, code);
+    expect(result.ok).toBe(true);
+  });
+
   it('B20 hourly cap: 5 sends within the hour blocks a new request', async () => {
     const { user, digits } = await makeUser();
     await svc().requestCode(digits);
@@ -369,6 +402,7 @@ describe('sms-login service', () => {
 
   it('B24: role-less user can request a code', async () => {
     const { user, digits } = await makeUser({ role: null });
+    const before = Date.now();
     const result = await svc().requestCode(digits);
     expect(result.outcome).toBe('sent');
     expect(sendSms).toHaveBeenCalledTimes(1);
@@ -376,6 +410,17 @@ describe('sms-login service', () => {
     const row = await readUser(user.id);
     expect(row.sms_login_code_hash).toMatch(/^[0-9a-f]{64}$/);
     expect(row.role).toBeNull();
+
+    const expiresAt = new Date(row.sms_login_code_expires).getTime();
+    expect(Math.abs(expiresAt - (before + 10 * 60 * 1000))).toBeLessThan(30000);
+
+    expect(row.sms_login_attempts).toBe(0);
+    const lastSentAt = new Date(row.sms_login_last_sent).getTime();
+    expect(Math.abs(lastSentAt - before)).toBeLessThan(30000);
+
+    const log = Array.isArray(row.sms_login_send_log) ? row.sms_login_send_log : JSON.parse(row.sms_login_send_log);
+    const lastLogAt = new Date(log[log.length - 1]).getTime();
+    expect(Math.abs(lastLogAt - before)).toBeLessThan(30000);
   });
 
   it('B25: role-less user verify assigns the authenticated role', async () => {
@@ -477,6 +522,229 @@ describe('sms-login service', () => {
   });
 });
 
+describe('sms-login service concurrency', () => {
+  let sendSms;
+  let handleSms;
+
+  beforeEach(() => {
+    sendSms = patchService('api::sms.sms', 'sendSms', jest.fn());
+    handleSms = patchService('api::sms.sms', 'handleSms', jest.fn());
+  });
+
+  it('C1: 20 parallel requestCode calls send exactly one SMS', async () => {
+    const { user, digits } = await makeUser();
+
+    const results = await Promise.all(Array.from({ length: 20 }, () => svc().requestCode(digits)));
+
+    expect(sendSms).toHaveBeenCalledTimes(1);
+    const sent = results.filter((r) => r.invalid === false && r.outcome === 'sent');
+    const throttled = results.filter((r) => r.invalid === false && r.outcome === 'throttled');
+    expect(sent.length).toBe(1);
+    expect(throttled.length).toBe(19);
+
+    const row = await readUser(user.id);
+    const log = Array.isArray(row.sms_login_send_log) ? row.sms_login_send_log : JSON.parse(row.sms_login_send_log);
+    expect(log.length).toBe(1);
+
+    const verifyResult = await svc().verifyCode(digits, codeFrom(sendSms));
+    expect(verifyResult.ok).toBe(true);
+  });
+
+  it('C2: a parallel burst cannot exceed the hourly cap', async () => {
+    const { user, digits } = await makeUser();
+    await setCols(user.id, {
+      sms_login_last_sent: agoIso(2 * 60 * 1000),
+      sms_login_send_log: [
+        agoIso(2 * 60 * 1000),
+        agoIso(10 * 60 * 1000),
+        agoIso(20 * 60 * 1000),
+        agoIso(30 * 60 * 1000),
+      ],
+    });
+
+    await Promise.all(Array.from({ length: 10 }, () => svc().requestCode(digits)));
+
+    expect(sendSms).toHaveBeenCalledTimes(1);
+
+    const row = await readUser(user.id);
+    const log = Array.isArray(row.sms_login_send_log) ? row.sms_login_send_log : JSON.parse(row.sms_login_send_log);
+    const now = Date.now();
+    const withinHour = log.filter((t) => new Date(t).getTime() > now - 60 * 60 * 1000);
+    expect(withinHour.length).toBe(5);
+  });
+
+  it('C3: a parallel burst cannot exceed the daily cap', async () => {
+    const { user, digits } = await makeUser();
+    const log = [];
+    for (let i = 0; i < 9; i += 1) {
+      const minutesAgo = 120 + i * ((23 * 60 - 120) / 8);
+      log.push(agoIso(minutesAgo * 60 * 1000));
+    }
+    await setCols(user.id, { sms_login_last_sent: agoIso(2 * 60 * 60 * 1000), sms_login_send_log: log });
+
+    await Promise.all(Array.from({ length: 10 }, () => svc().requestCode(digits)));
+
+    expect(sendSms).toHaveBeenCalledTimes(1);
+
+    const row = await readUser(user.id);
+    const finalLog = Array.isArray(row.sms_login_send_log) ? row.sms_login_send_log : JSON.parse(row.sms_login_send_log);
+    expect(finalLog.length).toBe(10);
+  });
+
+  it('C4: 4 parallel wrong guesses are all counted, and the right code still works', async () => {
+    const { user, digits } = await makeUser();
+    await svc().requestCode(digits);
+    const code = codeFrom(sendSms);
+
+    const results = await Promise.all(
+      Array.from({ length: 4 }, () => svc().verifyCode(digits, wrongCode(code)))
+    );
+    for (const r of results) {
+      expect(r.ok).toBe(false);
+    }
+
+    const row = await readUser(user.id);
+    expect(row.sms_login_attempts).toBe(4);
+
+    const finalResult = await svc().verifyCode(digits, code);
+    expect(finalResult.ok).toBe(true);
+  });
+
+  it('C5: 10 parallel wrong guesses stop at 5 attempts and kill the code', async () => {
+    const { user, digits } = await makeUser();
+    await svc().requestCode(digits);
+    const code = codeFrom(sendSms);
+
+    const results = await Promise.all(
+      Array.from({ length: 10 }, () => svc().verifyCode(digits, wrongCode(code)))
+    );
+    for (const r of results) {
+      expect(r.ok).toBe(false);
+    }
+
+    const row = await readUser(user.id);
+    expect(row.sms_login_attempts).toBe(5);
+    expect(row.sms_login_code_hash).toBeNull();
+    expect(row.sms_login_code_expires).toBeNull();
+
+    const finalResult = await svc().verifyCode(digits, code);
+    expect(finalResult.ok).toBe(false);
+  });
+
+  it('C6: the right code in a burst after 10 wrong guesses does not log in', async () => {
+    const { user, digits } = await makeUser();
+    await svc().requestCode(digits);
+    const code = codeFrom(sendSms);
+
+    const calls = [
+      ...Array.from({ length: 10 }, () => svc().verifyCode(digits, wrongCode(code))),
+      svc().verifyCode(digits, code),
+    ];
+    const results = await Promise.all(calls);
+    const last = results[results.length - 1];
+
+    expect(last.ok).toBe(false);
+    expect(last).not.toHaveProperty('jwt');
+
+    const row = await readUser(user.id);
+    expect(row.sms_login_attempts).toBe(5);
+    expect(row.sms_login_code_hash).toBeNull();
+    expect(row.sms_login_code_expires).toBeNull();
+  });
+
+  it('C7: role-less user - right code in a burst after failures does not assign a role', async () => {
+    const { user, digits } = await makeUser({ role: null });
+    await svc().requestCode(digits);
+    const code = codeFrom(sendSms);
+
+    const calls = [
+      ...Array.from({ length: 10 }, () => svc().verifyCode(digits, wrongCode(code))),
+      svc().verifyCode(digits, code),
+    ];
+    const results = await Promise.all(calls);
+    const last = results[results.length - 1];
+
+    expect(last.ok).toBe(false);
+    expect(last).not.toHaveProperty('jwt');
+
+    const row = await readUser(user.id);
+    expect(row.sms_login_attempts).toBe(5);
+    expect(row.sms_login_code_hash).toBeNull();
+    expect(row.sms_login_code_expires).toBeNull();
+    expect(row.role).toBeNull();
+  });
+});
+
+describe('sms-login service timing uniformity', () => {
+  let sendSms;
+  let handleSms;
+
+  beforeEach(() => {
+    sendSms = patchService('api::sms.sms', 'sendSms', jest.fn());
+    handleSms = patchService('api::sms.sms', 'handleSms', jest.fn());
+  });
+
+  it('U1: verify reads advanced settings exactly once on unknown, registered-no-code and blocked paths', async () => {
+    const orig = svc().advancedSettings;
+    const spy = patchService('api::auth.sms-login', 'advancedSettings', jest.fn(function (...a) { return orig.apply(this, a); }));
+
+    let result = await svc().verifyCode(nextPhoneDigits(), '123456');
+    expect(result).toEqual({ ok: false, reason: 'unknown' });
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockClear();
+
+    const { digits: noCodeDigits } = await makeUser();
+    result = await svc().verifyCode(noCodeDigits, '123456');
+    expect(result.reason).toBe('no_code');
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockClear();
+
+    const { digits: blockedDigits } = await makeUser({ blocked: true });
+    result = await svc().verifyCode(blockedDigits, '123456');
+    expect(result.reason).toBe('ineligible');
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('U3: verify issues the same number of SQL queries for unknown and registered-no-code numbers', async () => {
+    const countQueries = async (fn) => {
+      let n = 0;
+      const onQuery = () => { n += 1; };
+      strapi.db.connection.on('query', onQuery);
+      try {
+        await fn();
+      } finally {
+        strapi.db.connection.removeListener('query', onQuery);
+      }
+      return n;
+    };
+
+    const { digits: noCodeDigits } = await makeUser();
+    const unknownDigits = nextPhoneDigits();
+
+    const unknown = await countQueries(() => svc().verifyCode(unknownDigits, '123456'));
+    const noCode = await countQueries(() => svc().verifyCode(noCodeDigits, '123456'));
+    expect(unknown).toBeGreaterThan(0);
+    expect(noCode).toBe(unknown);
+  });
+
+  it('U2: request reads advanced settings exactly once for unknown and blocked numbers', async () => {
+    const orig = svc().advancedSettings;
+    const spy = patchService('api::auth.sms-login', 'advancedSettings', jest.fn(function (...a) { return orig.apply(this, a); }));
+
+    let result = await svc().requestCode(nextPhoneDigits());
+    expect(result.outcome).toBe('unknown');
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockClear();
+
+    const { digits: blockedDigits } = await makeUser({ blocked: true });
+    result = await svc().requestCode(blockedDigits);
+    expect(result.outcome).toBe('ineligible');
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    expect(sendSms).not.toHaveBeenCalled();
+  });
+});
+
 const formatted = (digits) => `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
 const REQUEST_OK_BODY = {
   ok: true,
@@ -490,15 +758,6 @@ const http = () => request(strapi.server.httpServer);
 describe('sms-login HTTP', () => {
   let sendSms;
   let handleSms;
-
-  beforeAll(async () => {
-    const authRole = await strapi.db.query(ROLE_UID).findOne({ where: { type: 'authenticated' } });
-    try {
-      await grantPrivileges(authRole.id, 'plugin::users-permissions.user', ['me']);
-    } catch (e) {
-      // v5 default Authenticated role already allows user.me; confirmed by the B8/B25 tests below.
-    }
-  });
 
   beforeEach(() => {
     sendSms = patchService('api::sms.sms', 'sendSms', jest.fn());
@@ -527,8 +786,17 @@ describe('sms-login HTTP', () => {
     expect(resUnregistered.status).toBe(200);
     expect(resUnregistered.body).toEqual(REQUEST_OK_BODY);
 
-    const { user, digits: blockedDigits } = await makeUser({ blocked: true });
+    const seeded = {
+      sms_login_code_hash: 'a'.repeat(64),
+      sms_login_code_expires: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      sms_login_attempts: 2,
+      sms_login_last_sent: agoIso(2 * 60 * 60 * 1000),
+      sms_login_send_log: [agoIso(2 * 60 * 60 * 1000)],
+    };
+    const { user, digits: blockedDigits } = await makeUser({ blocked: true, extra: seeded });
     const before = await readUser(user.id);
+    expect(before.sms_login_code_hash).toBe('a'.repeat(64));
+    expect(before.sms_login_attempts).toBe(2);
     const resBlocked = await http()
       .post('/api/auth/sms-login/request')
       .send({ phoneNumber: formatted(blockedDigits) });
@@ -639,6 +907,33 @@ describe('sms-login HTTP', () => {
     // Malformed calls (short/alpha/missing code) never touch attempts.
     const after = await readUser(user.id);
     expect(after.sms_login_attempts).toBe(before.sms_login_attempts + 1);
+  });
+
+  it('B15b (HTTP): array and number codes give the generic 400 and use no attempt', async () => {
+    const { user, digits } = await makeUser();
+    await http().post('/api/auth/sms-login/request').send({ phoneNumber: formatted(digits) });
+    const code = codeFrom(sendSms);
+    const before = await readUser(user.id);
+
+    const resArray = await http()
+      .post('/api/auth/sms-login/verify')
+      .send({ phoneNumber: formatted(digits), code: [code] });
+    expect(resArray.status).toBe(400);
+    expect(resArray.body).toEqual(WRONG_CODE_BODY);
+
+    const resNumber = await http()
+      .post('/api/auth/sms-login/verify')
+      .send({ phoneNumber: formatted(digits), code: Number(code) });
+    expect(resNumber.status).toBe(400);
+    expect(resNumber.body).toEqual(WRONG_CODE_BODY);
+
+    const after = await readUser(user.id);
+    expect(after.sms_login_attempts).toBe(before.sms_login_attempts);
+
+    const resGood = await http()
+      .post('/api/auth/sms-login/verify')
+      .send({ phoneNumber: formatted(digits), code: String(code) });
+    expect(resGood.status).toBe(200);
   });
 
   it('B25 (HTTP): a role-less user verifies and gets the authenticated role', async () => {
