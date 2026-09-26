@@ -258,7 +258,7 @@ module.exports = ({ strapi }) => ({
 
     const done = ['FINISHED', 'ABANDONED', 'SKIPPED'];
     return this.dedupeByDocumentId(
-      tasks.filter((t) => !done.includes(String(t.status || '').toUpperCase()))
+      tasks.filter((t) => !done.includes(String(t.task_status || '').toUpperCase()))
         .filter((t) => !this.isRecurringInstance(t))
     );
   },
