@@ -705,6 +705,28 @@ describe('sms-login service timing uniformity', () => {
     expect(spy).toHaveBeenCalledTimes(1);
   });
 
+  it('U3: verify issues the same number of SQL queries for unknown and registered-no-code numbers', async () => {
+    const countQueries = async (fn) => {
+      let n = 0;
+      const onQuery = () => { n += 1; };
+      strapi.db.connection.on('query', onQuery);
+      try {
+        await fn();
+      } finally {
+        strapi.db.connection.removeListener('query', onQuery);
+      }
+      return n;
+    };
+
+    const { digits: noCodeDigits } = await makeUser();
+    const unknownDigits = nextPhoneDigits();
+
+    const unknown = await countQueries(() => svc().verifyCode(unknownDigits, '123456'));
+    const noCode = await countQueries(() => svc().verifyCode(noCodeDigits, '123456'));
+    expect(unknown).toBeGreaterThan(0);
+    expect(noCode).toBe(unknown);
+  });
+
   it('U2: request reads advanced settings exactly once for unknown and blocked numbers', async () => {
     const orig = svc().advancedSettings;
     const spy = patchService('api::auth.sms-login', 'advancedSettings', jest.fn(function (...a) { return orig.apply(this, a); }));

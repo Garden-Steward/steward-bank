@@ -61,7 +61,8 @@ module.exports = ({ strapi }) => ({
     const rows = await strapi.db.query(USER_UID).findMany({
       where: { phoneNumber: n.phoneNumber },
       orderBy: { id: 'asc' },
-      populate: ['role'],
+      // No role populate here: it costs an extra query only when the number is registered,
+      // which would let response time reveal registration. verifyCode loads it after a match.
     });
     if (rows.length > 1) {
       strapi.log.warn(`sms-login: ${rows.length} users share a phone number; using id ${rows[0].id} (ids: ${rows.map((r) => r.id).join(',')})`);
@@ -216,8 +217,9 @@ module.exports = ({ strapi }) => ({
       return { ok: false, reason: 'mismatch' };
     }
 
+    const withRole = await strapi.db.query(USER_UID).findOne({ where: { id: r.user.id }, select: ['id'], populate: ['role'] });
     let roleId = null;
-    if (!r.user.role) {
+    if (!withRole || !withRole.role) {
       roleId = await this.authenticatedRoleId();
       if (roleId === null) {
         strapi.log.error('sms-login: authenticated role not found; refusing to log in role-less user ' + r.user.id);
