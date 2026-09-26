@@ -1,3 +1,7 @@
 'use strict';
 
-module.exports = {};
+const smsLogin = require('./sms-login');
+
+module.exports = {
+  'sms-login': smsLogin,
+};
