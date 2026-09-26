@@ -477,6 +477,159 @@ describe('sms-login service', () => {
   });
 });
 
+describe('sms-login service concurrency', () => {
+  let sendSms;
+  let handleSms;
+
+  beforeEach(() => {
+    sendSms = patchService('api::sms.sms', 'sendSms', jest.fn());
+    handleSms = patchService('api::sms.sms', 'handleSms', jest.fn());
+  });
+
+  it('C1: 20 parallel requestCode calls send exactly one SMS', async () => {
+    const { user, digits } = await makeUser();
+
+    const results = await Promise.all(Array.from({ length: 20 }, () => svc().requestCode(digits)));
+
+    expect(sendSms).toHaveBeenCalledTimes(1);
+    const sent = results.filter((r) => r.invalid === false && r.outcome === 'sent');
+    const throttled = results.filter((r) => r.invalid === false && r.outcome === 'throttled');
+    expect(sent.length).toBe(1);
+    expect(throttled.length).toBe(19);
+
+    const row = await readUser(user.id);
+    const log = Array.isArray(row.sms_login_send_log) ? row.sms_login_send_log : JSON.parse(row.sms_login_send_log);
+    expect(log.length).toBe(1);
+
+    const verifyResult = await svc().verifyCode(digits, codeFrom(sendSms));
+    expect(verifyResult.ok).toBe(true);
+  });
+
+  it('C2: a parallel burst cannot exceed the hourly cap', async () => {
+    const { user, digits } = await makeUser();
+    await setCols(user.id, {
+      sms_login_last_sent: agoIso(2 * 60 * 1000),
+      sms_login_send_log: [
+        agoIso(2 * 60 * 1000),
+        agoIso(10 * 60 * 1000),
+        agoIso(20 * 60 * 1000),
+        agoIso(30 * 60 * 1000),
+      ],
+    });
+
+    await Promise.all(Array.from({ length: 10 }, () => svc().requestCode(digits)));
+
+    expect(sendSms).toHaveBeenCalledTimes(1);
+
+    const row = await readUser(user.id);
+    const log = Array.isArray(row.sms_login_send_log) ? row.sms_login_send_log : JSON.parse(row.sms_login_send_log);
+    const now = Date.now();
+    const withinHour = log.filter((t) => new Date(t).getTime() > now - 60 * 60 * 1000);
+    expect(withinHour.length).toBe(5);
+  });
+
+  it('C3: a parallel burst cannot exceed the daily cap', async () => {
+    const { user, digits } = await makeUser();
+    const log = [];
+    for (let i = 0; i < 9; i += 1) {
+      const minutesAgo = 120 + i * ((23 * 60 - 120) / 8);
+      log.push(agoIso(minutesAgo * 60 * 1000));
+    }
+    await setCols(user.id, { sms_login_last_sent: agoIso(2 * 60 * 60 * 1000), sms_login_send_log: log });
+
+    await Promise.all(Array.from({ length: 10 }, () => svc().requestCode(digits)));
+
+    expect(sendSms).toHaveBeenCalledTimes(1);
+
+    const row = await readUser(user.id);
+    const finalLog = Array.isArray(row.sms_login_send_log) ? row.sms_login_send_log : JSON.parse(row.sms_login_send_log);
+    expect(finalLog.length).toBe(10);
+  });
+
+  it('C4: 4 parallel wrong guesses are all counted, and the right code still works', async () => {
+    const { user, digits } = await makeUser();
+    await svc().requestCode(digits);
+    const code = codeFrom(sendSms);
+
+    const results = await Promise.all(
+      Array.from({ length: 4 }, () => svc().verifyCode(digits, wrongCode(code)))
+    );
+    for (const r of results) {
+      expect(r.ok).toBe(false);
+    }
+
+    const row = await readUser(user.id);
+    expect(row.sms_login_attempts).toBe(4);
+
+    const finalResult = await svc().verifyCode(digits, code);
+    expect(finalResult.ok).toBe(true);
+  });
+
+  it('C5: 10 parallel wrong guesses stop at 5 attempts and kill the code', async () => {
+    const { user, digits } = await makeUser();
+    await svc().requestCode(digits);
+    const code = codeFrom(sendSms);
+
+    const results = await Promise.all(
+      Array.from({ length: 10 }, () => svc().verifyCode(digits, wrongCode(code)))
+    );
+    for (const r of results) {
+      expect(r.ok).toBe(false);
+    }
+
+    const row = await readUser(user.id);
+    expect(row.sms_login_attempts).toBe(5);
+    expect(row.sms_login_code_hash).toBeNull();
+    expect(row.sms_login_code_expires).toBeNull();
+
+    const finalResult = await svc().verifyCode(digits, code);
+    expect(finalResult.ok).toBe(false);
+  });
+
+  it('C6: the right code in a burst after 10 wrong guesses does not log in', async () => {
+    const { user, digits } = await makeUser();
+    await svc().requestCode(digits);
+    const code = codeFrom(sendSms);
+
+    const calls = [
+      ...Array.from({ length: 10 }, () => svc().verifyCode(digits, wrongCode(code))),
+      svc().verifyCode(digits, code),
+    ];
+    const results = await Promise.all(calls);
+    const last = results[results.length - 1];
+
+    expect(last.ok).toBe(false);
+    expect(last).not.toHaveProperty('jwt');
+
+    const row = await readUser(user.id);
+    expect(row.sms_login_attempts).toBe(5);
+    expect(row.sms_login_code_hash).toBeNull();
+    expect(row.sms_login_code_expires).toBeNull();
+  });
+
+  it('C7: role-less user - right code in a burst after failures does not assign a role', async () => {
+    const { user, digits } = await makeUser({ role: null });
+    await svc().requestCode(digits);
+    const code = codeFrom(sendSms);
+
+    const calls = [
+      ...Array.from({ length: 10 }, () => svc().verifyCode(digits, wrongCode(code))),
+      svc().verifyCode(digits, code),
+    ];
+    const results = await Promise.all(calls);
+    const last = results[results.length - 1];
+
+    expect(last.ok).toBe(false);
+    expect(last).not.toHaveProperty('jwt');
+
+    const row = await readUser(user.id);
+    expect(row.sms_login_attempts).toBe(5);
+    expect(row.sms_login_code_hash).toBeNull();
+    expect(row.sms_login_code_expires).toBeNull();
+    expect(row.role).toBeNull();
+  });
+});
+
 const formatted = (digits) => `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
 const REQUEST_OK_BODY = {
   ok: true,

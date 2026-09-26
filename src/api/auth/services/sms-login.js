@@ -29,6 +29,17 @@ const parseSendLog = (raw) => {
   if (!Array.isArray(arr)) return [];
   return arr.map((t) => new Date(t)).filter((d) => !Number.isNaN(d.getTime()));
 };
+// Raw table/column names for the statements that need SQL expressions (atomic counters).
+const userColumns = (strapi) => {
+  const meta = strapi.db.metadata.get(USER_UID);
+  const col = (attr) => meta.attributes[attr].columnName;
+  return {
+    table: meta.tableName,
+    HASH: col('sms_login_code_hash'),
+    EXPIRES: col('sms_login_code_expires'),
+    ATTEMPTS: col('sms_login_attempts'),
+  };
+};
 
 module.exports = ({ strapi }) => ({
   async resolveUser(rawPhone) {
@@ -96,8 +107,17 @@ module.exports = ({ strapi }) => ({
     const code = generateCode();
     const nowIso = new Date(now).toISOString();
 
-    await strapi.db.query(USER_UID).update({
-      where: { id: r.user.id },
+    // Only one concurrent request can move sms_login_last_sent out of the throttle
+    // window. A loser's stale send-log read is therefore never written, and that
+    // is what makes the hourly and daily caps hold under a concurrent burst too.
+    const { count } = await strapi.db.query(USER_UID).updateMany({
+      where: {
+        id: r.user.id,
+        $or: [
+          { sms_login_last_sent: { $null: true } },
+          { sms_login_last_sent: { $lte: new Date(now - RESEND_THROTTLE_MS).toISOString() } },
+        ],
+      },
       data: {
         sms_login_code_hash: hashCode(r.user.id, code),
         sms_login_code_expires: new Date(now + CODE_TTL_MS).toISOString(),
@@ -109,6 +129,11 @@ module.exports = ({ strapi }) => ({
         ],
       },
     });
+
+    if (count !== 1) {
+      strapi.log.debug(`sms-login: requestCode outcome=throttled (concurrent send) user=${r.user.id}`);
+      return { invalid: false, outcome: 'throttled' };
+    }
 
     try {
       const smsService = strapi.service('api::sms.sms');
@@ -149,38 +174,55 @@ module.exports = ({ strapi }) => ({
     }
 
     if (!r.user.sms_login_code_expires || new Date(r.user.sms_login_code_expires).getTime() <= Date.now()) {
-      await strapi.db.query(USER_UID).update({
-        where: { id: r.user.id },
+      // Scoped to the hash we read, so this never clears a code a concurrent resend just issued.
+      await strapi.db.query(USER_UID).updateMany({
+        where: { id: r.user.id, sms_login_code_hash: r.user.sms_login_code_hash },
         data: { sms_login_code_hash: null, sms_login_code_expires: null },
       });
       strapi.log.debug(`sms-login: verifyCode reason=expired user=${r.user.id}`);
       return { ok: false, reason: 'expired' };
     }
 
-    if (!codeMatches(r.user.sms_login_code_hash, r.user.id, codeStr)) {
-      const attempts = (r.user.sms_login_attempts ?? 0) + 1;
-      const data = { sms_login_attempts: attempts };
-      if (attempts >= MAX_ATTEMPTS) {
-        data.sms_login_code_hash = null;
-        data.sms_login_code_expires = null;
-      }
-      await strapi.db.query(USER_UID).update({ where: { id: r.user.id }, data });
-      const reason = attempts >= MAX_ATTEMPTS ? 'exhausted' : 'mismatch';
-      strapi.log.debug(`sms-login: verifyCode reason=${reason} user=${r.user.id}`);
-      return { ok: false, reason };
+    const knex = strapi.db.connection;
+    const { table, HASH, EXPIRES, ATTEMPTS } = userColumns(strapi);
+    const storedHash = r.user.sms_login_code_hash;
+
+    if (!codeMatches(storedHash, r.user.id, codeStr)) {
+      // One atomic statement: increment attempts, and clear the code when this failure is the 5th.
+      // Scoped to the code we compared against, so a guess at a replaced code never counts against the new one.
+      const bumped = await knex(table)
+        .where({ id: r.user.id, [HASH]: storedHash })
+        .update({
+          [ATTEMPTS]: knex.raw('COALESCE(??, 0) + 1', [ATTEMPTS]),
+          [HASH]: knex.raw('CASE WHEN COALESCE(??, 0) + 1 >= ? THEN NULL ELSE ?? END', [ATTEMPTS, MAX_ATTEMPTS, HASH]),
+          [EXPIRES]: knex.raw('CASE WHEN COALESCE(??, 0) + 1 >= ? THEN NULL ELSE ?? END', [ATTEMPTS, MAX_ATTEMPTS, EXPIRES]),
+        });
+      strapi.log.debug(`sms-login: verifyCode reason=mismatch counted=${bumped === 1} user=${r.user.id}`);
+      return { ok: false, reason: 'mismatch' };
     }
 
-    const data = { sms_login_code_hash: null, sms_login_code_expires: null, sms_login_attempts: 0 };
+    let roleId = null;
     if (!r.user.role) {
-      const roleId = await this.authenticatedRoleId();
+      roleId = await this.authenticatedRoleId();
       if (roleId === null) {
         strapi.log.error('sms-login: authenticated role not found; refusing to log in role-less user ' + r.user.id);
         return { ok: false, reason: 'no_auth_role' };
       }
-      data.role = roleId;
     }
 
-    await strapi.db.query(USER_UID).update({ where: { id: r.user.id }, data });
+    // Claim the code atomically: succeeds only if it is still the code we matched and fewer than 5 failures are recorded.
+    const claimed = await knex(table)
+      .where({ id: r.user.id, [HASH]: storedHash })
+      .andWhere((qb) => qb.whereNull(ATTEMPTS).orWhere(ATTEMPTS, '<', MAX_ATTEMPTS))
+      .update({ [HASH]: null, [EXPIRES]: null, [ATTEMPTS]: 0 });
+    if (claimed !== 1) {
+      strapi.log.debug(`sms-login: verifyCode reason=claim_lost user=${r.user.id}`);
+      return { ok: false, reason: 'claim_lost' };
+    }
+
+    if (roleId !== null) {
+      await strapi.db.query(USER_UID).update({ where: { id: r.user.id }, data: { role: roleId } });
+    }
 
     const jwt = await strapi.plugin('users-permissions').service('jwt').issue({ id: r.user.id });
     const user = await strapi.db.query(USER_UID).findOne({ where: { id: r.user.id }, populate: ['role'] });
