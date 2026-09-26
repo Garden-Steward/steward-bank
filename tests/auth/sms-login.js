@@ -1,5 +1,7 @@
 'use strict';
+const request = require('supertest');
 const { patchService } = require('../helpers/patch');
+const { grantPrivileges } = require('../helpers/strapi');
 
 const USER_UID = 'plugin::users-permissions.user';
 const ROLE_UID = 'plugin::users-permissions.role';
@@ -472,5 +474,211 @@ describe('sms-login service', () => {
 
     const result = await svc().resolveUser(first.digits);
     expect(result.user.id).toBe(first.user.id);
+  });
+});
+
+const formatted = (digits) => `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+const REQUEST_OK_BODY = {
+  ok: true,
+  message: 'If that number belongs to a Garden Steward account, a login code has been sent.',
+  resendAfterSeconds: 60,
+  expiresInSeconds: 600,
+};
+const WRONG_CODE_BODY = { data: null, error: { status: 400, name: 'BadRequestError', message: 'Invalid or expired code', details: {} } };
+const http = () => request(strapi.server.httpServer);
+
+describe('sms-login HTTP', () => {
+  let sendSms;
+  let handleSms;
+
+  beforeAll(async () => {
+    const authRole = await strapi.db.query(ROLE_UID).findOne({ where: { type: 'authenticated' } });
+    try {
+      await grantPrivileges(authRole.id, 'plugin::users-permissions.user', ['me']);
+    } catch (e) {
+      // v5 default Authenticated role already allows user.me; confirmed by the B8/B25 tests below.
+    }
+  });
+
+  beforeEach(() => {
+    sendSms = patchService('api::sms.sms', 'sendSms', jest.fn());
+    handleSms = patchService('api::sms.sms', 'handleSms', jest.fn());
+  });
+
+  it('B1: request for an eligible user returns the generic body and sends a code', async () => {
+    const { digits } = await makeUser();
+
+    const res = await http()
+      .post('/api/auth/sms-login/request')
+      .send({ phoneNumber: formatted(digits) });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(REQUEST_OK_BODY);
+    expect(sendSms).toHaveBeenCalledTimes(1);
+    expect(sendSms).toHaveBeenCalledWith(e164(digits), expect.stringMatching(/\d{6}/));
+    expect(handleSms).not.toHaveBeenCalled();
+  });
+
+  it('B3: request for an unregistered number and a blocked user both look like a send', async () => {
+    const unregisteredDigits = nextPhoneDigits();
+    const resUnregistered = await http()
+      .post('/api/auth/sms-login/request')
+      .send({ phoneNumber: formatted(unregisteredDigits) });
+    expect(resUnregistered.status).toBe(200);
+    expect(resUnregistered.body).toEqual(REQUEST_OK_BODY);
+
+    const { user, digits: blockedDigits } = await makeUser({ blocked: true });
+    const before = await readUser(user.id);
+    const resBlocked = await http()
+      .post('/api/auth/sms-login/request')
+      .send({ phoneNumber: formatted(blockedDigits) });
+    expect(resBlocked.status).toBe(200);
+    expect(resBlocked.body).toEqual(REQUEST_OK_BODY);
+
+    expect(sendSms).not.toHaveBeenCalled();
+
+    const after = await readUser(user.id);
+    for (const key of Object.keys(after)) {
+      if (key.startsWith('sms_login_')) {
+        expect(after[key]).toEqual(before[key]);
+      }
+    }
+  });
+
+  it('B6: missing or invalid phoneNumber gives 400 and never sends', async () => {
+    const resMissing = await http().post('/api/auth/sms-login/request').send({});
+    expect(resMissing.status).toBe(400);
+    expect(resMissing.body.error.message).toBe('Phone number is required');
+
+    const resInvalid = await http().post('/api/auth/sms-login/request').send({ phoneNumber: '123' });
+    expect(resInvalid.status).toBe(400);
+    expect(resInvalid.body.error.message).toBe(
+      'Invalid US phone number format. Please provide a 10-digit number with or without the country code.'
+    );
+
+    expect(sendSms).not.toHaveBeenCalled();
+  });
+
+  it('B7/B8: verify with the correct code returns a jwt and sanitized user, which works on /users/me', async () => {
+    const { digits } = await makeUser();
+    await http().post('/api/auth/sms-login/request').send({ phoneNumber: formatted(digits) });
+    const code = codeFrom(sendSms);
+
+    const res = await http()
+      .post('/api/auth/sms-login/verify')
+      .send({ phoneNumber: formatted(digits), code: String(code) });
+
+    expect(res.status).toBe(200);
+    expect(typeof res.body.jwt).toBe('string');
+    expect(typeof res.body.user.id).toBe('number');
+    expect(typeof res.body.user.documentId).toBe('string');
+    expect(res.body.user.role.type).toBe('authenticated');
+
+    const forbiddenKeys = [
+      'password', 'resetPasswordToken', 'confirmationToken',
+      'email_verification_token', 'email_verification_expires',
+      'sms_login_code_hash', 'sms_login_code_expires', 'sms_login_attempts',
+      'sms_login_last_sent', 'sms_login_send_log',
+    ];
+    for (const key of forbiddenKeys) {
+      expect(res.body.user).not.toHaveProperty(key);
+    }
+
+    const meRes = await http()
+      .get('/api/users/me')
+      .set('Authorization', `Bearer ${res.body.jwt}`);
+    expect(meRes.status).toBe(200);
+    expect(meRes.body.id).toBe(res.body.user.id);
+    for (const key of Object.keys(meRes.body)) {
+      expect(key.startsWith('sms_login_')).toBe(false);
+    }
+  });
+
+  it('B10/B15: wrong or malformed verify attempts all give the same generic 400 body', async () => {
+    const { user, digits } = await makeUser();
+    await http().post('/api/auth/sms-login/request').send({ phoneNumber: formatted(digits) });
+    const code = codeFrom(sendSms);
+    const before = await readUser(user.id);
+
+    const resWrong = await http()
+      .post('/api/auth/sms-login/verify')
+      .send({ phoneNumber: formatted(digits), code: wrongCode(code) });
+    expect(resWrong.status).toBe(400);
+    expect(resWrong.body).toEqual(WRONG_CODE_BODY);
+
+    const resUnregistered = await http()
+      .post('/api/auth/sms-login/verify')
+      .send({ phoneNumber: formatted(nextPhoneDigits()), code });
+    expect(resUnregistered.status).toBe(400);
+    expect(resUnregistered.body).toEqual(WRONG_CODE_BODY);
+
+    const resInvalidPhone = await http()
+      .post('/api/auth/sms-login/verify')
+      .send({ phoneNumber: '123', code });
+    expect(resInvalidPhone.status).toBe(400);
+    expect(resInvalidPhone.body).toEqual(WRONG_CODE_BODY);
+
+    const resShortCode = await http()
+      .post('/api/auth/sms-login/verify')
+      .send({ phoneNumber: formatted(digits), code: '12345' });
+    expect(resShortCode.status).toBe(400);
+    expect(resShortCode.body).toEqual(WRONG_CODE_BODY);
+
+    const resAlphaCode = await http()
+      .post('/api/auth/sms-login/verify')
+      .send({ phoneNumber: formatted(digits), code: 'abcdef' });
+    expect(resAlphaCode.status).toBe(400);
+    expect(resAlphaCode.body).toEqual(WRONG_CODE_BODY);
+
+    const resNoCode = await http()
+      .post('/api/auth/sms-login/verify')
+      .send({ phoneNumber: formatted(digits) });
+    expect(resNoCode.status).toBe(400);
+    expect(resNoCode.body).toEqual(WRONG_CODE_BODY);
+
+    // Malformed calls (short/alpha/missing code) never touch attempts.
+    const after = await readUser(user.id);
+    expect(after.sms_login_attempts).toBe(before.sms_login_attempts + 1);
+  });
+
+  it('B25 (HTTP): a role-less user verifies and gets the authenticated role', async () => {
+    const { user, digits } = await makeUser({ role: null });
+    await http().post('/api/auth/sms-login/request').send({ phoneNumber: formatted(digits) });
+    const code = codeFrom(sendSms);
+
+    const res = await http()
+      .post('/api/auth/sms-login/verify')
+      .send({ phoneNumber: formatted(digits), code: String(code) });
+
+    expect(res.status).toBe(200);
+    expect(res.body.user.role.type).toBe('authenticated');
+
+    const meRes = await http()
+      .get('/api/users/me')
+      .set('Authorization', `Bearer ${res.body.jwt}`);
+    expect(meRes.status).toBe(200);
+    expect(meRes.body.id).toBe(user.id);
+  });
+
+  it('B26 (HTTP): a custom-role user keeps their role id and type through verify', async () => {
+    let role = await strapi.db.query(ROLE_UID).findOne({ where: { type: 'sms-login-test-manager' } });
+    if (!role) {
+      role = await strapi.db.query(ROLE_UID).create({
+        data: { name: 'SMS Login Test Manager', description: 'test', type: 'sms-login-test-manager' },
+      });
+    }
+    const { user, digits } = await makeUser({ role: role.id });
+    await http().post('/api/auth/sms-login/request').send({ phoneNumber: formatted(digits) });
+    const code = codeFrom(sendSms);
+
+    const res = await http()
+      .post('/api/auth/sms-login/verify')
+      .send({ phoneNumber: formatted(digits), code: String(code) });
+
+    expect(res.status).toBe(200);
+    expect(res.body.user.role.type).toBe('sms-login-test-manager');
+
+    const row = await readUser(user.id);
+    expect(row.role.id).toBe(role.id);
   });
 });
