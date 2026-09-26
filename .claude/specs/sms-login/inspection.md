@@ -132,3 +132,135 @@ This is a new surface the Intent relies on ("use email & password option"). Scre
 - **What role-less volunteers can do once they become Authenticated** (design risk "Worth a review of what the Authenticated role can do before deploy"): a human review of the prod Authenticated role grants. `seed-content-permissions.js` gives Authenticated full CRUD on plants, projects and location-trackings, and the grant is not scoped to a garden.
 - **Deploy skew:** simulated only, by intercepting the request in the browser. 404 JSON, 405 text and a network abort all showed "Couldn't send a code. Try again or use email & password." It was not run against an actual old backend build.
 - **Light-mode visual parity** with existing modals: human eyeball check.
+
+---
+
+# Re-inspection (T10–T13)
+Verdict: **PASS WITH FINDINGS**. Findings 1 and 3–6 are closed. Finding 2 is only partly closed: a registered number still costs one more DB round trip than an unknown one. No regressions found.
+Date / refs: 2026-09-26. steward-bank `47aa8dd` → `a06a9b9` (T10 `5ca3a0a`, T11 `36f72b7`, T12 `a06a9b9`). garden-vue `24b143d` → `b23aceb` (T13).
+
+## Method / evidence sources
+- Read `git diff 47aa8dd..a06a9b9` (service, tests, design.md) and `git diff 24b143d..b23aceb` (`LoginModal.vue`) in full.
+- **Full `yarn test`:** 3 failed / 469 passed / 472. The 3 failures are the known ones (`transferTask` ×2, day-sheet G2).
+- **Targeted `-t "sms-login"`:** 43/43 passed on 3 consecutive runs. C6/C7 did not flake.
+- **Scratch probe** `reinspect-probe.js`, kept in the session scratchpad and not in the repo. It boots Strapi in-process with `sendSms` stubbed. It runs service-level parallel bursts, raw-SQL edge cases, an injected role-write failure, HTTP byte-identity checks and timing.
+  - It ran twice: on **sqlite** (test config, pool 1) and on a **local PostgreSQL 16** with the production `config/database.js` (pool max 10, `NODE_ENV=development`).
+  - The pg run used a throwaway database and role. Both were dropped afterwards and the cluster was stopped.
+- **Live browser run:** Playwright/Chromium from `/opt/pw-browsers`, against `vite` (garden-vue) and a scratch-sqlite steward-bank. SMS codes were read from the server log. Screenshots are in the scratchpad (`re-stack-*.png`, `re-email.png`, `re-dark-phone.png`).
+- **Cleanup:** all servers were stopped. `git status` is clean in both repos. `eslint LoginModal.vue --no-fix` exits 0.
+
+## Scorecard: prior findings
+| Finding | Status | Evidence |
+|---|---|---|
+| 1 Races (throttle, caps, attempts) | **CLOSED (VERIFIED on sqlite and Postgres)** | See "Finding 1 detail" below |
+| 2 Timing oracle on silent verify | **PARTIAL (GAP)** | The plugin-store read is now uniform, but `resolveUser`'s `populate: ['role']` adds a query only when a user row exists. See R1 |
+| 3 Non-string `code` | **CLOSED (VERIFIED)** | Service: `[code]`, `Number(code)`, `123456`, `{code}`, `true`, `null`, `undefined` and `[Number(code)]` all return `malformed`; attempts stay 0; `"<code> "` (trimmed string) still works. HTTP: array, number, 6-digit number, object, boolean and null codes all return the byte-identical generic 400. After 1 mismatch plus 10 malformed or non-string posts, attempts = **1** |
+| 4 Unlabeled email/password | **CLOSED (VERIFIED live)** | Visible `<label>`s "Email" → `#login-modal-email` and "Password" → `#login-modal-password` (screenshot `re-email.png`). `getByLabel('Email')` resolves to `type=email` and `getByLabel('Password')` to `type=password`. `autocomplete` is still `username` / `current-password`. The code input's accessible name is "Login code" (`getByRole('textbox',{name:'Login code'})` = 1). Real password-manager autofill was not exercised |
+| 5 Backdrop over Nav | **CLOSED (VERIFIED live)** | See "Finding 5 detail" below |
+| 6 Resend double-click | **CLOSED (VERIFIED live)** | After 61 s: `dblclick` on "Resend code" → **1** POST `/request`, 1 new code, "New code sent.", label "Resend in 59s" (disabled). Three synchronous `.click()` calls in one tick → **1** POST |
+| 7a B3 "unchanged" trivially true | **CLOSED** | Service and HTTP B3 now seed a live-looking hash, attempts 2 and last_sent 2 h ago, and assert the seed landed. My HTTP probe: a blocked user with a seeded hash and attempts gets the identical 200 |
+| 7b B24 partial | **CLOSED** | B24 now asserts expiry, attempts, last_sent and the last log entry |
+| 7c Swallowed setup error | **CLOSED** | `beforeAll` and the `try/catch` were removed along with the unused `grantPrivileges` import. B7/B8/B25 (HTTP) still pass. Probe: `/users/me` → 200 on a fresh DB, both sqlite and pg |
+| 7d No concurrency tests | **CLOSED** | C1–C7 added (service-level `Promise.all`). They mirror my original burst |
+| 7e HTTP coverage of state machine | Unchanged (acceptable) | Still covered by the re-inspection probe over HTTP (below), not by the suite |
+
+### Finding 1 detail (burst results, sqlite and pg identical unless noted)
+- **20 parallel `requestCode`, ×5:** `sendSms=1`, one `sent`, log length 1, and the texted code verifies. The earlier result was 20 SMS with log 1.
+- **Hourly cap** (4 in the last hour, last_sent 2 min ago), 20 parallel, ×3: `sendSms=1`, 5 log entries within the hour. A second burst after moving last_sent back: `sendSms=0`.
+- **Daily cap** (9 in the last day), 20 parallel, ×3: `sendSms=1`, log = 10.
+- **HTTP burst of 15 requests:** 1 SMS, and all 15 bodies byte-identical.
+- **30 wrong guesses plus the right code, in parallel, ×5 each,** with the right code last, in the middle, and last for a role-less user:
+  - result: right code rejected (`claim_lost`), `attempts=5`, hash and expiry null;
+  - role-less user's role stays **null**.
+- **Right code first in the array:**
+  - sqlite: logs in 5/5 (it is serialized ahead of the wrong guesses);
+  - pg: logs in 3/5 and is rejected 2/5, because on a real pool, 5 wrong guesses sometimes committed first.
+  - Both outcomes are correct: a login happens only while fewer than 5 failures are recorded.
+- **Sequential 5 wrong then right:** rejected, attempts 5. **6 wrong plus right in parallel:** rejected, attempts 5.
+- Attempts never exceeded 5. After the 5th failure clears the hash, the `WHERE hash = stored` guard makes later bumps no-ops.
+- **SQL review for Postgres correctness:**
+  - **Affected-row counts:** knex resolves `update()` to `resp.rowCount` on pg (`knex/lib/dialects/postgres/index.js:254`) and to `changes` on better-sqlite3. Strapi `updateMany` passes that number through as `{count}` (`@strapi/database/dist/entity-manager/index.js:306`).
+  - **CASE/COALESCE:** these read the pre-update row in both engines, as the SQL standard requires. Probe results: NULL attempts → 1 with the hash kept; 4 → 5 clears hash and expiry; a claim with attempts NULL succeeds. (MySQL evaluates SET left-to-right and would differ, but it is not a target.)
+  - **Column names:** resolved via `strapi.db.metadata`. The emitted pg SQL uses `"up_users"` and the snake_case columns.
+  - **Row locking:** under READ COMMITTED, pg re-checks the WHERE of a blocked UPDATE against the committed row. That is why the conditional updates hold at pool 10.
+  - **Datetime compare:** the `$lte` ISO comparison was correct on pg, but only with process and DB in UTC (same as Fly).
+- **Role write after a successful claim:** see R2.
+
+### Finding 5 detail
+- The wrapper is now `position: fixed`.
+- `elementsFromPoint` at the left, centre and right of `nav.gs-navbar` puts `.login-modal-backdrop` (index 1) above the Nav (index 3). This holds at **1280×800 and 375×812, in light and dark**. Screenshots `re-stack-1280-light.png` and `re-stack-375-dark.png` show the Nav dimmed.
+- After Escape, `.login-modal-wrapper` count = 0 and the page centre is reachable, so the new `fixed inset-0` wrapper does not block the page when closed.
+- **Correction to the original finding:** T13's author measured that the Nav was already dimmed at base (`#modals` is a z-20 root context and `.app-container` is z 1). My original "Nav stays bright" was most likely a misreading of the cream Nav under the dark backdrop. I did not re-check base myself. The change is defensive and harmless.
+
+## Scorecard: regression ACs
+| AC | Status | Evidence |
+|---|---|---|
+| B3 | VERIFIED | HTTP, sqlite and pg. 8 outcomes (sent, throttled, unknown, blocked with seeded state, hourly-capped, daily-capped, role-less, numeric `phoneNumber`) plus a 15-way concurrent burst, where losers take the new `count !== 1` path. Result: **1 distinct** `status\|content-type\|body` = `200\|application/json; charset=utf-8\|{"ok":true,"message":"If that number belongs to a Garden Steward account, a login code has been sent.","resendAfterSeconds":60,"expiresInSeconds":600}` |
+| B7/B8 | VERIFIED | Probe: 200 `{jwt,user}`. `user` has the same key set as before plus `role` (`authenticated`), and no `sms_*`. `/users/me` → 200, same id, 0 `sms_*` keys. Live: localStorage `user.role.type = authenticated`, no `sms_*`, `_stewToken` set |
+| B12 | VERIFIED | Sequential: 5 wrong then right → rejected, attempts 5. Concurrent: see Finding 1 detail (sqlite and pg). Suite C5–C7 |
+| B15 (incl. non-string) | VERIFIED | HTTP, sqlite and pg. 17 failure cases → **1 distinct** `400\|application/json; charset=utf-8\|{"data":null,"error":{"status":400,"name":"BadRequestError","message":"Invalid or expired code","details":{}}}`. The cases were: mismatch, unknown, registered-no-code, blocked, expired, `"12345"`, `"abcdef"`, missing, `[code]`, `Number(code)`, `123456`, `{code}`, `true`, `null`, bad phone, object phone and an empty body. design.md lines 190, 288–290 and the AC-B15 bullet match the implementation |
+| B16 | VERIFIED (review) | `randomInt`, `timingSafeEqual` and `jwt.issue({id})` are unchanged. The new dummy compare uses a 32-byte `DUMMY_HASH`. New log lines carry only user id and reason (`counted=`, `claim_lost`); no code or hash is interpolated |
+| B24 | VERIFIED | Suite B24 now asserts the full field set. Probe: role-less request → identical 200 and 1 SMS |
+| B25 | VERIFIED | Probe HTTP (sqlite and pg): 200, body and DB role = `authenticated`. Live verify for a role-less user was not repeated this round, but was verified in round 1 |
+| B26 | VERIFIED | Probe HTTP: a `public`-role user stays `public` after verify. Suite B26 is green |
+| B27 | VERIFIED | Probe HTTP: with `email_confirmation` on, an unconfirmed role-less user's request → 200. Verify with a code obtained earlier → 400, role null, and the stored hash untouched. Suite B27 is green |
+| F5 | VERIFIED (live) | Display `(720) 555-0100`. Wire `{"phoneNumber":"7205550100"}`, no Authorization, 1 SMS |
+| F6 | VERIFIED (live) | `autocomplete=one-time-code`, `inputmode=numeric`, `maxlength=6`, `pattern=\d{6}`, `aria-label="Login code"`, focused. "Resend in 59s" (disabled) → after 61 s "Resend code" (enabled). The resend guard is described under Finding 6 |
+| F7 | VERIFIED (live) | Wire `{"phoneNumber":"7205550100","code":"172829"}` (string), no Authorization. It landed on `/manage/gardens/live-garden` (the deep link) with the modal closed and `user` and token stored |
+| F8 | VERIFIED (live) | Wrong code → "That code is invalid or expired.", input cleared, URL unchanged, `user` null |
+| F9 | VERIFIED (live) | From `/gardens` → `/manage/projects`: bad password → inline "Invalid identifier or password", modal open. Good password → `/manage/projects`. A `pageerror {name:""}` after landing also occurred in round 1. It comes from the pre-existing projects page (`GET /api/projects … populate[2]=created_by` → 400 "Invalid key created_by" on the scratch DB), and T13 did not cause it |
+| F10 | VERIFIED (live) | Dark: panel `rgb(45,62,38)`, border `rgb(61,77,54)`, input `rgb(52,74,52)`, text and label `#f5f5f5` (measured after the 0.3 s transition). Light screenshot unchanged |
+
+## New / residual findings
+### R1. GAP (medium-low): the silent verify timing oracle persists, now from the role populate
+- **Intent of T11:** "Make verify and request do the same DB reads for registered and unknown numbers." The plugin-store read is now uniform: `services/sms-login.js:89,172` read it on every path.
+- **What remains:** `resolveUser` still does `findMany({ …, populate: ['role'] })` (`services/sms-login.js:61-65`). Strapi issues the populate as a **second SELECT only when a row exists**. SQL captured on pg:
+  ```
+  unknown:     select … from "up_users" … where "phone_number" = $1
+               select … from "strapi_core_store_settings" …
+  registered:  select … from "up_users" … where "phone_number" = $1
+               select distinct "t0".*, "t1"."user_id" … from "up_roles" left join "up_users_role_lnk" …   <-- extra
+               select … from "strapi_core_store_settings" …
+  ```
+- **Measured (medians of 60, 3 rounds, verify with no active code):**
+
+  | DB | Level | Unknown (ms) | Registered, no code (ms) |
+  |---|---|---|---|
+  | sqlite | HTTP | 7.46 / 5.71 / 4.17 | 9.47 / 6.82 / 4.79 |
+  | sqlite | service | 0.9–1.2 | 1.3–1.8 |
+  | **pg** | **HTTP** | **6.37 / 6.37 / 5.82** | **7.79 / 8.29 / 7.29** |
+  | pg | service | 2.1–2.5 | 3.4–3.9 |
+
+  - Round 1 on sqlite was 3.12 vs 4.07 over HTTP. The gap went from about 1 ms to about 0.6 ms on sqlite.
+  - On Postgres the gap is still one full DB round trip, about 1.3–1.9 ms. Over a network link to the DB in production it will likely be larger, not smaller.
+- **Test blind spot:** U1/U2 assert that `advancedSettings` is called exactly once. That is a proxy for "same DB work", so they pass while the oracle remains.
+- **Options, for the main thread:**
+  - drop `populate` from `resolveUser` and read the role only on the success path, after the claim (it is needed only for `!r.user.role`);
+  - or issue an equivalent dummy role query on the unknown path.
+  - A test that counts `knex` `query` events per path would lock it in.
+
+### R2. Low: if the role write after the claim fails, the user gets a 500 and the code is spent (fails closed)
+- **Where:** `services/sms-login.js:238-240` runs after the claim at `:229-236`.
+- **Probe:** I injected a throw on the `role` update for a role-less user with the correct code. Results:
+  - `verifyCode` rejects;
+  - the controller has no try/catch, so Strapi's error middleware answers **500** (the HTTP 500 is inferred from the controller code, not probed);
+  - DB after: hash null, attempts 0, **role null**, no JWT issued;
+  - a retry with the same code → `no_code`.
+- **Security:** no bypass and no half-state. No JWT is issued and the role stays null.
+- **Impact:** the user must request a new code, which the 60 s throttle allows. The 500 is only reachable with a correct code, so it is not an enumeration channel. The same applies to a failure in `jwt.issue` or the final `findOne`.
+- **Optional hardening:** wrap claim + role write in `strapi.db.transaction`. No suite test covers this path.
+
+### R3. Test-quality notes on the new tests
+- **C1–C7 are discriminating:** they reproduce my round-1 burst, which sent 20 SMS on the old code. I did not re-run the red phase myself (it would require editing `src/`).
+- **C6/C7 are sqlite-specific.** They rely on the single-connection pool running the right code last. On pg the burst outcome depends on commit order (see "right code first" above). The invariant they protect still held in every pg run.
+- **B15b (HTTP) `Number(code)`** discriminates against a `String()`-coercing implementation only when the code has no leading zero, which fails about 10% of the time. The array case always discriminates, so the test is sound overall.
+- **Untested:** the expired-path `updateMany` scoping (`where hash = read hash`) has no test; it was reviewed only. The role-write-failure path (R2) is also untested.
+
+### R4. Note (no action): Postgres probe ran in UTC only
+The throttle's `$lte` ISO comparison on a `timestamp` column was verified with both process and DB in UTC. That matches Fly; a non-UTC server TZ was not tested.
+
+## What remains unverified and how to close it
+- **Timing on production infrastructure (R1):** after any R1 fix, time ~200 verify calls from outside Fly, registered vs unregistered, and compare the distributions.
+- **Real password-manager autofill** into the newly labelled fields: manual check in Chrome/1Password/iOS Keychain.
+- **HTTP 500 body on role-write failure (R2):** inferred from the controller, not probed over HTTP.
+- **Round-1 items still open:** production `email_confirmation` value, review of Authenticated role grants, Twilio delivery/iOS OTP autofill, and deploy skew against a real old build.
