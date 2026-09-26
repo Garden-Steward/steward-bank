@@ -90,6 +90,19 @@ describe('renderDaySheetHtml', () => {
     expect(html).not.toContain('href="http');
   });
 
+  test('prints the task card number before an ordered task, and nothing before an unordered one', () => {
+    const base = makeSheet().tasks[0];
+    const html = renderDaySheetHtml(makeSheet({
+      tasks: [
+        { ...base, id: 1, title: 'Dig the basin', sort_order: 3 },
+        { ...base, id: 2, title: 'Loose end', sort_order: null },
+      ],
+    }));
+
+    expect(html).toContain('<div class="title">3. Dig the basin</div>');
+    expect(html).toContain('<div class="title">Loose end</div>');
+  });
+
   test('AC19 — no colour declaration other than black/white', () => {
     const html = renderDaySheetHtml(makeSheet({
       event: { canceled: true },

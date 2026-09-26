@@ -112,6 +112,10 @@
       "type": "enumeration",
       "enum": ["High", "Normal", "Low"],
       "default": "Normal"
+    },
+    "sort_order": {
+      "type": "integer",
+      "description": "Manager-set position on the task board and day sheet (1 = first). Unset sorts after ordered tasks."
     }
   }
 }

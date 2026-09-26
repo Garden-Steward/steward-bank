@@ -256,6 +256,12 @@ ${rows.join('\n')}
   `;
 }
 
+// The number the manager sees on the task card, so the sheet and the board can
+// be read against each other. Integer-only, so it needs no escaping.
+function orderPrefix(t) {
+  return Number.isInteger(t.sort_order) ? `${t.sort_order}. ` : '';
+}
+
 // `heading` is one of two literals chosen below, never caller input — it is
 // inserted unescaped so the apostrophe in "Today's" survives.
 function renderTasks(printedTasks, printedExtras, noteChars, omittedCount, heading) {
@@ -276,7 +282,7 @@ function renderTasks(printedTasks, printedExtras, noteChars, omittedCount, headi
       <tr>
         <td class="col-box"><span class="checkbox"></span></td>
         <td class="col-pri"><span class="pri">${escapeHtml(label)}</span></td>
-        <td><div class="title">${escapeHtml(t.title)}</div>${detailHtml}</td>
+        <td><div class="title">${orderPrefix(t)}${escapeHtml(t.title)}</div>${detailHtml}</td>
       </tr>
     `;
   });
@@ -363,8 +369,8 @@ function renderDaySheetHtml(sheet) {
   const allPrintedTasks = tasks.filter((t) => !hiddenTaskIds.includes(t.id));
 
   // The three write-in rows are not negotiable, so they claim their space first.
-  // Tasks arrive sorted High -> Normal -> Low, so trimming from the tail sheds the
-  // least important work; the reader is told a count is missing rather than being
+  // Tasks arrive in the manager's order, then High -> Normal -> Low, so trimming
+  // from the tail sheds the least important work; the reader is told a count is missing rather than being
   // left to wonder.
   const fixedRows = printedStanding.length + printedExtras.length + BLANK_ROWS;
   const roomForTasks = Math.max(0, MAX_ROWS - fixedRows);

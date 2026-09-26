@@ -23,6 +23,13 @@ const findSmsDay = (strapi, idOrDocumentId) => {
 };
 
 
+// User fields safe to expose on the public by-id route.
+const PUBLIC_USER_FIELDS = ['id', 'documentId', 'username', 'firstName', 'lastName', 'color'];
+
+// Projects an event can be linked to / shown with: pending pitches, active
+// projects, and finished ones kept for the record.
+const LINKABLE_PROJECT_STATUSES = ['CREATED', 'APPROVED', 'COMPLETED'];
+
 module.exports = createCoreController('api::volunteer-day.volunteer-day', ({strapi}) => ({
 
     // Fetch a single event by NUMERIC id. v5's core findOne keys on documentId,
@@ -30,14 +37,33 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
     // resolves events by numeric id through here.
     getById: async (ctx) => {
       const { id } = ctx.params;
+      // This route is public and db.query skips the REST sanitizer, so user
+      // relations must be narrowed by hand — never return password hashes,
+      // reset tokens, phone numbers or emails from here.
       const entry = await strapi.db.query('api::volunteer-day.volunteer-day').findOne({
         where: { id },
         populate: {
           recurring_template: true,
-          confirmed: true,
+          confirmed: { select: PUBLIC_USER_FIELDS },
           hero_image: true,
           featured_gallery: true,
-          garden: { populate: { managers: true } },
+          garden: { populate: { managers: { select: PUBLIC_USER_FIELDS } } },
+          // Only projects that are visible publicly or still in play; rejected
+          // and archived pitches stay off the event page.
+          projects: {
+            select: [
+              'id', 'documentId', 'title', 'slug', 'short_description',
+              'category', 'review_status', 'date_start', 'date_end',
+            ],
+            where: {
+              publishedAt: { $notNull: true },
+              review_status: { $in: LINKABLE_PROJECT_STATUSES },
+            },
+            populate: {
+              hero_image: true,
+              garden: { select: ['id', 'documentId', 'title', 'slug'] },
+            },
+          },
         },
       });
       if (!entry) {

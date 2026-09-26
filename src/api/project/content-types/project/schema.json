@@ -86,7 +86,8 @@
     "related_events": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "api::volunteer-day.volunteer-day"
+      "target": "api::volunteer-day.volunteer-day",
+      "inversedBy": "projects"
     },
     "photo_album_url": {
       "type": "string",

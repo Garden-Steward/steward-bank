@@ -110,6 +110,18 @@ describe('Day sheet assembly service', function () {
       expect(highs).toHaveLength(2);
       expect(highs[0].id).toBeLessThan(highs[1].id);
     });
+
+    it('puts manager-ordered tasks first, by sort_order, ahead of priority', async () => {
+      const event = await makeEvent();
+      await makeTask(event, { title: 'Unordered High', priority: 'High' });
+      await makeTask(event, { title: 'Second', priority: 'Low', sort_order: 2 });
+      await makeTask(event, { title: 'First', priority: 'Normal', sort_order: 1 });
+
+      const sheet = await sheetSvc().assemble(event.id);
+
+      expect(sheet.tasks.map((t) => t.title)).toEqual(['First', 'Second', 'Unordered High']);
+      expect(sheet.tasks.map((t) => t.sort_order)).toEqual([1, 2, null]);
+    });
   });
 
   describe('priority normalization (AC3)', function () {

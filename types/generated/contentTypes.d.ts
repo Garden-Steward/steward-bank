@@ -615,6 +615,7 @@ export interface ApiGardenTaskGardenTask extends Struct.CollectionTypeSchema {
       'api::recurring-task.recurring-task'
     >;
     resources_section: Schema.Attribute.RichText;
+    sort_order: Schema.Attribute.Integer;
     started_at: Schema.Attribute.DateTime;
     task_status: Schema.Attribute.Enumeration<
       [
@@ -1478,6 +1479,7 @@ export interface ApiVolunteerDayVolunteerDay
     photo_album_id: Schema.Attribute.String;
     photo_album_url: Schema.Attribute.String;
     planting: Schema.Attribute.Component<'plants.planting', true>;
+    projects: Schema.Attribute.Relation<'manyToMany', 'api::project.project'>;
     publishedAt: Schema.Attribute.DateTime;
     recurring_template: Schema.Attribute.Relation<
       'manyToOne',
@@ -2098,6 +2100,14 @@ export interface PluginUsersPermissionsUser
       'manyToOne',
       'plugin::users-permissions.role'
     >;
+    sms_login_attempts: Schema.Attribute.Integer &
+      Schema.Attribute.Private &
+      Schema.Attribute.DefaultTo<0>;
+    sms_login_code_expires: Schema.Attribute.DateTime &
+      Schema.Attribute.Private;
+    sms_login_code_hash: Schema.Attribute.String & Schema.Attribute.Private;
+    sms_login_last_sent: Schema.Attribute.DateTime & Schema.Attribute.Private;
+    sms_login_send_log: Schema.Attribute.JSON & Schema.Attribute.Private;
     status: Schema.Attribute.Enumeration<
       ['INTERESTED', 'VOLUNTEER', 'PROFESSIONAL', 'INACTIVE']
     >;

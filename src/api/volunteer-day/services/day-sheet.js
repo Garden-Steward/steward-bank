@@ -175,13 +175,18 @@ module.exports = ({ strapi }) => ({
   },
 
   /**
+   * The manager's drag-and-drop `sort_order` wins (ascending, unset last), then
    * High=0, Normal=1, Low=2 (null/unknown -> 1), tie-broken on ascending
    * numeric id. Deterministic; does not rely on relation populate order.
    * Returns a new array; does not mutate the input.
    */
   sortTasks(tasks) {
     const rank = { High: 0, Normal: 1, Low: 2 };
+    const position = (t) => (Number.isInteger(t.sort_order) ? t.sort_order : Infinity);
     return [...tasks].sort((a, b) => {
+      const posA = position(a);
+      const posB = position(b);
+      if (posA !== posB) return posA < posB ? -1 : 1;
       const rankA = rank[a.priority] ?? 1;
       const rankB = rank[b.priority] ?? 1;
       if (rankA !== rankB) return rankA - rankB;
@@ -312,6 +317,7 @@ module.exports = ({ strapi }) => ({
       documentId: t.documentId,
       title: t.title,
       priority: ['High', 'Normal', 'Low'].includes(t.priority) ? t.priority : 'Normal',
+      sort_order: Number.isInteger(t.sort_order) ? t.sort_order : null,
       type: t.type ?? null,
       task_status: t.task_status ?? null,
       overview: t.overview ?? null,
