@@ -157,7 +157,10 @@ module.exports = ({ strapi }) => ({
   },
 
   async verifyCode(rawPhone, code) {
-    const codeStr = String(code ?? '').trim();
+    if (typeof code !== 'string') {
+      return { ok: false, reason: 'malformed' };
+    }
+    const codeStr = code.trim();
     if (!/^\d{6}$/.test(codeStr)) {
       return { ok: false, reason: 'malformed' };
     }

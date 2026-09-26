@@ -1,7 +1,6 @@
 'use strict';
 const request = require('supertest');
 const { patchService } = require('../helpers/patch');
-const { grantPrivileges } = require('../helpers/strapi');
 
 const USER_UID = 'plugin::users-permissions.user';
 const ROLE_UID = 'plugin::users-permissions.role';
@@ -86,8 +85,17 @@ describe('sms-login service', () => {
     expect(unregistered).toEqual({ invalid: false, outcome: 'unknown' });
     expect(sendSms).not.toHaveBeenCalled();
 
-    const { user, digits: blockedDigits } = await makeUser({ blocked: true });
+    const seeded = {
+      sms_login_code_hash: 'a'.repeat(64),
+      sms_login_code_expires: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      sms_login_attempts: 2,
+      sms_login_last_sent: agoIso(2 * 60 * 60 * 1000),
+      sms_login_send_log: [agoIso(2 * 60 * 60 * 1000)],
+    };
+    const { user, digits: blockedDigits } = await makeUser({ blocked: true, extra: seeded });
     const before = await readUser(user.id);
+    expect(before.sms_login_code_hash).toBe('a'.repeat(64));
+    expect(before.sms_login_attempts).toBe(2);
     const result = await svc().requestCode(blockedDigits);
     expect(result).toEqual({ invalid: false, outcome: 'ineligible' });
     expect(sendSms).not.toHaveBeenCalled();
@@ -251,6 +259,31 @@ describe('sms-login service', () => {
     expect(after.sms_login_attempts).toBe(before.sms_login_attempts);
   });
 
+  it('B15b: non-string codes fail without touching attempts or the code', async () => {
+    const { user, digits } = await makeUser();
+    await svc().requestCode(digits);
+    const code = codeFrom(sendSms);
+    const before = await readUser(user.id);
+
+    const cases = [
+      await svc().verifyCode(digits, [code]),
+      await svc().verifyCode(digits, Number(code)),
+      await svc().verifyCode(digits, { code }),
+      await svc().verifyCode(digits, null),
+      await svc().verifyCode(digits, true),
+    ];
+    for (const r of cases) {
+      expect(r).toEqual({ ok: false, reason: 'malformed' });
+    }
+
+    const after = await readUser(user.id);
+    expect(after.sms_login_attempts).toBe(before.sms_login_attempts);
+    expect(after.sms_login_code_hash).toBe(before.sms_login_code_hash);
+
+    const result = await svc().verifyCode(digits, code);
+    expect(result.ok).toBe(true);
+  });
+
   it('B20 hourly cap: 5 sends within the hour blocks a new request', async () => {
     const { user, digits } = await makeUser();
     await svc().requestCode(digits);
@@ -369,6 +402,7 @@ describe('sms-login service', () => {
 
   it('B24: role-less user can request a code', async () => {
     const { user, digits } = await makeUser({ role: null });
+    const before = Date.now();
     const result = await svc().requestCode(digits);
     expect(result.outcome).toBe('sent');
     expect(sendSms).toHaveBeenCalledTimes(1);
@@ -376,6 +410,17 @@ describe('sms-login service', () => {
     const row = await readUser(user.id);
     expect(row.sms_login_code_hash).toMatch(/^[0-9a-f]{64}$/);
     expect(row.role).toBeNull();
+
+    const expiresAt = new Date(row.sms_login_code_expires).getTime();
+    expect(Math.abs(expiresAt - (before + 10 * 60 * 1000))).toBeLessThan(30000);
+
+    expect(row.sms_login_attempts).toBe(0);
+    const lastSentAt = new Date(row.sms_login_last_sent).getTime();
+    expect(Math.abs(lastSentAt - before)).toBeLessThan(30000);
+
+    const log = Array.isArray(row.sms_login_send_log) ? row.sms_login_send_log : JSON.parse(row.sms_login_send_log);
+    const lastLogAt = new Date(log[log.length - 1]).getTime();
+    expect(Math.abs(lastLogAt - before)).toBeLessThan(30000);
   });
 
   it('B25: role-less user verify assigns the authenticated role', async () => {
@@ -692,15 +737,6 @@ describe('sms-login HTTP', () => {
   let sendSms;
   let handleSms;
 
-  beforeAll(async () => {
-    const authRole = await strapi.db.query(ROLE_UID).findOne({ where: { type: 'authenticated' } });
-    try {
-      await grantPrivileges(authRole.id, 'plugin::users-permissions.user', ['me']);
-    } catch (e) {
-      // v5 default Authenticated role already allows user.me; confirmed by the B8/B25 tests below.
-    }
-  });
-
   beforeEach(() => {
     sendSms = patchService('api::sms.sms', 'sendSms', jest.fn());
     handleSms = patchService('api::sms.sms', 'handleSms', jest.fn());
@@ -728,8 +764,17 @@ describe('sms-login HTTP', () => {
     expect(resUnregistered.status).toBe(200);
     expect(resUnregistered.body).toEqual(REQUEST_OK_BODY);
 
-    const { user, digits: blockedDigits } = await makeUser({ blocked: true });
+    const seeded = {
+      sms_login_code_hash: 'a'.repeat(64),
+      sms_login_code_expires: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      sms_login_attempts: 2,
+      sms_login_last_sent: agoIso(2 * 60 * 60 * 1000),
+      sms_login_send_log: [agoIso(2 * 60 * 60 * 1000)],
+    };
+    const { user, digits: blockedDigits } = await makeUser({ blocked: true, extra: seeded });
     const before = await readUser(user.id);
+    expect(before.sms_login_code_hash).toBe('a'.repeat(64));
+    expect(before.sms_login_attempts).toBe(2);
     const resBlocked = await http()
       .post('/api/auth/sms-login/request')
       .send({ phoneNumber: formatted(blockedDigits) });
@@ -840,6 +885,33 @@ describe('sms-login HTTP', () => {
     // Malformed calls (short/alpha/missing code) never touch attempts.
     const after = await readUser(user.id);
     expect(after.sms_login_attempts).toBe(before.sms_login_attempts + 1);
+  });
+
+  it('B15b (HTTP): array and number codes give the generic 400 and use no attempt', async () => {
+    const { user, digits } = await makeUser();
+    await http().post('/api/auth/sms-login/request').send({ phoneNumber: formatted(digits) });
+    const code = codeFrom(sendSms);
+    const before = await readUser(user.id);
+
+    const resArray = await http()
+      .post('/api/auth/sms-login/verify')
+      .send({ phoneNumber: formatted(digits), code: [code] });
+    expect(resArray.status).toBe(400);
+    expect(resArray.body).toEqual(WRONG_CODE_BODY);
+
+    const resNumber = await http()
+      .post('/api/auth/sms-login/verify')
+      .send({ phoneNumber: formatted(digits), code: Number(code) });
+    expect(resNumber.status).toBe(400);
+    expect(resNumber.body).toEqual(WRONG_CODE_BODY);
+
+    const after = await readUser(user.id);
+    expect(after.sms_login_attempts).toBe(before.sms_login_attempts);
+
+    const resGood = await http()
+      .post('/api/auth/sms-login/verify')
+      .send({ phoneNumber: formatted(digits), code: String(code) });
+    expect(resGood.status).toBe(200);
   });
 
   it('B25 (HTTP): a role-less user verifies and gets the authenticated role', async () => {
