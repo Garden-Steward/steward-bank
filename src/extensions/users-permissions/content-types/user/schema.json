@@ -160,6 +160,27 @@
       "type": "datetime",
       "private": true
     },
+    "sms_login_code_hash": {
+      "type": "string",
+      "private": true
+    },
+    "sms_login_code_expires": {
+      "type": "datetime",
+      "private": true
+    },
+    "sms_login_attempts": {
+      "type": "integer",
+      "default": 0,
+      "private": true
+    },
+    "sms_login_last_sent": {
+      "type": "datetime",
+      "private": true
+    },
+    "sms_login_send_log": {
+      "type": "json",
+      "private": true
+    },
     "email_confirmed": {
       "type": "boolean",
       "default": false
