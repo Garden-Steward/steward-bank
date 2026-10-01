@@ -9,7 +9,12 @@ const { createCoreController } = require('@strapi/strapi').factories;
 // Review-workflow states. `review_status` (not `status`) because Strapi v5
 // reserves `status` for the draft/publish selector.
 const PUBLIC_STATUSES = ['APPROVED', 'COMPLETED'];
-const REVIEW_STATUSES = ['CREATED', 'APPROVED', 'REJECTED', 'COMPLETED', 'ARCHIVED'];
+const REVIEW_STATUSES = ['CREATED', 'CHANGES_REQUESTED', 'APPROVED', 'REJECTED', 'COMPLETED', 'ARCHIVED'];
+
+function sendError(ctx, status, name, message) {
+  ctx.status = status;
+  ctx.body = { data: null, error: { status, name, message } };
+}
 
 // Non-admins see: publicly-visible projects (APPROVED/COMPLETED), projects they
 // created or manage directly, and — so the garden's manage view can list
@@ -236,6 +241,11 @@ module.exports = createCoreController('api::project.project', ({ strapi }) => ({
       populate: ['hero_image', 'featured_gallery', 'garden', 'managers', 'created_by'],
     });
 
+    // Don't hold the response for the emails.
+    strapi.service('api::project.review').notifyManagersOfPitch(entity).catch((err) => {
+      strapi.log.error('[project pitch] manager notification failed:', err);
+    });
+
     return this.transformResponse(entity);
   },
 
@@ -312,9 +322,15 @@ module.exports = createCoreController('api::project.project', ({ strapi }) => ({
     return this.transformResponse(updated);
   },
 
-  // Move a project through the review workflow (approve / reject / etc).
-  // Allowed for an admin, a manager of the project's garden, or a manager /
-  // creator of a garden-less project.
+  // Move a project through the review workflow.
+  //
+  // With `action` (approve / request_changes / deny / undo) this is the review
+  // queue's decision endpoint: garden managers only, only on a CREATED project,
+  // and the pitcher is emailed once the undo window closes.
+  //
+  // With a bare `review_status` it's a plain status move (complete, archive,
+  // restore). Allowed for an admin, a manager of the project's garden, or a
+  // manager / creator of a garden-less project.
   async review(ctx) {
     const user = ctx.state.user;
     if (!user) {
@@ -323,8 +339,9 @@ module.exports = createCoreController('api::project.project', ({ strapi }) => ({
 
     const { id } = ctx.params;
     const body = ctx.request.body?.data || ctx.request.body || {};
+    const { action } = body;
     const nextStatus = body.review_status;
-    if (!REVIEW_STATUSES.includes(nextStatus)) {
+    if (!action && !REVIEW_STATUSES.includes(nextStatus)) {
       return ctx.badRequest(
         `review_status must be one of: ${REVIEW_STATUSES.join(', ')}`
       );
@@ -335,6 +352,7 @@ module.exports = createCoreController('api::project.project', ({ strapi }) => ({
       populate: {
         created_by: true,
         managers: true,
+        reviewed_by: true,
         garden: { populate: ['managers'] },
       },
     });
@@ -347,6 +365,82 @@ module.exports = createCoreController('api::project.project', ({ strapi }) => ({
     );
     const managesProject = (project.managers || []).some((m) => m.id === user.id);
     const isCreator = project.created_by?.id === user.id;
+    const populate = ['hero_image', 'featured_gallery', 'garden', 'managers', 'created_by', 'reviewed_by'];
+
+    if (action) {
+      // A pitcher can't decide on their own pitch; only whoever runs the garden.
+      const canDecide = isAdmin(user) || managesGarden || (!project.garden && managesProject && !isCreator);
+      if (!canDecide) {
+        return ctx.forbidden('Only a garden manager can review this pitch');
+      }
+      const reviewService = strapi.service('api::project.review');
+
+      if (action === 'undo') {
+        const open =
+          project.reviewed_by?.id === user.id &&
+          project.review_previous_status &&
+          !project.review_notified_at &&
+          project.review_notify_after &&
+          new Date(project.review_notify_after) > new Date();
+        if (!open) {
+          return sendError(ctx, 409, 'ConflictError', 'This decision can no longer be undone');
+        }
+        const restored = await strapi.db.query('api::project.project').update({
+          where: { id },
+          data: {
+            review_status: project.review_previous_status,
+            review_reason: null,
+            review_note: null,
+            reviewed_at: null,
+            reviewed_by: null,
+            review_previous_status: null,
+            review_notify_after: null,
+          },
+          populate,
+        });
+        return this.transformResponse(restored);
+      }
+
+      const toStatus = reviewService.DECISIONS[action];
+      if (!toStatus) {
+        return ctx.badRequest(`action must be one of: ${[...Object.keys(reviewService.DECISIONS), 'undo'].join(', ')}`);
+      }
+      const reasonCode = body.reasonCode ?? null;
+      const note = typeof body.note === 'string' ? body.note.trim() : '';
+      if (action === 'deny' && !reviewService.REASONS[reasonCode]) {
+        return sendError(ctx, 422, 'ValidationError', `A reason is required to deny: ${Object.keys(reviewService.REASONS).join(', ')}`);
+      }
+      if (action === 'request_changes' && !note) {
+        return sendError(ctx, 422, 'ValidationError', 'A note to the pitcher is required');
+      }
+      // Covers two managers deciding at once.
+      if (project.review_status !== 'CREATED') {
+        return sendError(ctx, 409, 'ConflictError', 'This pitch has already been reviewed');
+      }
+
+      const now = new Date();
+      const updated = await strapi.db.query('api::project.project').update({
+        where: { id },
+        data: {
+          review_status: toStatus,
+          review_reason: action === 'deny' ? reasonCode : null,
+          review_note: note || null,
+          reviewed_at: now,
+          reviewed_by: user.id,
+          review_previous_status: project.review_status,
+          review_notify_after: new Date(now.getTime() + reviewService.UNDO_WINDOW_MS),
+          review_notified_at: null,
+        },
+        populate,
+      });
+      const next = await reviewService.nextPending(project);
+      return this.transformResponse(updated, {
+        nextProjectId: next?.id ?? null,
+        nextDocumentId: next?.documentId ?? null,
+        undoUntil: updated.review_notify_after,
+      });
+    }
+
     if (!isAdmin(user) && !managesGarden && !managesProject && !isCreator) {
       return ctx.forbidden(
         'Only a garden manager or an administrator can review this project'
@@ -356,7 +450,7 @@ module.exports = createCoreController('api::project.project', ({ strapi }) => ({
     const updated = await strapi.db.query('api::project.project').update({
       where: { id },
       data: { review_status: nextStatus },
-      populate: ['hero_image', 'featured_gallery', 'garden', 'managers', 'created_by'],
+      populate,
     });
 
     return this.transformResponse(updated);

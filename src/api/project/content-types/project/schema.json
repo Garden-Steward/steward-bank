@@ -98,29 +98,62 @@
       "description": "Extracted Google Photos album ID"
     },
     "featured": {
-          "type": "boolean",
-          "default": false
-        },
-        "review_status": {
-              "type": "enumeration",
-              "enum": [
-                "CREATED",
-                "APPROVED",
-                "REJECTED",
-                "COMPLETED",
-                "ARCHIVED"
-              ],
-              "default": "CREATED",
-              "required": true
-            },
-            "verification_token": {
-          "type": "string",
-          "private": true
-        },
-        "submitter_email": {
-              "type": "email"
-            },
-            "latitude": {
+      "type": "boolean",
+      "default": false
+    },
+    "review_status": {
+      "type": "enumeration",
+      "enum": [
+        "CREATED",
+        "CHANGES_REQUESTED",
+        "APPROVED",
+        "REJECTED",
+        "COMPLETED",
+        "ARCHIVED"
+      ],
+      "default": "CREATED",
+      "required": true
+    },
+    "review_reason": {
+      "type": "enumeration",
+      "enum": [
+        "not_a_fit",
+        "duplicate",
+        "needs_rework",
+        "capacity"
+      ]
+    },
+    "review_note": {
+      "type": "text"
+    },
+    "reviewed_at": {
+      "type": "datetime"
+    },
+    "reviewed_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "review_previous_status": {
+      "type": "string",
+      "private": true
+    },
+    "review_notify_after": {
+      "type": "datetime",
+      "private": true
+    },
+    "review_notified_at": {
+      "type": "datetime",
+      "private": true
+    },
+    "verification_token": {
+      "type": "string",
+      "private": true
+    },
+    "submitter_email": {
+      "type": "email"
+    },
+    "latitude": {
       "type": "float"
     },
     "longitude": {
