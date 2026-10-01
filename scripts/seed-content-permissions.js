@@ -32,6 +32,14 @@ const DESIRED = {
     // volunteer write the global standing-task list.
     'api::day-sheet-standing-task.day-sheet-standing-task': ['replaceList'],
   },
+  // Admins help out on any project. src/index.js also grants these at boot.
+  administrator: {
+    'api::project.project': [
+      'find', 'findOne', 'create', 'update', 'delete',
+      'findByGarden', 'findUserProjects', 'pitch', 'toggleInterest',
+      'updateManagers', 'review',
+    ],
+  },
 };
 
 async function getJwt() {
@@ -106,7 +114,7 @@ async function seedContentPermissions() {
   const rolesRes = await axios.get(`${API_URL}/api/users-permissions/roles`, { headers });
   const roles = rolesRes.data.roles;
 
-  for (const roleType of ['public', 'authenticated']) {
+  for (const roleType of ['public', 'authenticated', 'administrator']) {
     const role = roles.find(r => r.type === roleType);
     if (!role) { console.warn(`Role "${roleType}" not found, skipping`); continue; }
     console.log(`Applying permissions for "${roleType}" role (id ${role.id})...`);

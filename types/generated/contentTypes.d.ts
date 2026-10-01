@@ -1051,11 +1051,30 @@ export interface ApiProjectProject extends Struct.CollectionTypeSchema {
       'manyToMany',
       'api::volunteer-day.volunteer-day'
     >;
+    review_note: Schema.Attribute.Text;
+    review_notified_at: Schema.Attribute.DateTime & Schema.Attribute.Private;
+    review_notify_after: Schema.Attribute.DateTime & Schema.Attribute.Private;
+    review_previous_status: Schema.Attribute.String & Schema.Attribute.Private;
+    review_reason: Schema.Attribute.Enumeration<
+      ['not_a_fit', 'duplicate', 'needs_rework', 'capacity']
+    >;
     review_status: Schema.Attribute.Enumeration<
-      ['CREATED', 'APPROVED', 'REJECTED', 'COMPLETED', 'ARCHIVED']
+      [
+        'CREATED',
+        'CHANGES_REQUESTED',
+        'APPROVED',
+        'REJECTED',
+        'COMPLETED',
+        'ARCHIVED',
+      ]
     > &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'CREATED'>;
+    reviewed_at: Schema.Attribute.DateTime;
+    reviewed_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
     short_description: Schema.Attribute.Text &
       Schema.Attribute.Required &
       Schema.Attribute.SetMinMaxLength<{

@@ -132,4 +132,19 @@ module.exports = {
       tz: 'America/Los_Angeles',
     },
   },
+
+  // Pitcher emails for project review decisions, sent once the undo window
+  // (10 minutes) has closed. See api::project.review.
+  sendProjectReviewNotifications: {
+    task: async ({ strapi }) => {
+      try {
+        await strapi.service('api::project.review').sendDue();
+      } catch (err) {
+        strapi.log.error('ERR sendProjectReviewNotifications: ', err);
+      }
+    },
+    options: {
+      rule: '* * * * *',
+    },
+  },
 };
