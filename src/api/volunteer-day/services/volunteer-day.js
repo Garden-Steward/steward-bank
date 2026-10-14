@@ -3,6 +3,7 @@ const accountSid = process.env.TWILIO_ACCOUNT_SID ;
 const authToken = process.env.TWILIO_AUTH_TOKEN  ;
 const twilioNum =process.env.TWILIONUM;
 const client = require('twilio')(accountSid, authToken);
+const SmsOptOut = require('../../../utils/sms-opt-out');
 
 
 /**
@@ -122,12 +123,15 @@ module.exports = createCoreService('api::volunteer-day.volunteer-day', ({ strapi
     let volGroup = await strapi.service('api::volunteer-day.volunteer-day').getVolunteerGroup(vDay);
 
     let sentInfo = [];
-    
+    const sentUsers = [];
+
     // TODO: Have there been any SMS campaigns for this volunteer day?
     // Check deny list of SMS Campaigns before sending
 
 
     for (const volunteer of volGroup) {
+      // Opted out of texts: skip, but they stay in the garden and on email.
+      if (SmsOptOut.isOptedOut(volunteer)) { continue; }
       try {
         if (process.env.NODE_ENV === 'test') {
           console.log("sending to ", volunteer.phoneNumber, copy);
@@ -140,16 +144,17 @@ module.exports = createCoreService('api::volunteer-day.volunteer-day', ({ strapi
           });
         }
         sentInfo.push(volunteer.phoneNumber);
+        sentUsers.push(volunteer);
       } catch (err) {
-        await strapi.service('api::garden.garden').unsubscribeUser(volunteer);
-        console.log("vday send error:", err);
+        // Never remove garden membership on a send error.
+        await SmsOptOut.handleSendError(volunteer, err);
         continue;
       }
     }
     try {
     await strapi.db.query('api::sms-campaign.sms-campaign').create({
       data: {
-        publishedAt: null, sent: volGroup, volunteer_day: vDay.id, body: copy, garden: vDay.garden.id, type: 'volunteer-day'
+        publishedAt: null, sent: sentUsers, volunteer_day: vDay.id, body: copy, garden: vDay.garden.id, type: 'volunteer-day'
       }
     });
     } catch (err) {

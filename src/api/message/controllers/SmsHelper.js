@@ -2,6 +2,7 @@ const SmsHelper = {};
 const { addDays, differenceInDays } = require('date-fns');
 const {utcToZonedTime,} = require("date-fns-tz");
 const InstructionHelper = require('../../instruction/controllers/helper');
+const SmsOptOut = require('../../../utils/sms-opt-out');
 
 /***
  * Updates tasks like "yes" to find certain status Garden Tasks and update them.
@@ -134,6 +135,14 @@ SmsHelper.checkGarden = async(smsText) => {
 }
 
 SmsHelper.simplifySms = ( smsText, garden ) => {
+  // Opt-out / opt-in keywords win over everything else, including garden names.
+  // Any FCC revocation word ("cancel", "end", "quit"...) counts as STOP.
+  if (SmsOptOut.isOptOutKeyword(smsText)) {
+    return 'stop';
+  }
+  if (SmsOptOut.isOptInKeyword(smsText)) {
+    return 'start';
+  }
   if (garden) {
     return 'garden'
   }

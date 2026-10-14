@@ -188,6 +188,10 @@
     "automated_emails_sent": {
       "type": "json",
       "description": "Array of automated emails sent to this user: [{type, sent_at, sender_email, garden_id, resend_message_id}]"
+    },
+    "sms_opted_out_at": {
+      "type": "datetime",
+      "description": "When this user opted out of SMS (STOP etc.). Null means texts are allowed. Opting out never removes garden membership."
     }
   }
 }
