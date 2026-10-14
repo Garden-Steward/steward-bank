@@ -19,6 +19,7 @@ const accountSid = process.env.TWILIO_ACCOUNT_SID ;
 const authToken = process.env.TWILIO_AUTH_TOKEN  ;
 const twilioNum =process.env.TWILIONUM;
 const client = require('twilio')(accountSid, authToken);
+const SmsOptOut = require('../../../utils/sms-opt-out');
 
 const { addHours, differenceInDays } = require('date-fns');
 
@@ -353,14 +354,17 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
    * builder (getUsersOfInterest) returns full user records. Any future caller that
    * passes a narrowed user shape MUST include `paused`, or the filter passes
    * everyone through.
+   * Users who opted out of SMS are skipped. `sent` records only users whose send
+   * actually succeeded. A failed send never removes anyone from their gardens.
    */
   sendGroupMsg: async (volGroup, copy, gardenObj, params) => {
 
     console.log("sendGroupMsg on SMS Campaign: \n", copy);
 
-    const activeGroup = (volGroup || []).filter(v => !v.paused);
+    const activeGroup = (volGroup || []).filter(v => !v.paused && !SmsOptOut.isOptedOut(v));
 
     let sentInfo = [];
+    const sentUsers = [];
 
     for (const volunteer of activeGroup) {
       if (!volunteer.phoneNumber) { continue; }
@@ -372,9 +376,9 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
             to: volunteer.phoneNumber
           });
         sentInfo.push(volunteer.phoneNumber);
+        sentUsers.push(volunteer);
       } catch (err) {
-        await strapi.service('api::garden.garden').unsubscribeUser(volunteer);
-        console.log("send error:", err);
+        await SmsOptOut.handleSendError(volunteer, err);
         continue;
       }
     }
@@ -383,7 +387,7 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
       await strapi.db.query('api::sms-campaign.sms-campaign').create({
         data: {
           publishedAt: null,
-          sent: activeGroup,
+          sent: sentUsers,
           body: copy,
           garden: gardenObj.id,
           type: params.type,

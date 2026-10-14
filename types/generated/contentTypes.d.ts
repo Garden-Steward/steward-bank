@@ -2127,6 +2127,7 @@ export interface PluginUsersPermissionsUser
     sms_login_code_hash: Schema.Attribute.String & Schema.Attribute.Private;
     sms_login_last_sent: Schema.Attribute.DateTime & Schema.Attribute.Private;
     sms_login_send_log: Schema.Attribute.JSON & Schema.Attribute.Private;
+    sms_opted_out_at: Schema.Attribute.DateTime;
     status: Schema.Attribute.Enumeration<
       ['INTERESTED', 'VOLUNTEER', 'PROFESSIONAL', 'INACTIVE']
     >;

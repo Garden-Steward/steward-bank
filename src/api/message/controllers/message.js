@@ -1,5 +1,6 @@
 'use strict';
 const SmsHelper = require('./SmsHelper');
+const SmsOptOut = require('../../../utils/sms-opt-out');
 const MessagingResponse = require('twilio').twiml.MessagingResponse;
 
 const activeStatuses = ['STARTED', 'ISSUE', 'INTERESTED'];
@@ -131,12 +132,17 @@ module.exports = {
         break;
           
       case 'stop':
-        await strapi.service('api::garden.garden').unsubscribeUser(user);
+        // Opt out of texts only. Garden membership and email stay intact.
+        // No reply: Twilio sends the carrier-required opt-out confirmation.
+        await SmsOptOut.markOptedOut(user);
         smsBody = null;
         break;
 
       case 'start':
-        smsBody = "Welcome back! You have been removed from all you gardens so please message their names to rejoin."
+        // Gardens were never removed, so nothing to rejoin. No reply:
+        // Twilio sends its own re-subscribe confirmation.
+        await SmsOptOut.markOptedIn(user);
+        smsBody = null;
       break;
           
       case 'bot':
@@ -183,7 +189,11 @@ module.exports = {
     }
     
     // ** Volunteer Sign Up Flow ** /
-    if (email) {
+    // STOP / START are fully handled above; never treat them as a name or email.
+    const isConsentKeyword = responseText === 'stop' || responseText === 'start';
+    if (isConsentKeyword) {
+      // no-op
+    } else if (email) {
       console.log("email: ", email)
       try {
         smsInfo = await SmsHelper.saveVolunteerEmail(user, responseText);
