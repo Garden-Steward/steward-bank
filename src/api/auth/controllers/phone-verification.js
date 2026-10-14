@@ -3,6 +3,15 @@
 const crypto = require('crypto');
 const { normalizePhoneNumber } = require('../../../utils/phone');
 
+// After the email link is verified, the same token may be used to set a password for this long.
+const PASSWORD_SETUP_WINDOW_MS = 30 * 60 * 1000;
+
+const tokenMatches = (stored, incoming) => {
+  if (typeof stored !== 'string' || typeof incoming !== 'string') return false;
+  if (!/^[0-9a-f]{64}$/.test(stored) || !/^[0-9a-f]{64}$/.test(incoming)) return false;
+  return crypto.timingSafeEqual(Buffer.from(stored, 'hex'), Buffer.from(incoming, 'hex'));
+};
+
 /**
  * Phone number verification controller
  * Handles: phone lookup -> email verification -> password creation
@@ -114,26 +123,28 @@ module.exports = {
         return ctx.notFound('User not found');
       }
 
-      strapi.log.debug(`verifyEmail: userId=${userId}, stored_token=${user.email_verification_token}, incoming_token=${token}`);
-
-      if (user.email_verification_token !== token) {
+      if (!tokenMatches(user.email_verification_token, token)) {
         return ctx.forbidden('Invalid verification token');
       }
 
       // Check expiry
-      if (new Date() > new Date(user.email_verification_expires)) {
+      if (!user.email_verification_expires || new Date() > new Date(user.email_verification_expires)) {
         return ctx.forbidden('Verification token has expired');
       }
 
-      // Mark email as verified
-      await strapi.db.query('plugin::users-permissions.user').update({
-        where: { id: userId },
-        data: {
-          email_confirmed: true,
-          email_verification_token: null,
-          email_verification_expires: null
-        }
-      });
+      // Mark email as verified. The token stays valid for a short window so the
+      // set-password step can prove it came from this same email link.
+      // Only the first verification opens the window, so re-calling this can't
+      // keep extending the token's life.
+      if (!user.email_confirmed) {
+        await strapi.db.query('plugin::users-permissions.user').update({
+          where: { id: userId },
+          data: {
+            email_confirmed: true,
+            email_verification_expires: new Date(Date.now() + PASSWORD_SETUP_WINDOW_MS).toISOString()
+          }
+        });
+      }
 
       ctx.send({
         message: 'Email verified successfully. Please set your password.',
@@ -152,10 +163,10 @@ module.exports = {
    * Step 3: After email verification, user creates password and logs in
    */
   async setPassword(ctx) {
-    const { userId, password, confirmPassword } = ctx.request.body;
+    const { userId, token, password, confirmPassword } = ctx.request.body;
 
-    if (!userId || !password || !confirmPassword) {
-      return ctx.badRequest('UserId, password, and confirm password are required');
+    if (!userId || !token || !password || !confirmPassword) {
+      return ctx.badRequest('UserId, token, password, and confirm password are required');
     }
 
     if (password !== confirmPassword) {
@@ -167,27 +178,44 @@ module.exports = {
     }
 
     try {
-      const user = await strapi.db.query('plugin::users-permissions.user').findOne({ where: { id: userId } });
+      const user = await strapi.db.query('plugin::users-permissions.user').findOne({
+        where: { id: userId },
+        populate: ['role']
+      });
 
-      if (!user) {
-        return ctx.notFound('User not found');
+      // Same response for unknown user and bad token, so this can't be used to probe ids.
+      if (!user || !tokenMatches(user.email_verification_token, token)) {
+        return ctx.forbidden('Invalid or expired link. Please request a new one.');
+      }
+
+      if (!user.email_verification_expires || new Date() > new Date(user.email_verification_expires)) {
+        return ctx.forbidden('Invalid or expired link. Please request a new one.');
       }
 
       if (!user.email_confirmed) {
         return ctx.forbidden('Email must be verified before setting password');
       }
 
-      const authenticatedRole = await strapi.db.query('plugin::users-permissions.role').findOne({
-        where: { type: 'authenticated' }
-      });
+      const data = {
+        password,
+        confirmed: true,
+        // Single use: the link can't set a password twice.
+        email_verification_token: null,
+        email_verification_expires: null,
+      };
+
+      // Only assign the default role when the user has none, so this never
+      // demotes someone who already has a role.
+      if (!user.role) {
+        const authenticatedRole = await strapi.db.query('plugin::users-permissions.role').findOne({
+          where: { type: 'authenticated' }
+        });
+        data.role = authenticatedRole.id;
+      }
 
       await strapi.db.query('plugin::users-permissions.user').update({
         where: { id: userId },
-        data: {
-          password,
-          confirmed: true,
-          role: authenticatedRole.id,
-        }
+        data
       });
 
       ctx.send({
