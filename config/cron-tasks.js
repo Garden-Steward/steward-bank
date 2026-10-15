@@ -133,6 +133,20 @@ module.exports = {
     },
   },
 
+  // Nudges SMS sign-ups who never sent their email, 30 minutes after joining.
+  sendRegistrationFollowUps: {
+    task: async ({ strapi }) => {
+      try {
+        await strapi.service('api::message.registration-followup').sendRegistrationFollowUps();
+      } catch (err) {
+        strapi.log.error('ERR sendRegistrationFollowUps: ', err);
+      }
+    },
+    options: {
+      rule: '*/5 * * * *',
+    },
+  },
+
   // Pitcher emails for project review decisions, sent once the undo window
   // (10 minutes) has closed. See api::project.review.
   sendProjectReviewNotifications: {

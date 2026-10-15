@@ -159,16 +159,14 @@ SmsHelper.simplifySms = ( smsText, garden ) => {
   smsText = (smsText.startsWith('emphasized') || smsText.startsWith('loved')|| smsText.startsWith('❤️')) ? 'bot' : smsText
   return smsText;
 }
+// Pulls the address out of replies like "sure! it's jo@example.com 😊".
+SmsHelper.extractEmail = (smsText) => {
+  const match = String(smsText || '').toLowerCase().match(/[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}/);
+  return match ? match[0] : null;
+}
+
 SmsHelper.checkEmail = ( user, smsText ) => {
-  let email = false;
-  if (user && user.email === 'test@test.com') {
-    // eslint-disable-next-line no-useless-escape
-    const emailValidation = new RegExp('[a-z0-9]+@[a-z]+\.[a-z]{2,3}');
-    if (emailValidation.test(smsText)) {
-      email = true;
-    }
-  }
-  return email;
+  return Boolean(user && user.email === 'test@test.com' && SmsHelper.extractEmail(smsText));
 }
 
 SmsHelper.getUser = async(phoneNumber)  => {
@@ -237,7 +235,8 @@ SmsHelper.joinGarden = async(user, phoneNumber, garden) => {
   return {body: 'Looks like you\'re already a volunteer! You\'ll get the next volunteer day notification.',type:'reply'};
 };
 
-SmsHelper.saveVolunteerEmail = async(user, email) => {
+SmsHelper.saveVolunteerEmail = async(user, smsText) => {
+  const email = SmsHelper.extractEmail(smsText) || smsText;
   await strapi.db.query("plugin::users-permissions.user").update({where:{id: user.id}, data: {email}});
   
   // Add email to Mailchimp
@@ -260,7 +259,14 @@ SmsHelper.saveVolunteerEmail = async(user, email) => {
   } catch (err) {
     console.log('Error adding email to Mailchimp:', err);
   }
-  
+
+  // Finishing a stalled sign-up whose name is already on file (username is no
+  // longer the phone number): nothing left to ask.
+  if (user.email === 'test@test.com' && user.username && user.username !== user.phoneNumber) {
+    await SmsHelper.sendContactCard(user.phoneNumber);
+    return {body: `Thank you${user.firstName ? ' ' + user.firstName : ''}! You're all signed up. \n\nI've just sent you my contact card - please click on it and add me to your contacts.`, type:'complete'};
+  }
+
   return {body: 'Thank you! Only one more step before you\'re offical. Just respond with your full name.',type:'reply'};
 };
 

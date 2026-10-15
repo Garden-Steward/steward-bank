@@ -192,6 +192,10 @@
     "sms_opted_out_at": {
       "type": "datetime",
       "description": "When this user opted out of SMS (STOP etc.). Null means texts are allowed. Opting out never removes garden membership."
+    },
+    "registration_followup_sent_at": {
+      "type": "datetime",
+      "description": "When we texted an SMS sign-up who never gave their email, asking for it. Sent once."
     }
   }
 }
