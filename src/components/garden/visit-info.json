@@ -1,0 +1,31 @@
+{
+  "collectionName": "components_garden_visit_infos",
+  "info": {
+    "displayName": "Visit Info",
+    "description": "Logistics true of every visit to a garden, shown on all of its events"
+  },
+  "options": {},
+  "attributes": {
+    "meeting_spot": {
+      "type": "string",
+      "description": "Short, e.g. 'The front gate'"
+    },
+    "meeting_note": {
+      "type": "text",
+      "description": "How to find people once there"
+    },
+    "parking_transit": {
+      "type": "text"
+    },
+    "restroom": {
+      "type": "text"
+    },
+    "accessibility": {
+      "type": "text"
+    },
+    "kids_pets": {
+      "type": "text",
+      "description": "Policy on kids and dogs"
+    }
+  }
+}

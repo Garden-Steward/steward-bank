@@ -31,6 +31,16 @@ const PUBLIC_USER_FIELDS = ['id', 'documentId', 'username', 'firstName', 'lastNa
 // projects, and finished ones kept for the record.
 const LINKABLE_PROJECT_STATUSES = ['CREATED', 'APPROVED', 'COMPLETED'];
 
+// Organization fields safe to expose on the public by-id route (no venmo
+// handle, no garden list).
+const PUBLIC_ORG_FIELDS = ['id', 'documentId', 'title', 'url', 'description'];
+
+// Nested populate for an events.brief component.
+const BRIEF_POPULATE = { agenda: true, bring_items: true };
+
+// Tasks that were dropped rather than done don't belong on the event page.
+const HIDDEN_TASK_STATUSES = ['ABANDONED', 'SKIPPED'];
+
 module.exports = createCoreController('api::volunteer-day.volunteer-day', ({strapi}) => ({
 
     // Fetch a single event by NUMERIC id. v5's core findOne keys on documentId,
@@ -44,11 +54,21 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
       const entry = await strapi.db.query('api::volunteer-day.volunteer-day').findOne({
         where: { id },
         populate: {
-          recurring_template: true,
+          recurring_template: { populate: { brief: { populate: BRIEF_POPULATE } } },
+          brief: { populate: BRIEF_POPULATE },
+          planting: true,
+          organization: { select: PUBLIC_ORG_FIELDS },
           confirmed: { select: PUBLIC_USER_FIELDS },
           hero_image: true,
           featured_gallery: true,
-          garden: { populate: { managers: { select: PUBLIC_USER_FIELDS } } },
+          garden: {
+            populate: {
+              managers: { select: PUBLIC_USER_FIELDS },
+              hero_image: true,
+              visit_info: true,
+              organization: { select: PUBLIC_ORG_FIELDS },
+            },
+          },
           // Only projects that are visible publicly or still in play; rejected
           // and archived pitches stay off the event page.
           projects: {
@@ -70,6 +90,40 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
       if (!entry) {
         return ctx.notFound('Volunteer day not found');
       }
+
+      // Everything the event page needs beyond the row itself. Computed here
+      // rather than stored so template and garden edits show up immediately.
+      const briefSvc = strapi.service('api::volunteer-day.event-brief');
+      const sheetSvc = strapi.service('api::volunteer-day.day-sheet');
+
+      const { brief, source } = briefSvc.resolveBrief({
+        eventBrief: entry.brief,
+        templateBrief: entry.recurring_template?.brief,
+        type: entry.type,
+      });
+      entry.resolved_brief = brief;
+      entry.brief_source = source;
+
+      if (entry.garden) {
+        entry.garden.visit_info = briefSvc.cleanVisitInfo(entry.garden.visit_info);
+      }
+
+      // Tasks scheduled for this event, deduped across draft/published rows
+      // the same way the day sheet does. Dropped/skipped work stays off.
+      const tasks = sheetSvc.sortTasks(await sheetSvc.loadTasks(entry));
+      entry.event_tasks = tasks
+        .filter((t) => !HIDDEN_TASK_STATUSES.includes(t.task_status))
+        .map((t) => ({
+          id: t.id,
+          documentId: t.documentId,
+          title: t.title,
+          overview: t.overview,
+          type: t.type,
+          task_status: t.task_status,
+        }));
+
+      entry.series = await briefSvc.loadSeries(entry);
+
       return { data: entry };
     },
 
