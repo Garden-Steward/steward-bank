@@ -29,6 +29,7 @@ require('./general');
 require('./general/weather');
 require('./general/twilio');
 require('./user/registration');
+require('./user/welcome-email');
 require('./user/user.http');
 require('./user/vacation-reminders');
 require('./tasks/transfer');

@@ -219,6 +219,7 @@ SmsHelper.joinGarden = async(user, phoneNumber, garden) => {
         // User is joining this garden for the first time
         user.gardens.push(garden.id);
         await strapi.db.query("plugin::users-permissions.user").update({where:{id: user.id}, data: user});
+        SmsHelper.sendWelcomeEmail(user.id, garden.id);
         let smsBody;
         if (garden.welcome_text) {
           smsBody = {body: `${garden.welcome_text} \n\nYou can STOP messages any time.`,type:'registration'};
@@ -274,6 +275,13 @@ SmsHelper.sendContactCard = async(phoneNumber) => {
   }
 }
 
+// Fire-and-forget: the volunteer's SMS reply shouldn't wait on (or fail with) the email.
+SmsHelper.sendWelcomeEmail = (userId, gardenId) => {
+  Promise.resolve().then(() => strapi.service('api::email.welcome').sendOnJoin(userId, gardenId)).catch((err) => {
+    console.error('Problem sending welcome email to user ', userId, err);
+  });
+};
+
 SmsHelper.saveVolunteerName = async(user, msgTxt) => {
   msgTxt = msgTxt.toLowerCase();
   const fullName = msgTxt.replace(/\b\w/g, s => s.toUpperCase());
@@ -293,6 +301,8 @@ SmsHelper.saveVolunteerName = async(user, msgTxt) => {
   // Sent here, immediately before the welcome text below mentions it - this is
   // the first and only time a volunteer hears about the contact card.
   await SmsHelper.sendContactCard(user.phoneNumber);
+  // Sign-up is complete: we now have their email and name.
+  SmsHelper.sendWelcomeEmail(user.id);
   return {body: `Welcome to the team ${userName}! \n\nI've just sent you my contact card - please click on it and add me to your contacts.`, type:'complete'};
 };
 
