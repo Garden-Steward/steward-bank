@@ -7,7 +7,8 @@
  * Decisions are stored on the project itself (review_* fields). The pitcher
  * email is not sent at decision time: `review_notify_after` is set to the end
  * of the undo window and the `sendProjectReviewNotifications` cron sends it
- * after that. Undo clears `review_notify_after`, so nothing goes out.
+ * after that. Undo clears `review_notify_after`, so nothing goes out. An
+ * approval also emails the project-alert subscribers for its city / zip.
  */
 
 const FROM_ADDRESS = process.env.SMTP_FROM || 'noreply@steward.garden';
@@ -29,8 +30,7 @@ const REASONS = {
   capacity: 'Beyond what we can support now',
 };
 
-const escapeHtml = (s) =>
-  String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const { escapeHtml } = require('../../../utils/html');
 
 function pitcherEmail(project) {
   const name = project.created_by?.firstName || 'there';
@@ -121,6 +121,13 @@ module.exports = ({ strapi }) => ({
         where: { id: project.id },
         data: { review_notified_at: now },
       });
+      if (project.review_status === 'APPROVED') {
+        try {
+          await strapi.service('api::project-alert.project-alert').notifyForProject(project);
+        } catch (err) {
+          strapi.log.error(`[project review] subscriber alerts for project ${project.id} failed:`, err);
+        }
+      }
     }
     return due.length;
   },

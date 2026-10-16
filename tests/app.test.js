@@ -53,3 +53,4 @@ require('./recurring-events/instance-generation.test');
 require('./tasks/standing-tasks');
 require('./event/day-sheet');
 require('./auth/sms-login');
+require('./project-alert');
