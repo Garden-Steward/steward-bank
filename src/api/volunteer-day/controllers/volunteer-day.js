@@ -127,6 +127,16 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
       return { data: entry };
     },
 
+    getBriefStarters: async (ctx) => {
+      const briefSvc = strapi.service('api::volunteer-day.event-brief');
+      const data = {};
+      Object.keys(briefSvc.STARTER_BRIEFS).forEach((type) => {
+        data[type] = briefSvc.starterFor(type);
+      });
+      ctx.set('Cache-Control', 'public, max-age=3600');
+      return { data };
+    },
+
     // Printable day-sheet JSON. Thin: parse params, delegate to the assembly
     // service, translate errors. Never queries the DB directly — that's what
     // keeps the JSON and HTML endpoints from drifting (see day-sheet.js).

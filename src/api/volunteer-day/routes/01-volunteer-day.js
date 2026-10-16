@@ -26,6 +26,13 @@ module.exports = {
       path: '/volunteer-days/public',
       handler: 'volunteer-day.getPublic',
     },
+    { // Garden Steward's starter briefs, keyed by event type. Static content
+      // the editors offer as a starting point; nothing private in it.
+      method: 'GET',
+      path: '/volunteer-days/brief-starters',
+      handler: 'volunteer-day.getBriefStarters',
+      config: { auth: false },
+    },
     { // Fetch a single event by NUMERIC id (v5 core findOne is documentId-only;
       // numeric /d/:id URLs are baked into SMS links, so we keep them working here).
       method: 'GET',
