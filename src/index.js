@@ -41,6 +41,37 @@ async function grantAdminProjectPermissions(strapi) {
   }
 }
 
+// Send the garden welcome email the first time a user gets a real email,
+// whichever path set it. Users created by SMS start with a placeholder email.
+function subscribeWelcomeEmailOnEmailSet(strapi) {
+  const USER_UID = 'plugin::users-permissions.user';
+  const welcome = () => strapi.service('api::email.welcome');
+
+  strapi.db.lifecycles.subscribe({
+    models: [USER_UID],
+
+    afterCreate(event) {
+      // No garden yet means nothing to welcome them to: skip the lookups.
+      if (event.result && event.params?.data?.activeGarden) welcome().onEmailSet(event.result);
+    },
+
+    async beforeUpdate(event) {
+      if (!event.params?.data?.email) return;
+      const before = await strapi.db.query(USER_UID).findMany({
+        where: event.params.where,
+        select: ['id', 'email'],
+      });
+      event.state.hadRealEmail = new Map(before.map((u) => [u.id, welcome().hasRealEmail(u.email)]));
+    },
+
+    afterUpdate(event) {
+      const { result, state } = event;
+      if (!state.hadRealEmail || !result || state.hadRealEmail.get(result.id) !== false) return;
+      welcome().onEmailSet(result);
+    },
+  });
+}
+
 module.exports = {
   register(/*{ strapi }*/) {},
 
@@ -55,6 +86,8 @@ module.exports = {
       }
       return next();
     });
+
+    subscribeWelcomeEmailOnEmailSet(strapi);
 
     try {
       await grantAdminProjectPermissions(strapi);
