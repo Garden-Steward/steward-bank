@@ -134,6 +134,23 @@ module.exports = createCoreController('api::garden.garden', ({ strapi }) => ({
 
     entity.interests = interests;
 
+    // db.query skips the REST sanitizer, so populated users arrive with every
+    // column. This route serves the public garden page: never send password
+    // hashes, reset/verification tokens or login codes. Every attribute the
+    // user schema marks private is dropped, plus the core auth secrets.
+    const userModel = strapi.getModel('plugin::users-permissions.user');
+    const secretFields = new Set([
+      'password', 'resetPasswordToken', 'confirmationToken',
+      ...Object.entries(userModel?.attributes || {}).filter(([, a]) => a.private).map(([k]) => k),
+    ]);
+    const stripSecrets = (u) => {
+      if (!u || typeof u !== 'object') return u;
+      secretFields.forEach((f) => { delete u[f]; });
+      return u;
+    };
+    (entity.volunteers || []).forEach(stripSecrets);
+    (entity.managers || []).forEach(stripSecrets);
+
     // db.query returns a flat v5 entity already; return it directly. (The old
     // this.transformResponse(entity) threw under v5, which the catch swallowed
     // into an empty {} body.)
