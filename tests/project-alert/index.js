@@ -51,9 +51,9 @@ describe('project alerts', () => {
     expect(send.mock.calls[0][0].to).toBe(email);
     const account = await strapi.db.query(USER_UID).findOne({ where: { email } });
     expect(account).toBeTruthy();
-    expect(account.email_verification_token).toBeTruthy();
-    expect(new Date(account.email_verification_expires).getTime()).toBeGreaterThan(Date.now() + 6 * 24 * 60 * 60 * 1000);
-    expect(send.mock.calls[0][0].html).toContain(`/verify-email?token=${account.email_verification_token}&userId=${account.id}`);
+    expect(account.resetPasswordToken).toMatch(/^[0-9a-f]{128}$/);
+    expect(send.mock.calls[0][0].html).toContain(`/set-password?code=${account.resetPasswordToken}`);
+    expect(send.mock.calls[0][0].html).toContain('finish creating');
     expect((await strapi.db.query(ALERT_UID).findOne({ where: { id: sub.id }, populate: ['user'] })).user.id).toBe(account.id);
 
     // A second signup (different city) from the same address: no second welcome.
@@ -62,15 +62,34 @@ describe('project alerts', () => {
     expect(await findSub({ email, scope: 'city', city: 'oakland' })).toBeTruthy();
   });
 
-  it('existing account with a confirmed email gets the sign-in note, not a new account', async () => {
-    const email = nextEmail('confirmed');
-    await strapi.db.query(USER_UID).create({
-      data: { username: email, email, provider: 'local', confirmed: true, email_confirmed: true },
+  it.each([
+    ['confirmed', true],
+    ['unconfirmed', false],
+  ])('existing %s account gets a set-password link, not a second account', async (_label, emailConfirmed) => {
+    const email = nextEmail('existing');
+    const existing = await strapi.db.query(USER_UID).create({
+      data: { username: email, email, provider: 'local', confirmed: true, email_confirmed: emailConfirmed },
     });
-    await post({ email, zip: '94611' }).expect(200);
-    expect(send.mock.calls[0][0].html).not.toContain('verify-email');
-    expect(send.mock.calls[0][0].html).toContain('already have a Garden Steward account');
+    await svc().subscribe({ email, zip: '94611' });
+
+    const account = await strapi.db.query(USER_UID).findOne({ where: { id: existing.id } });
+    const { html } = send.mock.calls[0][0];
+    expect(html).toContain(`/set-password?code=${account.resetPasswordToken}`);
+    expect(html).toContain("If you've never set a password");
     expect(await strapi.db.query(USER_UID).count({ where: { email } })).toBe(1);
+  });
+
+  it('the set-password link works with the existing reset-password endpoint', async () => {
+    const email = nextEmail('reset');
+    await svc().subscribe({ email, zip: '94613' });
+    const account = await strapi.db.query(USER_UID).findOne({ where: { email } });
+
+    const res = await request(strapi.server.httpServer)
+      .post('/api/auth/reset-password')
+      .send({ code: account.resetPasswordToken, password: 'garden-pass-123', passwordConfirmation: 'garden-pass-123' });
+    expect(res.status).toBe(200);
+    expect(res.body.jwt).toBeTruthy();
+    expect(res.body.user.email).toBe(email);
   });
 
   it('rejects bad input', async () => {
@@ -92,7 +111,8 @@ describe('project alerts', () => {
     expect(sub).toBeTruthy();
     const withUser = await strapi.db.query(ALERT_UID).findOne({ where: { id: sub.id }, populate: ['user'] });
     expect(withUser.user.id).toBe(user.id);
-    expect(send.mock.calls[0][0].html).not.toContain('verify-email');
+    expect(send.mock.calls[0][0].html).not.toContain('set-password');
+    expect((await strapi.db.query(USER_UID).findOne({ where: { id: user.id } })).resetPasswordToken).toBeFalsy();
   });
 
   it('unsubscribes by token and re-subscribing reactivates', async () => {

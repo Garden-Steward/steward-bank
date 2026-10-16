@@ -26,11 +26,14 @@ const project = {
   garden: { slug: 'oak-street', title: 'Oak Street Garden' },
 };
 
+const link = 'https://steward.garden/set-password?code=SAMPLE';
 const emails = [
-  ['Welcome: new to Garden Steward', 'Sent on first signup when the email has no confirmed account.',
-    service.welcomeEmail(sub, { accountUrl: 'https://steward.garden/verify-email?token=SAMPLE&userId=123' })],
-  ['Welcome: already has an account', 'Sent on first signup when the email already has a confirmed account, or the person was signed in.',
-    service.welcomeEmail(sub, { accountUrl: null })],
+  ['Welcome: new to Garden Steward', 'First signup from an address with no account. A placeholder account is created; the link sets its password.',
+    service.welcomeEmail(sub, { accountUrl: link, existing: false })],
+  ['Welcome: already has an account', 'First signup from an address that already has an account (they may never have set a password).',
+    service.welcomeEmail(sub, { accountUrl: link, existing: true })],
+  ['Welcome: signed in', 'First signup made while signed in to the site.',
+    service.welcomeEmail(sub, { accountUrl: null, existing: true })],
   ['New project alert', 'Sent to each matching subscriber once a pitch is approved and the 10-minute undo window closes.',
     service.projectEmail(project, sub)],
 ];

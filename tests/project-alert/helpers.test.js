@@ -36,18 +36,27 @@ describe('project-alert parseTarget', () => {
 describe('project-alert emails', () => {
   const sub = { email: 'a@example.com', scope: 'zip', zip: '94607', display_label: '94607', unsubscribe_token: 'tok-1' };
 
-  it('welcome email without an account links to account creation', () => {
-    const { subject, html } = service.welcomeEmail(sub, { accountUrl: 'https://steward.garden/verify-email?token=t&userId=1' });
+  const link = 'https://steward.garden/set-password?code=abc';
+
+  it('welcome email for a new address offers to finish the account', () => {
+    const { subject, html } = service.welcomeEmail(sub, { accountUrl: link, existing: false });
     expect(subject).toContain('94607');
-    expect(html).toContain('https://steward.garden/verify-email?token=t&userId=1');
-    expect(html).toContain('Create your free Garden Steward account');
+    expect(html).toContain(link);
+    expect(html).toContain('finish creating your free Garden Steward account');
     expect(html).toContain('/alerts/unsubscribe?token=tok-1');
   });
 
-  it('welcome email with an account skips the sign-up steps', () => {
-    const { html } = service.welcomeEmail(sub, { accountUrl: null });
-    expect(html).not.toContain('verify-email');
-    expect(html).toContain('Sign in');
+  it('welcome email for an existing account offers to set a password', () => {
+    const { html } = service.welcomeEmail(sub, { accountUrl: link, existing: true });
+    expect(html).toContain(link);
+    expect(html).toContain("If you've never set a password");
+    expect(html).not.toContain('finish creating');
+  });
+
+  it('welcome email for a signed-in signup has no password link', () => {
+    const { html } = service.welcomeEmail(sub, { accountUrl: null, existing: true });
+    expect(html).not.toContain('set-password');
+    expect(html).toContain("You're signed in");
     expect(html).toContain('/alerts/unsubscribe?token=tok-1');
   });
 

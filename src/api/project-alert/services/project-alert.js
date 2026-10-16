@@ -20,7 +20,6 @@ const USER_UID = 'plugin::users-permissions.user';
 const ZIP_RE = /^\d{5}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_CITY_LENGTH = 80;
-const ACCOUNT_LINK_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** "  Oakland,  CA " → "oakland". The state is dropped; matching is on city name. */
 function normalizeCity(value) {
@@ -60,17 +59,26 @@ function footer(sub) {
 <a href="${unsubscribeUrl(sub)}">Unsubscribe</a></p>`;
 }
 
-function welcomeEmail(sub, { accountUrl }) {
+/**
+ * @param {{ accountUrl?: string|null, existing?: boolean }} account
+ *   accountUrl: set-password link, or null when the signup came from a
+ *   signed-in visitor. existing: the address already had a user record.
+ */
+function welcomeEmail(sub, { accountUrl = null, existing = false } = {}) {
   const label = escapeHtml(sub.display_label);
   const where = sub.scope === 'zip' ? `zip code ${label}` : label;
-  const account = accountUrl
-    ? `<p><b>Want to join in, not just hear about it?</b> We've saved a spot for you. Create your free Garden Steward account in two steps:</p>
-<ol>
-  <li><a href="${accountUrl}">Click here to confirm your email</a> (this link works for 7 days).</li>
-  <li>Choose a password, then sign in at <a href="${SITE_URL}/login">steward.garden/login</a> with ${escapeHtml(sub.email)}.</li>
-</ol>
-<p>With an account you can mark projects you're interested in, RSVP to work days, and pitch a project of your own.</p>`
-    : `<p>You already have a Garden Steward account with this email. <a href="${SITE_URL}/login">Sign in</a> to say you're interested in a project or RSVP to work days.</p>`;
+  const email = escapeHtml(sub.email);
+  const perks = `<p>With an account you can mark projects you're interested in, RSVP to work days, and pitch a project of your own.</p>`;
+  let account;
+  if (!accountUrl) {
+    account = `<p>You're signed in to Garden Steward with this email, so you're all set. <a href="${SITE_URL}/projects">Find a project</a> to say you're interested or RSVP to a work day.</p>`;
+  } else if (existing) {
+    account = `<p>You already have a Garden Steward account with this email. If you've never set a password, or forgot it, <a href="${accountUrl}">set your password here</a>. Then sign in at <a href="${SITE_URL}/login">steward.garden/login</a> with ${email}.</p>
+${perks}`;
+  } else {
+    account = `<p><b>Want to join in, not just hear about it?</b> We've saved a spot for you. <a href="${accountUrl}">Set a password</a> to finish creating your free Garden Steward account, then sign in at <a href="${SITE_URL}/login">steward.garden/login</a> with ${email}.</p>
+${perks}`;
+  }
 
   return {
     subject: `You're signed up for new projects in ${sub.display_label}`,
@@ -165,8 +173,10 @@ module.exports = ({ strapi }) => ({
     }
 
     if (!previouslyWelcomed) {
-      const accountUrl = owner && owner.id === user?.id ? null : await this.accountLink(owner, address, sub);
-      const message = welcomeEmail(sub, { accountUrl });
+      // Signed in means they already have a way in (password or text code).
+      const signedIn = Boolean(owner && owner.id === user?.id);
+      const accountUrl = signedIn ? null : await this.setPasswordLink(owner, address, sub);
+      const message = welcomeEmail(sub, { accountUrl, existing: Boolean(owner) });
       try {
         await strapi.plugins['email'].services.email.send({
           to: address,
@@ -184,15 +194,15 @@ module.exports = ({ strapi }) => ({
   },
 
   /**
-   * A "create your account" link for the welcome email, or null when the
-   * address already has a usable account. People without one get a soft user
-   * record (as api::project.project.expressInterest does) and the same
-   * verify-email → set-password link the phone sign-up sends, valid 7 days.
+   * A link to the existing /set-password page (Strapi's reset-password flow,
+   * the same one "Forgot password" uses). There's no reliable "has a
+   * password" flag, and placeholder accounts from "I'm interested" or the SMS
+   * roster usually have none, so every account gets one; the email copy says
+   * to ignore it if they already have a password. Addresses with no account
+   * get a placeholder user first (as api::project.project.expressInterest does).
    */
-  async accountLink(owner, address, sub) {
-    const users = strapi.db.query(USER_UID);
+  async setPasswordLink(owner, address, sub) {
     let account = owner;
-    if (account?.email_confirmed) return null;
     if (!account) {
       const userService = strapi.plugins['users-permissions']?.services?.user;
       if (!userService) return null;
@@ -208,15 +218,10 @@ module.exports = ({ strapi }) => ({
     if (!sub.user) {
       await strapi.db.query(UID).update({ where: { id: sub.id }, data: { user: account.id } });
     }
-    const token = crypto.randomBytes(32).toString('hex');
-    await users.update({
-      where: { id: account.id },
-      data: {
-        email_verification_token: token,
-        email_verification_expires: new Date(Date.now() + ACCOUNT_LINK_MS).toISOString(),
-      },
-    });
-    return `${SITE_URL}/verify-email?token=${token}&userId=${account.id}`;
+    // Same token format as Strapi's forgot-password.
+    const code = crypto.randomBytes(64).toString('hex');
+    await strapi.db.query(USER_UID).update({ where: { id: account.id }, data: { resetPasswordToken: code } });
+    return `${SITE_URL}/set-password?code=${code}`;
   },
 
   /** @returns the subscription's label, or null if the token is unknown. */
