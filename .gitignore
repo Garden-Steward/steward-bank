@@ -121,3 +121,6 @@ exports
 dist
 build
 .strapi-updater.json
+
+# Rendered email previews (yarn preview:emails)
+email-previews/

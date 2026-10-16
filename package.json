@@ -16,7 +16,8 @@
     "seed:permissions": "node scripts/seed-auth-permissions.js",
     "seed:duplicate-messages": "node scripts/seed-duplicate-messages.js",
     "seed:content-permissions": "node scripts/seed-content-permissions.js",
-    "sentry:test": "node scripts/sentry-test.js"
+    "sentry:test": "node scripts/sentry-test.js",
+    "preview:emails": "node scripts/preview-project-alert-emails.js"
   },
   "devDependencies": {
     "jest": "^29.7.0",
