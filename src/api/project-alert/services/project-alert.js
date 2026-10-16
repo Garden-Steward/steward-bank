@@ -20,6 +20,7 @@ const USER_UID = 'plugin::users-permissions.user';
 const ZIP_RE = /^\d{5}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_CITY_LENGTH = 80;
+const ACCOUNT_LINK_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** "  Oakland,  CA " → "oakland". The state is dropped; matching is on city name. */
 function normalizeCity(value) {
@@ -59,18 +60,17 @@ function footer(sub) {
 <a href="${unsubscribeUrl(sub)}">Unsubscribe</a></p>`;
 }
 
-function welcomeEmail(sub, { hasAccount }) {
+function welcomeEmail(sub, { accountUrl }) {
   const label = escapeHtml(sub.display_label);
   const where = sub.scope === 'zip' ? `zip code ${label}` : label;
-  const account = hasAccount
-    ? `<p>You already have a Garden Steward account with this email. <a href="${SITE_URL}/login">Sign in</a> to say you're interested in a project or RSVP to work days. Forgot your password? You can reset it from the sign-in page.</p>`
-    : `<p><b>Want to join in, not just hear about it?</b> Create a free Garden Steward account:</p>
+  const account = accountUrl
+    ? `<p><b>Want to join in, not just hear about it?</b> We've saved a spot for you. Create your free Garden Steward account in two steps:</p>
 <ol>
-  <li>Go to <a href="${SITE_URL}/login?register=1&email=${encodeURIComponent(sub.email)}">steward.garden/login</a> and choose <b>Register</b>.</li>
-  <li>Enter your phone number and this email address (${escapeHtml(sub.email)}).</li>
-  <li>Verify your email from the link we send, then set a password.</li>
+  <li><a href="${accountUrl}">Click here to confirm your email</a> (this link works for 7 days).</li>
+  <li>Choose a password, then sign in at <a href="${SITE_URL}/login">steward.garden/login</a> with ${escapeHtml(sub.email)}.</li>
 </ol>
-<p>With an account you can mark projects you're interested in, RSVP to work days, and pitch a project of your own.</p>`;
+<p>With an account you can mark projects you're interested in, RSVP to work days, and pitch a project of your own.</p>`
+    : `<p>You already have a Garden Steward account with this email. <a href="${SITE_URL}/login">Sign in</a> to say you're interested in a project or RSVP to work days.</p>`;
 
   return {
     subject: `You're signed up for new projects in ${sub.display_label}`,
@@ -136,7 +136,7 @@ module.exports = ({ strapi }) => ({
 
     const owner = user?.email?.toLowerCase() === address
       ? user
-      : await strapi.db.query(USER_UID).findOne({ where: { email: address }, select: ['id', 'email'] });
+      : await strapi.db.query(USER_UID).findOne({ where: { email: address } });
 
     const previouslyWelcomed = await query.findOne({
       where: { email: address, welcomed_at: { $notNull: true } },
@@ -165,7 +165,8 @@ module.exports = ({ strapi }) => ({
     }
 
     if (!previouslyWelcomed) {
-      const message = welcomeEmail(sub, { hasAccount: Boolean(owner) });
+      const accountUrl = owner && owner.id === user?.id ? null : await this.accountLink(owner, address, sub);
+      const message = welcomeEmail(sub, { accountUrl });
       try {
         await strapi.plugins['email'].services.email.send({
           to: address,
@@ -180,6 +181,42 @@ module.exports = ({ strapi }) => ({
     }
 
     return { label: target.label };
+  },
+
+  /**
+   * A "create your account" link for the welcome email, or null when the
+   * address already has a usable account. People without one get a soft user
+   * record (as api::project.project.expressInterest does) and the same
+   * verify-email → set-password link the phone sign-up sends, valid 7 days.
+   */
+  async accountLink(owner, address, sub) {
+    const users = strapi.db.query(USER_UID);
+    let account = owner;
+    if (account?.email_confirmed) return null;
+    if (!account) {
+      const userService = strapi.plugins['users-permissions']?.services?.user;
+      if (!userService) return null;
+      account = await userService.add({
+        email: address,
+        username: address,
+        // Unusable until they set their own via the link below.
+        password: crypto.randomBytes(24).toString('hex'),
+        confirmed: true,
+        firstName: address.split('@')[0] || 'Neighbor',
+      });
+    }
+    if (!sub.user) {
+      await strapi.db.query(UID).update({ where: { id: sub.id }, data: { user: account.id } });
+    }
+    const token = crypto.randomBytes(32).toString('hex');
+    await users.update({
+      where: { id: account.id },
+      data: {
+        email_verification_token: token,
+        email_verification_expires: new Date(Date.now() + ACCOUNT_LINK_MS).toISOString(),
+      },
+    });
+    return `${SITE_URL}/verify-email?token=${token}&userId=${account.id}`;
   },
 
   /** @returns the subscription's label, or null if the token is unknown. */

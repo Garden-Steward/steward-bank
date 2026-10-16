@@ -49,12 +49,28 @@ describe('project alerts', () => {
     expect(sub.welcomed_at).toBeTruthy();
     expect(send).toHaveBeenCalledTimes(1);
     expect(send.mock.calls[0][0].to).toBe(email);
-    expect(send.mock.calls[0][0].html).toContain('register=1');
+    const account = await strapi.db.query(USER_UID).findOne({ where: { email } });
+    expect(account).toBeTruthy();
+    expect(account.email_verification_token).toBeTruthy();
+    expect(new Date(account.email_verification_expires).getTime()).toBeGreaterThan(Date.now() + 6 * 24 * 60 * 60 * 1000);
+    expect(send.mock.calls[0][0].html).toContain(`/verify-email?token=${account.email_verification_token}&userId=${account.id}`);
+    expect((await strapi.db.query(ALERT_UID).findOne({ where: { id: sub.id }, populate: ['user'] })).user.id).toBe(account.id);
 
     // A second signup (different city) from the same address: no second welcome.
     await post({ email, city: 'Oakland, CA' }).expect(200);
     expect(send).toHaveBeenCalledTimes(1);
     expect(await findSub({ email, scope: 'city', city: 'oakland' })).toBeTruthy();
+  });
+
+  it('existing account with a confirmed email gets the sign-in note, not a new account', async () => {
+    const email = nextEmail('confirmed');
+    await strapi.db.query(USER_UID).create({
+      data: { username: email, email, provider: 'local', confirmed: true, email_confirmed: true },
+    });
+    await post({ email, zip: '94611' }).expect(200);
+    expect(send.mock.calls[0][0].html).not.toContain('verify-email');
+    expect(send.mock.calls[0][0].html).toContain('already have a Garden Steward account');
+    expect(await strapi.db.query(USER_UID).count({ where: { email } })).toBe(1);
   });
 
   it('rejects bad input', async () => {
@@ -76,7 +92,7 @@ describe('project alerts', () => {
     expect(sub).toBeTruthy();
     const withUser = await strapi.db.query(ALERT_UID).findOne({ where: { id: sub.id }, populate: ['user'] });
     expect(withUser.user.id).toBe(user.id);
-    expect(send.mock.calls[0][0].html).not.toContain('register=1');
+    expect(send.mock.calls[0][0].html).not.toContain('verify-email');
   });
 
   it('unsubscribes by token and re-subscribing reactivates', async () => {

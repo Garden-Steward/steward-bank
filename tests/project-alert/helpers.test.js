@@ -36,16 +36,17 @@ describe('project-alert parseTarget', () => {
 describe('project-alert emails', () => {
   const sub = { email: 'a@example.com', scope: 'zip', zip: '94607', display_label: '94607', unsubscribe_token: 'tok-1' };
 
-  it('welcome email without an account explains how to create one', () => {
-    const { subject, html } = service.welcomeEmail(sub, { hasAccount: false });
+  it('welcome email without an account links to account creation', () => {
+    const { subject, html } = service.welcomeEmail(sub, { accountUrl: 'https://steward.garden/verify-email?token=t&userId=1' });
     expect(subject).toContain('94607');
-    expect(html).toContain('/login?register=1&email=a%40example.com');
+    expect(html).toContain('https://steward.garden/verify-email?token=t&userId=1');
+    expect(html).toContain('Create your free Garden Steward account');
     expect(html).toContain('/alerts/unsubscribe?token=tok-1');
   });
 
   it('welcome email with an account skips the sign-up steps', () => {
-    const { html } = service.welcomeEmail(sub, { hasAccount: true });
-    expect(html).not.toContain('register=1');
+    const { html } = service.welcomeEmail(sub, { accountUrl: null });
+    expect(html).not.toContain('verify-email');
     expect(html).toContain('Sign in');
     expect(html).toContain('/alerts/unsubscribe?token=tok-1');
   });
