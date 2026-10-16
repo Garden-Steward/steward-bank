@@ -7,6 +7,7 @@
  */
 
 const { createCoreService } = require('@strapi/strapi').factories;
+const { ensureDraft } = require('../../../utils/documents');
 const {
   addMonths,
   setDate,
@@ -212,6 +213,10 @@ module.exports = createCoreService('api::recurring-event-template.recurring-even
           publishedAt: new Date().toISOString()
         }
       });
+
+      // db.query writes only the published row; without a draft, the first
+      // edit (or cancel) from the dashboard would drop the event's relations.
+      await ensureDraft('api::volunteer-day.volunteer-day', newEvent.documentId);
 
       strapi.log.info(`Created volunteer-day ${newEvent.id}: "${newEvent.title}"`);
       return newEvent;

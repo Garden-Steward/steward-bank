@@ -3,6 +3,7 @@
 const slugify = require('slugify');
 const { sentryEnabled } = require('../instrument.js');
 const Sentry = require('@sentry/node');
+const { backfillDrafts } = require('./utils/documents');
 
 const SLUG_CONTENT_TYPES = {
   'api::blog.blog': { field: 'slug', reference: 'title' },
@@ -59,6 +60,15 @@ module.exports = {
       await grantAdminProjectPermissions(strapi);
     } catch (err) {
       strapi.log.error('[bootstrap] could not grant Administrator project permissions:', err);
+    }
+
+    // Recurring-template events used to be inserted as a published row only;
+    // give those the draft row an edit needs so a save can't strip relations.
+    try {
+      const created = await backfillDrafts('api::volunteer-day.volunteer-day');
+      if (created) strapi.log.info(`[bootstrap] created ${created} missing volunteer-day drafts`);
+    } catch (err) {
+      strapi.log.error('[bootstrap] volunteer-day draft backfill failed:', err);
     }
 
     if (sentryEnabled) {

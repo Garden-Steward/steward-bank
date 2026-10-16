@@ -7,6 +7,7 @@ const { normalizePhoneNumber } = require('../../../utils/phone');
 
 const { createCoreController } = require('@strapi/strapi').factories;
 const VdayHelper = require('./VdayHelper');
+const { ensureDraft } = require('../../../utils/documents');
 
 // Resolve a volunteer day for the SMS endpoints by documentId (preferred) or
 // numeric id. Every REST save re-publishes the document, which deletes the
@@ -165,6 +166,14 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
 
       // Call the default create method if no duplicate found
       return await super.create(ctx);
+    },
+
+    // Events created by the recurring-template cron (and older imports) can
+    // exist as a published row with no draft; updating one of those as-is
+    // wipes its garden and every other relation. See ensureDraft().
+    async update(ctx) {
+      await ensureDraft('api::volunteer-day.volunteer-day', ctx.params.id);
+      return await super.update(ctx);
     },
 
     getByUser: async ctx => {
