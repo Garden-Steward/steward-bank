@@ -273,6 +273,15 @@ describe('Event page editors: write path', function () {
     expect(data.resolved_brief.what_to_expect).toBe('Edited twice');
     expect(data.planting.map((p) => p.plant_name)).toEqual(['Garlic', 'Fava']);
 
+    // The numeric id moved when the save re-created the published row; the
+    // documentId still resolves, to the published row.
+    expect(published.id).not.toBe(event.id);
+    const byDoc = (await request(strapi.server.httpServer).get(`/api/volunteer-days/by-id/${event.documentId}`).expect(200)).body.data;
+    expect(byDoc.id).toBe(published.id);
+    expect(byDoc.resolved_brief.food).toBe('Tamales');
+    await request(strapi.server.httpServer).get('/api/volunteer-days/by-id/not_a-valid$id').expect(400);
+    await request(strapi.server.httpServer).get('/api/volunteer-days/by-id/abcdefghij1234567890zz').expect(404);
+
     // Clearing the override falls back to the template
     await put(`/api/volunteer-days/${event.documentId}`, { brief: null }).expect(200);
     const again = await strapi.db.query(EVENT_UID).findOne({ where: { documentId: event.documentId, publishedAt: { $notNull: true } } });

@@ -48,11 +48,27 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
     // resolves events by numeric id through here.
     getById: async (ctx) => {
       const { id } = ctx.params;
+      // Numeric ids (SMS links) or a documentId. Saving re-creates the
+      // published row, so its numeric id changes on every edit; editors use
+      // the documentId, which never does. A documentId resolves to the
+      // published row when there is one, else the draft.
+      const isNumeric = /^[0-9]+$/.test(String(id));
+      let where = { id };
+      if (!isNumeric) {
+        if (!/^[a-z0-9]{10,40}$/i.test(String(id))) return ctx.badRequest('Invalid volunteer day id');
+        const rows = await strapi.db.query('api::volunteer-day.volunteer-day').findMany({
+          where: { documentId: String(id) },
+          select: ['id', 'publishedAt'],
+        });
+        const row = rows.find((r) => r.publishedAt) || rows[0];
+        if (!row) return ctx.notFound('Volunteer day not found');
+        where = { id: row.id };
+      }
       // This route is public and db.query skips the REST sanitizer, so user
       // relations must be narrowed by hand — never return password hashes,
       // reset tokens, phone numbers or emails from here.
       const entry = await strapi.db.query('api::volunteer-day.volunteer-day').findOne({
-        where: { id },
+        where,
         populate: {
           recurring_template: { populate: { brief: { populate: BRIEF_POPULATE } } },
           brief: { populate: BRIEF_POPULATE },
