@@ -1,0 +1,53 @@
+{
+  "kind": "collectionType",
+  "collectionName": "project_alerts",
+  "info": {
+    "singularName": "project-alert",
+    "pluralName": "project-alerts",
+    "displayName": "Project Alert",
+    "description": "Email signups for new approved projects in a city or zip"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "email": {
+      "type": "email",
+      "required": true
+    },
+    "scope": {
+      "type": "enumeration",
+      "enum": ["city", "zip"],
+      "required": true
+    },
+    "city": {
+      "type": "string",
+      "description": "Lowercased city name, for matching"
+    },
+    "zip": {
+      "type": "string",
+      "description": "5-digit US zip"
+    },
+    "display_label": {
+      "type": "string"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "unsubscribe_token": {
+      "type": "string",
+      "private": true
+    },
+    "unsubscribed_at": {
+      "type": "datetime",
+      "private": true
+    },
+    "welcomed_at": {
+      "type": "datetime",
+      "private": true
+    }
+  }
+}

@@ -54,3 +54,4 @@ require('./tasks/standing-tasks');
 require('./event/day-sheet');
 require('./event/cancel');
 require('./auth/sms-login');
+require('./project-alert');

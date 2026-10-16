@@ -146,6 +146,10 @@
       "type": "datetime",
       "private": true
     },
+    "subscribers_notified_at": {
+      "type": "datetime",
+      "private": true
+    },
     "verification_token": {
       "type": "string",
       "private": true
@@ -158,6 +162,14 @@
     },
     "longitude": {
       "type": "float"
+    },
+    "location_city": {
+      "type": "string",
+      "description": "City from reverse-geocoding, used for project alerts"
+    },
+    "location_zip": {
+      "type": "string",
+      "description": "5-digit zip from reverse-geocoding, used for project alerts"
     },
     "created_by": {
       "type": "relation",
