@@ -3,8 +3,9 @@
 /**
  * Garden welcome emails.
  *
- * `sendOnJoin` goes out automatically when a volunteer finishes signing up
- * (or an existing volunteer joins another garden). `send` is the shared
+ * `sendOnJoin` goes out automatically when a volunteer finishes signing up,
+ * when a user's email is first set (see `onEmailSet`), or when an existing
+ * volunteer joins another garden. `send` is the shared
  * worker, also used by the manual POST /email/send-welcome/:userId route,
  * which can override the subject/body and resend with `force`.
  *
@@ -33,6 +34,8 @@ function renderTemplate(template, vars) {
     .replace(/\{\{senderName\}\}/g, vars.senderName || '');
 }
 
+const hasRealEmail = (email) => Boolean(email) && email !== PLACEHOLDER_EMAIL;
+
 const fullName = (person) => [person.firstName, person.lastName].filter(Boolean).join(' ');
 
 module.exports = ({ strapi }) => ({
@@ -55,7 +58,7 @@ module.exports = ({ strapi }) => ({
     if (!targetUser) {
       throw new WelcomeEmailError('USER_NOT_FOUND', 'User not found');
     }
-    if (!targetUser.email || targetUser.email === PLACEHOLDER_EMAIL) {
+    if (!hasRealEmail(targetUser.email)) {
       throw new WelcomeEmailError('NO_EMAIL', 'User has no email address yet');
     }
 
@@ -137,11 +140,28 @@ module.exports = ({ strapi }) => ({
     try {
       return await this.send({ userId, gardenId });
     } catch (err) {
-      if (err.code === 'NO_EMAIL') return { sent: false };
+      // Not ready yet: it goes out once they have an email and a garden.
+      if (err.code === 'NO_EMAIL' || err.code === 'NO_GARDEN') return { sent: false };
       strapi.log.warn(`[welcome email] automatic send for user ${userId} skipped: ${err.message}`);
       return { sent: false, error: err.code || err.message };
     }
   },
 
+  /**
+   * Called from the user lifecycle whenever a user gets a real email for the
+   * first time, wherever it was set (SMS, web app, admin panel). Many
+   * volunteers signed up by phone only and add an email much later.
+   */
+  onEmailSet(user) {
+    if (!hasRealEmail(user.email)) return;
+    // Mid SMS sign-up (no name yet): the name step sends it, so it can say hi by name.
+    if (!user.firstName && user.username === user.phoneNumber) return;
+    // Fire-and-forget: never hold up or fail the save that set the email.
+    Promise.resolve()
+      .then(() => this.sendOnJoin(user.id))
+      .catch((err) => strapi.log.error(`[welcome email] on email set for user ${user.id} failed:`, err));
+  },
+
+  hasRealEmail,
   WelcomeEmailError,
 });

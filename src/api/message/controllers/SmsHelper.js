@@ -831,7 +831,7 @@ SmsHelper.registerUser = async(user) => {
   }
 
   // If user has a valid email, verify it's correct
-  return {body: `yarn dIs ${user.email} your correct email address? Please respond with CORRECT to confirm or provide a new email address.`, type: "registration"};
+  return {body: `Is ${user.email} your correct email address? Please respond with CORRECT to confirm or provide a new email address.`, type: "registration"};
 };
 
 module.exports = SmsHelper;
