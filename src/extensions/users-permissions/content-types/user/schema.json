@@ -192,6 +192,10 @@
     "sms_opted_out_at": {
       "type": "datetime",
       "description": "When this user opted out of SMS (STOP etc.). Null means texts are allowed. Opting out never removes garden membership."
+    },
+    "muted_gardens": {
+      "type": "json",
+      "description": "documentIds of gardens this user muted from the website. Their group texts (volunteer-day announcements, SMS campaigns) skip this user; membership and assigned-task texts are unchanged."
     }
   }
 }

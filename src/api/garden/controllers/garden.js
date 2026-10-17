@@ -6,7 +6,47 @@
 
 const { createCoreController } = require('@strapi/strapi').factories;
 
+const { mutedList } = require('../../../utils/garden-mute');
+
 const SLUG_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
+
+const USER_UID = 'plugin::users-permissions.user';
+
+// Every row of the garden behind :slug (draft and published share the slug),
+// the caller with their mute list, and where they stand. A volunteer or
+// manager link on either row counts.
+async function loadMembership(strapi, ctx) {
+  const authUser = ctx.state.user;
+  if (!authUser) return { error: ctx.unauthorized('You must be logged in') };
+
+  const { slug } = ctx.params;
+  if (!SLUG_PATTERN.test(String(slug))) return { error: ctx.badRequest('Invalid garden slug') };
+
+  const rows = await strapi.db.query('api::garden.garden').findMany({
+    where: { slug: String(slug) },
+    select: ['id', 'documentId'],
+    populate: { volunteers: { select: ['id'] }, managers: { select: ['id'] } },
+  });
+  if (!rows.length) return { error: ctx.notFound('Garden not found') };
+
+  const user = await strapi.db.query(USER_UID).findOne({
+    where: { id: authUser.id },
+    select: ['id', 'muted_gardens'],
+    populate: { activeGarden: { select: ['id'] } },
+  });
+  const garden = rows[0];
+  const inList = (key) => rows.some((r) => (r[key] || []).some((u) => u.id === user.id));
+  return {
+    user,
+    garden,
+    rows,
+    state: {
+      member: inList('volunteers'),
+      manager: inList('managers'),
+      muted: mutedList(user).includes(garden.documentId),
+    },
+  };
+}
 
 module.exports = createCoreController('api::garden.garden', ({ strapi }) => ({
   // Day-sheet JSON for a whole garden: the standing checklist plus every task
@@ -110,6 +150,63 @@ module.exports = createCoreController('api::garden.garden', ({ strapi }) => ({
       if (e.standingValidationError) return ctx.badRequest(e.message);
       throw e;
     }
+  },
+
+  // The signed-in user's standing with a garden, for the garden page's
+  // member menu: { member, manager, muted }.
+  async membership(ctx) {
+    const found = await loadMembership(strapi, ctx);
+    if (found.error) return found.error;
+    ctx.set('Cache-Control', 'no-store');
+    return { data: found.state };
+  },
+
+  // Stop (or resume) this garden's group texts without leaving it.
+  async setMute(ctx) {
+    const found = await loadMembership(strapi, ctx);
+    if (found.error) return found.error;
+    const { user, garden, state } = found;
+    if (!state.member && !state.manager) return ctx.badRequest("You're not a member of this garden");
+
+    const body = ctx.request.body?.data || ctx.request.body || {};
+    if (typeof body.muted !== 'boolean') return ctx.badRequest('muted must be true or false');
+
+    const others = mutedList(user).filter((d) => d !== garden.documentId);
+    await strapi.db.query(USER_UID).update({
+      where: { id: user.id },
+      data: { muted_gardens: body.muted ? [...others, garden.documentId] : others },
+    });
+    ctx.set('Cache-Control', 'no-store');
+    return { data: { ...state, muted: body.muted } };
+  },
+
+  // Leave a garden: off its volunteer list, its interest groups and its mute
+  // list. Managers have to be removed by another manager first, so a garden
+  // can't be left without anyone running it by accident.
+  async leave(ctx) {
+    const found = await loadMembership(strapi, ctx);
+    if (found.error) return found.error;
+    const { user, garden, rows, state } = found;
+    if (state.manager) return ctx.badRequest("Managers can't leave their garden from here. Ask another manager to remove you.");
+    if (!state.member) return ctx.badRequest("You're not a member of this garden");
+
+    const rowIds = rows.map((r) => r.id);
+    for (const id of rowIds) {
+      await strapi.db.query('api::garden.garden').update({
+        where: { id },
+        data: { volunteers: { disconnect: [user.id] } },
+      });
+    }
+    await strapi.db.query('api::user-garden-interest.user-garden-interest').deleteMany({
+      where: { user: user.id, garden: { id: { $in: rowIds } } },
+    });
+
+    const data = { muted_gardens: mutedList(user).filter((d) => d !== garden.documentId) };
+    if (user.activeGarden && rowIds.includes(user.activeGarden.id)) data.activeGarden = null;
+    await strapi.db.query(USER_UID).update({ where: { id: user.id }, data });
+
+    ctx.set('Cache-Control', 'no-store');
+    return { data: { member: false, manager: false, muted: false } };
   },
 
   // Method 1: Creating an entirely custom action

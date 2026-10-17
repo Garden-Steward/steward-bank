@@ -35,6 +35,22 @@ module.exports = {
       method: 'PUT',
       path: '/gardens/:slug/standing-tasks',
       handler: 'garden.replaceStandingTasks',
+    },
+    { // The signed-in user's standing with this garden, and the member menu's
+      // two actions. Each checks the caller in the controller.
+      method: 'GET',
+      path: '/gardens/:slug/membership',
+      handler: 'garden.membership',
+    },
+    {
+      method: 'POST',
+      path: '/gardens/:slug/membership/mute',
+      handler: 'garden.setMute',
+    },
+    {
+      method: 'POST',
+      path: '/gardens/:slug/membership/leave',
+      handler: 'garden.leave',
     }
   ]
 }

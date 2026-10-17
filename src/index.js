@@ -41,6 +41,31 @@ async function grantAdminProjectPermissions(strapi) {
   }
 }
 
+// Routes every signed-in member needs whatever role they have. Granted at boot
+// so a deploy doesn't wait on someone ticking boxes in the admin panel. Only
+// adds, never removes.
+const MEMBER_ACTIONS = [
+  'api::garden.garden.membership',
+  'api::garden.garden.setMute',
+  'api::garden.garden.leave',
+];
+
+async function grantMemberPermissions(strapi) {
+  const roles = await strapi.db.query('plugin::users-permissions.role').findMany({
+    where: { type: { $in: ['authenticated', 'administrator'] } },
+    populate: ['permissions'],
+  });
+  const perms = strapi.db.query('plugin::users-permissions.permission');
+  for (const role of roles) {
+    const has = new Set((role.permissions || []).map((p) => p.action));
+    const missing = MEMBER_ACTIONS.filter((action) => !has.has(action));
+    for (const action of missing) {
+      await perms.create({ data: { action, role: role.id } });
+    }
+    if (missing.length) strapi.log.info(`[bootstrap] granted ${role.type}: ${missing.join(', ')}`);
+  }
+}
+
 // Send the garden welcome email the first time a user gets a real email,
 // whichever path set it. Users created by SMS start with a placeholder email.
 function subscribeWelcomeEmailOnEmailSet(strapi) {
@@ -93,6 +118,12 @@ module.exports = {
       await grantAdminProjectPermissions(strapi);
     } catch (err) {
       strapi.log.error('[bootstrap] could not grant Administrator project permissions:', err);
+    }
+
+    try {
+      await grantMemberPermissions(strapi);
+    } catch (err) {
+      strapi.log.error('[bootstrap] could not grant garden membership permissions:', err);
     }
 
     // Recurring-template events used to be inserted as a published row only;

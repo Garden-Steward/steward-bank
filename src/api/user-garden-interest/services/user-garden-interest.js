@@ -5,6 +5,7 @@
  */
 
 const { createCoreService } = require('@strapi/strapi').factories;
+const { withoutMuted } = require('../../../utils/garden-mute');
 
 module.exports = createCoreService('api::user-garden-interest.user-garden-interest', ({ strapi }) =>  ({
 
@@ -28,7 +29,7 @@ module.exports = createCoreService('api::user-garden-interest.user-garden-intere
       volInterests = volInterests.filter(vi=> vi.interest)
       volGroup = volInterests.map(vi=> {return vi.user})
     }
-    return volGroup
+    return withoutMuted(volGroup, garden)
   },
 
 }));
