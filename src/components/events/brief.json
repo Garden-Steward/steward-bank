@@ -1,0 +1,36 @@
+{
+  "collectionName": "components_events_briefs",
+  "info": {
+    "displayName": "Event Brief",
+    "description": "What to expect at an event: schedule, what to bring, who it's for"
+  },
+  "options": {},
+  "attributes": {
+    "what_to_expect": {
+      "type": "text",
+      "description": "A short paragraph a first-timer reads before coming"
+    },
+    "agenda": {
+      "type": "component",
+      "repeatable": true,
+      "component": "events.agenda-item"
+    },
+    "bring_items": {
+      "type": "component",
+      "repeatable": true,
+      "component": "events.bring-item"
+    },
+    "good_for": {
+      "type": "string",
+      "description": "e.g. 'First-timers, kids with a grown-up'"
+    },
+    "food": {
+      "type": "string",
+      "description": "e.g. 'Shared lunch at noon'"
+    },
+    "duration_text": {
+      "type": "string",
+      "description": "e.g. 'About 2.5 hours'"
+    }
+  }
+}

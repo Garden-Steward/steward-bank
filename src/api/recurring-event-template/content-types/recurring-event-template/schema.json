@@ -148,6 +148,12 @@
       "target": "api::volunteer-day.volunteer-day",
       "mappedBy": "recurring_template",
       "description": "Events generated from this template"
+    },
+    "brief": {
+      "type": "component",
+      "repeatable": false,
+      "component": "events.brief",
+      "description": "What to expect, schedule and what to bring. Read live by every generated event (never copied onto instances)."
     }
   }
 }

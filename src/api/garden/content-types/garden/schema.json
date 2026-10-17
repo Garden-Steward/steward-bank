@@ -112,6 +112,12 @@
       "repeatable": true,
       "component": "checklist.standing-task",
       "description": "The every-volunteer-day checklist printed at the top of this garden's day sheet. Order here is the order it prints."
+    },
+    "visit_info": {
+      "type": "component",
+      "repeatable": false,
+      "component": "garden.visit-info",
+      "description": "Meeting spot, parking, restroom, accessibility: shown on every event at this garden"
     }
   }
 }

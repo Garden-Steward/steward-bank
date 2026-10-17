@@ -1,0 +1,20 @@
+{
+  "collectionName": "components_events_bring_items",
+  "info": {
+    "displayName": "Bring Item",
+    "description": "Something to bring, and who brings it"
+  },
+  "options": {},
+  "attributes": {
+    "label": {
+      "type": "string",
+      "required": true
+    },
+    "provided_by": {
+      "type": "enumeration",
+      "enum": ["volunteer", "garden"],
+      "default": "volunteer",
+      "description": "volunteer: they bring it. garden: the garden has it."
+    }
+  }
+}

@@ -148,6 +148,25 @@
       "default": false,
       "required": true,
       "description": "Event has been canceled: hidden from upcoming-event listings and excluded from SMS reminders"
+    },
+    "brief": {
+      "type": "component",
+      "repeatable": false,
+      "component": "events.brief",
+      "description": "Optional per-event override. Empty fields fall through to the recurring template's brief."
+    },
+    "location_name": {
+      "type": "string",
+      "description": "Where the event happens when it has no garden (a garden event uses the garden's location)"
+    },
+    "location_address": {
+      "type": "string"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization",
+      "description": "Host shown on events with no garden"
     }
   }
 }

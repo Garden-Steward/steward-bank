@@ -1,0 +1,21 @@
+{
+  "collectionName": "components_events_agenda_items",
+  "info": {
+    "displayName": "Agenda Item",
+    "description": "One step in how an event day goes"
+  },
+  "options": {},
+  "attributes": {
+    "time_text": {
+      "type": "string",
+      "description": "Loose time label, e.g. '9:30' or '~12:00'. Optional."
+    },
+    "label": {
+      "type": "string",
+      "required": true
+    },
+    "detail": {
+      "type": "string"
+    }
+  }
+}

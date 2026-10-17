@@ -119,7 +119,7 @@ module.exports = createCoreController('api::garden.garden', ({ strapi }) => ({
       populate: [
         "recurring_tasks",
         "volunteers", "volunteers.role", "volunteers.u_g_interests", "volunteers.u_g_interests.interest", "volunteers.u_g_interests.garden",
-        "managers","organization", "hero_image", "featured_gallery",
+        "managers","organization", "hero_image", "featured_gallery", "visit_info",
       ]
     });
 
