@@ -22,7 +22,8 @@ describe('Garden full route: no user secrets', function () {
     });
   });
 
-  it('strips passwords, tokens and every private user field, keeps names', async () => {
+  // Signed out, the garden page only counts people, so each one is just an id.
+  it('gives signed-out callers user ids only: no secrets, no names', async () => {
     const res = await request(strapi.server.httpServer).get('/api/gardens/pii-garden/full').expect(200);
     const userModel = strapi.getModel('plugin::users-permissions.user');
     const privateFields = Object.entries(userModel.attributes).filter(([, a]) => a.private).map(([k]) => k);
@@ -32,7 +33,8 @@ describe('Garden full route: no user secrets', function () {
       ['password', 'resetPasswordToken', 'confirmationToken', ...privateFields].forEach((f) => {
         expect(u[f]).toBeUndefined();
       });
-      expect(u.firstName).toBe('Pia');
+      expect(u.firstName).toBeUndefined();
+      expect(Object.keys(u)).toEqual(['id']);
     });
   });
 });

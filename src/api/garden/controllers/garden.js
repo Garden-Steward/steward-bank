@@ -7,6 +7,7 @@
 const { createCoreController } = require('@strapi/strapi').factories;
 
 const { mutedList } = require('../../../utils/garden-mute');
+const { approximateCenter } = require('../../../utils/location-privacy');
 
 const SLUG_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 
@@ -46,6 +47,35 @@ async function loadMembership(strapi, ctx) {
       muted: mutedList(user).includes(garden.documentId),
     },
   };
+}
+
+// User relations a garden can carry. Signed-out callers get only the ids
+// (the public pages just count volunteers), never the user records.
+const USER_RELATIONS = ['volunteers', 'managers'];
+
+// What a signed-out caller may see of a garden: no user records, a location
+// about 20 ft off the true one, and no footprint polygon. `location_approximate`
+// tells the client the offset is already applied, so it shouldn't add its own.
+function toPublicGarden(garden) {
+  if (!garden || typeof garden !== 'object') return garden;
+  const out = { ...garden };
+
+  for (const key of USER_RELATIONS) {
+    if (Array.isArray(out[key])) {
+      out[key] = out[key].map((u) => ({ id: u?.id }));
+    } else if (out[key] && typeof out[key] === 'object') {
+      out[key] = { id: out[key].id };
+    }
+  }
+
+  delete out.boundary;
+  if ('latitude' in out || 'longitude' in out) {
+    const approx = approximateCenter(out.latitude, out.longitude, out.id);
+    out.latitude = approx ? approx.latitude : null;
+    out.longitude = approx ? approx.longitude : null;
+    out.location_approximate = true;
+  }
+  return out;
 }
 
 module.exports = createCoreController('api::garden.garden', ({ strapi }) => ({
@@ -211,8 +241,13 @@ module.exports = createCoreController('api::garden.garden', ({ strapi }) => ({
 
   // Method 1: Creating an entirely custom action
   async fullSlug(ctx) {
+    const isPublic = !ctx.state.user;
     const entity = await strapi.db.query('api::garden.garden').findOne({
       where: {slug: ctx.params.slug},
+      // A garden's draft and published rows share a slug but not an id, and the
+      // id seeds the public location offset. Signed-out callers always get the
+      // published row, so the offset matches what /api/gardens hands them.
+      ...(isPublic ? { orderBy: [{ publishedAt: 'asc' }] } : {}),
       populate: [
         "recurring_tasks",
         "volunteers", "volunteers.role", "volunteers.u_g_interests", "volunteers.u_g_interests.interest", "volunteers.u_g_interests.garden",
@@ -251,7 +286,15 @@ module.exports = createCoreController('api::garden.garden', ({ strapi }) => ({
     // db.query returns a flat v5 entity already; return it directly. (The old
     // this.transformResponse(entity) threw under v5, which the catch swallowed
     // into an empty {} body.)
-    ctx.body = { data: entity };
+    ctx.body = { data: isPublic ? toPublicGarden(entity) : entity };
+  },
+
+  async findOne(ctx) {
+    const response = await super.findOne(ctx);
+    if (!ctx.state.user && response?.data) {
+      response.data = toPublicGarden(response.data);
+    }
+    return response;
   },
   
   async find(ctx) {
@@ -259,7 +302,7 @@ module.exports = createCoreController('api::garden.garden', ({ strapi }) => ({
     if (!ctx.state.user) {
       // For public access, use the default core action which respects permissions
       const { data, meta } = await super.find(ctx);
-      return { data, meta };
+      return { data: Array.isArray(data) ? data.map(toPublicGarden) : data, meta };
     }
     // Handle authenticated non-administrator users
     if (ctx.state.user.role.type !== 'administrator') {
