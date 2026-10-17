@@ -55,5 +55,6 @@ require('./tasks/standing-tasks');
 require('./event/day-sheet');
 require('./event/brief');
 require('./event/cancel');
+require('./garden/full-pii');
 require('./auth/sms-login');
 require('./project-alert');
