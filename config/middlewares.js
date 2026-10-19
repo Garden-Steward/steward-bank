@@ -1,5 +1,6 @@
 module.exports = [
   'strapi::errors',
+  'global::strip-user-secrets',
   {
     name: 'strapi::security',
     config: {

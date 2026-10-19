@@ -66,6 +66,36 @@ async function grantMemberPermissions(strapi) {
   }
 }
 
+// User routes a signed-out caller must never reach: they list every user's
+// email and phone, or edit any account. Signing up and logging in go through
+// the auth routes, not these. Permissions live in the DB, so this runs at boot
+// to close them in every environment, whatever the admin panel says.
+const PUBLIC_REVOKED_ACTIONS = [
+  'plugin::users-permissions.user.find',
+  'plugin::users-permissions.user.findOne',
+  'plugin::users-permissions.user.count',
+  'plugin::users-permissions.user.create',
+  'plugin::users-permissions.user.update',
+  'plugin::users-permissions.user.destroy',
+];
+
+async function revokePublicUserPermissions(strapi) {
+  const role = await strapi.db.query('plugin::users-permissions.role').findOne({
+    where: { type: 'public' },
+    populate: ['permissions'],
+  });
+  if (!role) return;
+
+  const granted = (role.permissions || []).filter((p) => PUBLIC_REVOKED_ACTIONS.includes(p.action));
+  if (!granted.length) return;
+  // delete (not deleteMany) so the role link rows go too.
+  const perms = strapi.db.query('plugin::users-permissions.permission');
+  for (const p of granted) {
+    await perms.delete({ where: { id: p.id } });
+  }
+  strapi.log.info(`[bootstrap] revoked Public: ${granted.map((p) => p.action).join(', ')}`);
+}
+
 // Send the garden welcome email the first time a user gets a real email,
 // whichever path set it. Users created by SMS start with a placeholder email.
 function subscribeWelcomeEmailOnEmailSet(strapi) {
@@ -124,6 +154,12 @@ module.exports = {
       await grantMemberPermissions(strapi);
     } catch (err) {
       strapi.log.error('[bootstrap] could not grant garden membership permissions:', err);
+    }
+
+    try {
+      await revokePublicUserPermissions(strapi);
+    } catch (err) {
+      strapi.log.error('[bootstrap] could not revoke Public user permissions:', err);
     }
 
     // Recurring-template events used to be inserted as a published row only;

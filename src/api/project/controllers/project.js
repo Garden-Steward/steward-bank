@@ -5,6 +5,10 @@
  */
 
 const { createCoreController } = require('@strapi/strapi').factories;
+const { withPublicUserIds } = require('../../../utils/public-user-ids');
+
+// The public project pages count who's interested; signed out, that's all they get.
+const PUBLIC_USER_RELATIONS = ['interested'];
 
 // Review-workflow states. `review_status` (not `status`) because Strapi v5
 // reserves `status` for the draft/publish selector.
@@ -99,7 +103,8 @@ module.exports = createCoreController('api::project.project', ({ strapi }) => ({
         filters: existing ? { $and: [existing, visibility] } : visibility,
       };
     }
-    return await super.find(ctx);
+    const response = await super.find(ctx);
+    return withPublicUserIds(strapi, 'api::project.project', ctx, response, PUBLIC_USER_RELATIONS);
   },
 
   async findOne(ctx) {
@@ -112,7 +117,7 @@ module.exports = createCoreController('api::project.project', ({ strapi }) => ({
     // v5 responses are flat; older `entity.attributes` kept as a fallback.
     const reviewStatus = entity.review_status ?? entity.attributes?.review_status;
     if (PUBLIC_STATUSES.includes(reviewStatus)) {
-      return response;
+      return withPublicUserIds(strapi, 'api::project.project', ctx, response, PUBLIC_USER_RELATIONS);
     }
 
     const user = ctx.state.user;

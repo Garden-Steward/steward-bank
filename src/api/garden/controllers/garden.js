@@ -8,6 +8,7 @@ const { createCoreController } = require('@strapi/strapi').factories;
 
 const { mutedList } = require('../../../utils/garden-mute');
 const { approximateCenter } = require('../../../utils/location-privacy');
+const { attachUserIds } = require('../../../utils/public-user-ids');
 
 const SLUG_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 
@@ -74,6 +75,47 @@ function toPublicGarden(garden) {
     out.latitude = approx ? approx.latitude : null;
     out.longitude = approx ? approx.longitude : null;
     out.location_approximate = true;
+  }
+  return out;
+}
+
+// db.query skips the REST sanitizer, so populated users arrive with every
+// column, password hash and tokens included. Signed-in responses copy only
+// these fields. The gardens list just matches the caller by id and shows names.
+const LIST_USER_FIELDS = ['id', 'documentId', 'username', 'firstName', 'lastName'];
+// The garden page's volunteer table also shows join date, bio, colour, role
+// badge and interests.
+const PAGE_USER_FIELDS = [...LIST_USER_FIELDS, 'bio', 'color', 'paused', 'provider', 'createdAt', 'updatedAt'];
+// Contact details, only for the garden's managers and administrators.
+const CONTACT_USER_FIELDS = ['email', 'phoneNumber'];
+
+function pick(obj, fields) {
+  const out = {};
+  for (const f of fields) if (obj[f] !== undefined) out[f] = obj[f];
+  return out;
+}
+
+function toPageUser(u, withContact) {
+  if (!u || typeof u !== 'object') return u;
+  const out = pick(u, withContact ? [...PAGE_USER_FIELDS, ...CONTACT_USER_FIELDS] : PAGE_USER_FIELDS);
+  if (u.role && typeof u.role === 'object') out.role = pick(u.role, ['id', 'name', 'type']);
+  if (Array.isArray(u.u_g_interests)) {
+    out.u_g_interests = u.u_g_interests.map((ugi) => ({
+      id: ugi?.id,
+      interest: ugi?.interest && pick(ugi.interest, ['id', 'documentId', 'tag']),
+      garden: ugi?.garden && pick(ugi.garden, ['id', 'documentId']),
+    }));
+  }
+  return out;
+}
+
+// Replace each user relation on a garden with `map(user)`.
+function mapUsers(garden, map) {
+  if (!garden || typeof garden !== 'object') return garden;
+  const out = { ...garden };
+  for (const key of USER_RELATIONS) {
+    if (Array.isArray(out[key])) out[key] = out[key].map(map);
+    else if (out[key] && typeof out[key] === 'object') out[key] = map(out[key]);
   }
   return out;
 }
@@ -266,33 +308,24 @@ module.exports = createCoreController('api::garden.garden', ({ strapi }) => ({
 
     entity.interests = interests;
 
-    // db.query skips the REST sanitizer, so populated users arrive with every
-    // column. This route serves the public garden page: never send password
-    // hashes, reset/verification tokens or login codes. Every attribute the
-    // user schema marks private is dropped, plus the core auth secrets.
-    const userModel = strapi.getModel('plugin::users-permissions.user');
-    const secretFields = new Set([
-      'password', 'resetPasswordToken', 'confirmationToken',
-      ...Object.entries(userModel?.attributes || {}).filter(([, a]) => a.private).map(([k]) => k),
-    ]);
-    const stripSecrets = (u) => {
-      if (!u || typeof u !== 'object') return u;
-      secretFields.forEach((f) => { delete u[f]; });
-      return u;
-    };
-    (entity.volunteers || []).forEach(stripSecrets);
-    (entity.managers || []).forEach(stripSecrets);
-
     // db.query returns a flat v5 entity already; return it directly. (The old
     // this.transformResponse(entity) threw under v5, which the catch swallowed
     // into an empty {} body.)
-    ctx.body = { data: isPublic ? toPublicGarden(entity) : entity };
+    if (isPublic) {
+      ctx.body = { data: toPublicGarden(entity) };
+      return;
+    }
+    const user = ctx.state.user;
+    const withContact = user.role?.type === 'administrator'
+      || (entity.managers || []).some((m) => m?.id === user.id);
+    ctx.body = { data: mapUsers(entity, (u) => toPageUser(u, withContact)) };
   },
 
   async findOne(ctx) {
     const response = await super.findOne(ctx);
     if (!ctx.state.user && response?.data) {
-      response.data = toPublicGarden(response.data);
+      const [garden] = await attachUserIds(strapi, 'api::garden.garden', ctx.query.populate, [response.data], USER_RELATIONS);
+      response.data = toPublicGarden(garden);
     }
     return response;
   },
@@ -302,7 +335,9 @@ module.exports = createCoreController('api::garden.garden', ({ strapi }) => ({
     if (!ctx.state.user) {
       // For public access, use the default core action which respects permissions
       const { data, meta } = await super.find(ctx);
-      return { data: Array.isArray(data) ? data.map(toPublicGarden) : data, meta };
+      if (!Array.isArray(data)) return { data, meta };
+      const gardens = await attachUserIds(strapi, 'api::garden.garden', ctx.query.populate, data, USER_RELATIONS);
+      return { data: gardens.map(toPublicGarden), meta };
     }
     // Handle authenticated non-administrator users
     if (ctx.state.user.role.type !== 'administrator') {
@@ -343,7 +378,9 @@ module.exports = createCoreController('api::garden.garden', ({ strapi }) => ({
 
       // CAUTION: SANITIZING LOSES POPULATED
       // const sanitizedResults = await this.sanitizeOutput(gardens, ctx);
-      return this.transformResponse(gardens);
+      return this.transformResponse(
+        gardens.map((g) => mapUsers(g, (u) => (u && typeof u === 'object' ? pick(u, LIST_USER_FIELDS) : u)))
+      );
     }
         
     // Calling the default core action for administrators
