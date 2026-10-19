@@ -143,7 +143,8 @@ Responsibilities:
 2. `resolveEvent(eventId)` — `strapi.db.query('api::volunteer-day.volunteer-day').findOne({ where: { id: eventId }, populate: { garden: true } })`.
    Numeric id, matching `getById`'s precedent. Returns `null` → controller 404s.
 3. `loadTasks(event)` — see D2a.
-4. `sortTasks(tasks)` — rank `High=0`, `Normal=1`, `Low=2`; `null`/unknown → 1.
+4. `sortTasks(tasks)` — the manager's drag-and-drop `sort_order` wins first
+   (ascending, unset last); then rank `High=0`, `Normal=1`, `Low=2`; `null`/unknown → 1.
    Tie-break on ascending numeric `id`. Deterministic; relation populate order is not
    relied on.
 5. Delegates the standing list to
@@ -518,8 +519,9 @@ server decides what to populate. Unknown query params are ignored.
         "documentId": "t7w2m1",
         "title": "Turn the compost",
         "priority": "High",
+        "sort_order": 1,
         "type": "Weeding",
-        "status": "INITIALIZED",
+        "task_status": "INITIALIZED",
         "overview": "Both bins, front to back.",
         "volunteer_count": 2,
         "max_volunteers": 4
@@ -553,6 +555,9 @@ Field notes:
   title edit — by design.
 - `priority` is always one of `"High" | "Normal" | "Low"`; a `null` column value is
   normalized to `"Normal"` before it leaves the service.
+- `sort_order` is the manager's drag-and-drop position on the task board — an integer,
+  or `null` when the task has not been placed. The wizard and the HTML sheet print it
+  as an `N. ` prefix so the sheet can be read against the board.
 - `id` is numeric (internal); `documentId` is the v5 public string identity. Both are
   returned for event, garden, and tasks. The wizard keys off nothing but `key`; the
   print URL uses the numeric `id`.
