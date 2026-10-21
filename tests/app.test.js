@@ -58,3 +58,4 @@ require('./event/cancel');
 require('./garden/full-pii');
 require('./auth/sms-login');
 require('./project-alert');
+require('./billing');

@@ -1,8 +1,4 @@
 'use strict';
-const accountSid = process.env.TWILIO_ACCOUNT_SID ;
-const authToken = process.env.TWILIO_AUTH_TOKEN  ;
-const twilioNum =process.env.TWILIONUM;
-const client = require('twilio')(accountSid, authToken);
 const SmsOptOut = require('../../../utils/sms-opt-out');
 
 
@@ -116,7 +112,7 @@ module.exports = createCoreService('api::volunteer-day.volunteer-day', ({ strapi
     return rows?.length ? rows.map(r => r.id) : [garden.id];
   },
 
-  async sendGroupMsg(vDay, copy) {
+  async sendGroupMsg(vDay, copy, opts = {}) {
 
     console.log("sendGroupMsg", copy);
 
@@ -133,16 +129,11 @@ module.exports = createCoreService('api::volunteer-day.volunteer-day', ({ strapi
       // Opted out of texts: skip, but they stay in the garden and on email.
       if (SmsOptOut.isOptedOut(volunteer)) { continue; }
       try {
-        if (process.env.NODE_ENV === 'test') {
-          console.log("sending to ", volunteer.phoneNumber, copy);
-        } else {
-          await client.messages
-            .create({
-            body: copy,
-            from: twilioNum,
-            to: volunteer.phoneNumber
-          });
-        }
+        const r = await strapi.service('api::sms.sms').send({
+          to: volunteer.phoneNumber, body: copy, garden: vDay?.garden, user: volunteer,
+          category: opts.category, source: opts.source, throwOnError: true,
+        });
+        if (r.blocked) { continue; }
         sentInfo.push(volunteer.phoneNumber);
         sentUsers.push(volunteer);
       } catch (err) {

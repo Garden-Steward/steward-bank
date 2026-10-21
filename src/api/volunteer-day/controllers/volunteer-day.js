@@ -549,7 +549,7 @@ module.exports = createCoreController('api::volunteer-day.volunteer-day', ({stra
       }
 
       const copy = VdayHelper.buildUpcomingDayCopy(vDay);
-      const sentInfo = strapi.service('api::volunteer-day.volunteer-day').sendGroupMsg(vDay,copy);
+      const sentInfo = strapi.service('api::volunteer-day.volunteer-day').sendGroupMsg(vDay, copy, { category: 'broadcast', source: 'volunteer-day.group' });
 
       return  sentInfo;
     },

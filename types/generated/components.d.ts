@@ -24,6 +24,64 @@ export interface EducationCard extends Struct.ComponentSchema {
   };
 }
 
+export interface EventsAgendaItem extends Struct.ComponentSchema {
+  collectionName: 'components_events_agenda_items';
+  info: {
+    description: 'One step in how an event day goes';
+    displayName: 'Agenda Item';
+  };
+  attributes: {
+    detail: Schema.Attribute.String;
+    label: Schema.Attribute.String & Schema.Attribute.Required;
+    time_text: Schema.Attribute.String;
+  };
+}
+
+export interface EventsBrief extends Struct.ComponentSchema {
+  collectionName: 'components_events_briefs';
+  info: {
+    description: "What to expect at an event: schedule, what to bring, who it's for";
+    displayName: 'Event Brief';
+  };
+  attributes: {
+    agenda: Schema.Attribute.Component<'events.agenda-item', true>;
+    bring_items: Schema.Attribute.Component<'events.bring-item', true>;
+    duration_text: Schema.Attribute.String;
+    food: Schema.Attribute.String;
+    good_for: Schema.Attribute.String;
+    what_to_expect: Schema.Attribute.Text;
+  };
+}
+
+export interface EventsBringItem extends Struct.ComponentSchema {
+  collectionName: 'components_events_bring_items';
+  info: {
+    description: 'Something to bring, and who brings it';
+    displayName: 'Bring Item';
+  };
+  attributes: {
+    label: Schema.Attribute.String & Schema.Attribute.Required;
+    provided_by: Schema.Attribute.Enumeration<['volunteer', 'garden']> &
+      Schema.Attribute.DefaultTo<'volunteer'>;
+  };
+}
+
+export interface GardenVisitInfo extends Struct.ComponentSchema {
+  collectionName: 'components_garden_visit_infos';
+  info: {
+    description: 'Logistics true of every visit to a garden, shown on all of its events';
+    displayName: 'Visit Info';
+  };
+  attributes: {
+    accessibility: Schema.Attribute.Text;
+    kids_pets: Schema.Attribute.Text;
+    meeting_note: Schema.Attribute.Text;
+    meeting_spot: Schema.Attribute.String;
+    parking_transit: Schema.Attribute.Text;
+    restroom: Schema.Attribute.Text;
+  };
+}
+
 export interface PlantsBenefits extends Struct.ComponentSchema {
   collectionName: 'components_plants_benefits';
   info: {
@@ -131,6 +189,10 @@ declare module '@strapi/strapi' {
     export interface ComponentSchemas {
       'checklist.standing-task': ChecklistStandingTask;
       'education.card': EducationCard;
+      'events.agenda-item': EventsAgendaItem;
+      'events.brief': EventsBrief;
+      'events.bring-item': EventsBringItem;
+      'garden.visit-info': GardenVisitInfo;
       'plants.benefits': PlantsBenefits;
       'plants.planting': PlantsPlanting;
       'plants.sources': PlantsSources;

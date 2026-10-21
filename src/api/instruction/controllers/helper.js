@@ -91,7 +91,9 @@ instructionHelper.requestApproval = async ({ phoneNumber, userId, instruction })
       user,
       meta_data: {
         instructionId: instruction.id
-      }
+      },
+      category: 'transactional',
+      source: 'instruction.request-approval'
     });
     return {
       success: true,

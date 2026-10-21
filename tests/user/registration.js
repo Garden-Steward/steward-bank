@@ -73,7 +73,7 @@ describe('Contact card', () => {
 
     const response = await SmsHelper.saveVolunteerName(mockUser, 'ada lovelace');
 
-    expect(sendContactCard).toHaveBeenCalledWith(phoneNumber);
+    expect(sendContactCard).toHaveBeenCalledWith(phoneNumber, mockUser);
     expect(response.body).toContain("I've just sent you my contact card");
     expect(response.type).toBe('complete');
   });

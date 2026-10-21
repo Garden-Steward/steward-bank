@@ -15,7 +15,9 @@ eventHelper.inviteUserEvent = async (data) => {
     meta_data: {phoneNumber: data.phoneNumber, eventId: data.event.id}, 
     body,
     type: 'registration',
-    event: data.event
+    event: data.event,
+    category: 'transactional',
+    source: 'event.invite'
   });
   return {success: true, body: body}
 }
@@ -45,7 +47,10 @@ eventHelper.rsvpEvent = async (eventId, data) => {
     body: `You've RSVP'd to ${event.title}!`,
     type: 'reply',
     event: event,
-    user: data.user
+    user: data.user,
+    garden: data.event?.garden,
+    category: 'transactional',
+    source: 'event.rsvp'
   });
   
   // v5: utils.sanitize.contentAPI was removed; use the content-API sanitizer

@@ -710,6 +710,7 @@ export interface ApiGardenGarden extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    visit_info: Schema.Attribute.Component<'garden.visit-info', false>;
     volunteers: Schema.Attribute.Relation<
       'manyToMany',
       'plugin::users-permissions.user'
@@ -990,6 +991,48 @@ export interface ApiPlantPlant extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiProjectAlertProjectAlert
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'project_alerts';
+  info: {
+    description: 'Email signups for new approved projects in a city or zip';
+    displayName: 'Project Alert';
+    pluralName: 'project-alerts';
+    singularName: 'project-alert';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    city: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    display_label: Schema.Attribute.String;
+    email: Schema.Attribute.Email & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::project-alert.project-alert'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    scope: Schema.Attribute.Enumeration<['city', 'zip']> &
+      Schema.Attribute.Required;
+    unsubscribe_token: Schema.Attribute.String & Schema.Attribute.Private;
+    unsubscribed_at: Schema.Attribute.DateTime & Schema.Attribute.Private;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    welcomed_at: Schema.Attribute.DateTime & Schema.Attribute.Private;
+    zip: Schema.Attribute.String;
+  };
+}
+
 export interface ApiProjectProject extends Struct.CollectionTypeSchema {
   collectionName: 'projects';
   info: {
@@ -1039,6 +1082,8 @@ export interface ApiProjectProject extends Struct.CollectionTypeSchema {
       'api::project.project'
     > &
       Schema.Attribute.Private;
+    location_city: Schema.Attribute.String;
+    location_zip: Schema.Attribute.String;
     longitude: Schema.Attribute.Float;
     managers: Schema.Attribute.Relation<
       'manyToMany',
@@ -1082,6 +1127,8 @@ export interface ApiProjectProject extends Struct.CollectionTypeSchema {
       }>;
     slug: Schema.Attribute.String & Schema.Attribute.Unique;
     submitter_email: Schema.Attribute.Email;
+    subscribers_notified_at: Schema.Attribute.DateTime &
+      Schema.Attribute.Private;
     title: Schema.Attribute.String & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -1115,6 +1162,7 @@ export interface ApiRecurringEventTemplateRecurringEventTemplate
     > &
       Schema.Attribute.DefaultTo<'Public'>;
     blurb: Schema.Attribute.Text;
+    brief: Schema.Attribute.Component<'events.brief', false>;
     content: Schema.Attribute.RichText;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -1378,6 +1426,60 @@ export interface ApiSmsCampaignSmsCampaign extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiSmsUsageSmsUsage extends Struct.CollectionTypeSchema {
+  collectionName: 'sms_usages';
+  info: {
+    description: 'Outbound SMS/MMS ledger, one row per message Twilio accepted (or simulated/blocked).';
+    displayName: 'SMS Usage';
+    pluralName: 'sms-usages';
+    singularName: 'sms-usage';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    billable: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    blocked: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    category: Schema.Attribute.Enumeration<
+      ['broadcast', 'reminder', 'transactional', 'system']
+    > &
+      Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    direction: Schema.Attribute.Enumeration<['api', 'twiml_reply']> &
+      Schema.Attribute.Required;
+    encoding: Schema.Attribute.Enumeration<['gsm7', 'ucs2']>;
+    garden_document_id: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sms-usage.sms-usage'
+    > &
+      Schema.Attribute.Private;
+    num_media: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    organization_document_id: Schema.Attribute.String;
+    period: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    segments: Schema.Attribute.Integer & Schema.Attribute.Required;
+    sent_at: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    simulated: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    source: Schema.Attribute.String;
+    stripe_batch_id: Schema.Attribute.String;
+    stripe_reported_at: Schema.Attribute.DateTime;
+    to_number: Schema.Attribute.String;
+    twilio_sid: Schema.Attribute.String;
+    units: Schema.Attribute.Integer & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+  };
+}
+
 export interface ApiTagTag extends Struct.CollectionTypeSchema {
   collectionName: 'tags';
   info: {
@@ -1460,6 +1562,7 @@ export interface ApiVolunteerDayVolunteerDay
     > &
       Schema.Attribute.DefaultTo<'Public'>;
     blurb: Schema.Attribute.Text;
+    brief: Schema.Attribute.Component<'events.brief', false>;
     canceled: Schema.Attribute.Boolean &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<false>;
@@ -1493,7 +1596,13 @@ export interface ApiVolunteerDayVolunteerDay
       'api::volunteer-day.volunteer-day'
     > &
       Schema.Attribute.Private;
+    location_address: Schema.Attribute.String;
+    location_name: Schema.Attribute.String;
     messages: Schema.Attribute.Relation<'oneToMany', 'api::message.message'>;
+    organization: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::organization.organization'
+    >;
     partiful_link: Schema.Attribute.String;
     photo_album_id: Schema.Attribute.String;
     photo_album_url: Schema.Attribute.String;
@@ -2172,11 +2281,13 @@ declare module '@strapi/strapi' {
       'api::message.message': ApiMessageMessage;
       'api::organization.organization': ApiOrganizationOrganization;
       'api::plant.plant': ApiPlantPlant;
+      'api::project-alert.project-alert': ApiProjectAlertProjectAlert;
       'api::project.project': ApiProjectProject;
       'api::recurring-event-template.recurring-event-template': ApiRecurringEventTemplateRecurringEventTemplate;
       'api::recurring-task.recurring-task': ApiRecurringTaskRecurringTask;
       'api::scheduler.scheduler': ApiSchedulerScheduler;
       'api::sms-campaign.sms-campaign': ApiSmsCampaignSmsCampaign;
+      'api::sms-usage.sms-usage': ApiSmsUsageSmsUsage;
       'api::tag.tag': ApiTagTag;
       'api::user-garden-interest.user-garden-interest': ApiUserGardenInterestUserGardenInterest;
       'api::volunteer-day.volunteer-day': ApiVolunteerDayVolunteerDay;

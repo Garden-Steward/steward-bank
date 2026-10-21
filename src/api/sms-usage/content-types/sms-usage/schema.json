@@ -1,0 +1,88 @@
+{
+  "kind": "collectionType",
+  "collectionName": "sms_usages",
+  "info": {
+    "singularName": "sms-usage",
+    "pluralName": "sms-usages",
+    "displayName": "SMS Usage",
+    "description": "Outbound SMS/MMS ledger, one row per message Twilio accepted (or simulated/blocked)."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "organization_document_id": {
+      "type": "string"
+    },
+    "garden_document_id": {
+      "type": "string"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "to_number": {
+      "type": "string"
+    },
+    "twilio_sid": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    },
+    "period": {
+      "type": "string",
+      "required": true
+    },
+    "segments": {
+      "type": "integer",
+      "required": true
+    },
+    "num_media": {
+      "type": "integer",
+      "default": 0
+    },
+    "units": {
+      "type": "integer",
+      "required": true
+    },
+    "encoding": {
+      "type": "enumeration",
+      "enum": ["gsm7", "ucs2"]
+    },
+    "direction": {
+      "type": "enumeration",
+      "enum": ["api", "twiml_reply"],
+      "required": true
+    },
+    "category": {
+      "type": "enumeration",
+      "enum": ["broadcast", "reminder", "transactional", "system"],
+      "required": true
+    },
+    "sent_at": {
+      "type": "datetime",
+      "required": true
+    },
+    "billable": {
+      "type": "boolean",
+      "default": true
+    },
+    "blocked": {
+      "type": "boolean",
+      "default": false
+    },
+    "simulated": {
+      "type": "boolean",
+      "default": false
+    },
+    "stripe_reported_at": {
+      "type": "datetime"
+    },
+    "stripe_batch_id": {
+      "type": "string"
+    }
+  }
+}

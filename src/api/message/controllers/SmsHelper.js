@@ -265,9 +265,9 @@ SmsHelper.saveVolunteerEmail = async(user, email) => {
   return {body: 'Thank you! Only one more step before you\'re offical. Just respond with your full name.',type:'reply'};
 };
 
-SmsHelper.sendContactCard = async(phoneNumber) => {
+SmsHelper.sendContactCard = async(phoneNumber, user) => {
   try {
-    return await strapi.service('api::sms.sms').sendContactCard(phoneNumber);
+    return await strapi.service('api::sms.sms').sendContactCard(phoneNumber, { user });
   } catch (err) {
     // Never let a Twilio failure break the SMS reply the volunteer is waiting on.
     console.error('Problem sending contact card to ', phoneNumber, err);
@@ -300,7 +300,7 @@ SmsHelper.saveVolunteerName = async(user, msgTxt) => {
   }
   // Sent here, immediately before the welcome text below mentions it - this is
   // the first and only time a volunteer hears about the contact card.
-  await SmsHelper.sendContactCard(user.phoneNumber);
+  await SmsHelper.sendContactCard(user.phoneNumber, user);
   // Sign-up is complete: we now have their email and name.
   SmsHelper.sendWelcomeEmail(user.id);
   return {body: `Welcome to the team ${userName}! \n\nI've just sent you my contact card - please click on it and add me to your contacts.`, type:'complete'};
@@ -649,7 +649,9 @@ SmsHelper.passToNextVolunteer = async(user) => {
       body: smsNewGuy,
       type: 'question',
       previous: latestQuestion?.body,
-      user: nextUser
+      user: nextUser,
+      category: 'transactional',
+      source: 'sms.pass'
     });
     const bodyExtra = needsInstruction ? ' They will first need to agree to the instructions.' : '';
     return {body: `Passed to ${nextUser.firstName}!${bodyExtra} They'll get a message now.`, type: 'complete', task: updatedTask};
@@ -798,7 +800,9 @@ SmsHelper.transferTask = async(user, backUpNumber) => {
         body: smsNewGuy, 
         type: 'question',
         previous: latestQuestion.body,
-        user: newUser
+        user: newUser,
+        category: 'transactional',
+        source: 'sms.transfer'
     });
 
       // return message to the initiater of transfer.

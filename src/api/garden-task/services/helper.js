@@ -35,7 +35,10 @@ taskHelper.inviteUserTask = async (data) => {
     },
     body,
     type: 'registration',
-    task: data.task
+    task: data.task,
+    garden: data.task.garden,
+    category: 'transactional',
+    source: 'task.invite'
   });
 
   return {

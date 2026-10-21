@@ -1,7 +1,6 @@
 'use strict';
 
-const RequestClient = require('twilio/lib/base/RequestClient');
-// installed twilio is v3.84.1; this path + prototype.request are stable there
+const { patchService } = require('./helpers/patch');
 
 const PREFIX = `smsvac${Date.now()}`;
 let seq = 0;
@@ -59,16 +58,15 @@ const createGarden = async (overrides = {}) => {
   return garden;
 };
 
-// Stub Twilio at the transport layer: sendGroupMsg builds its client at module load,
-// so there is no injectable seam, and a real request would fail and trigger
-// unsubscribeUser. Scoped per describe so the rest of the suite is untouched.
+// Stub Twilio at the transport: every send goes through api::sms.transport.create.
+// A real request would fail and trigger unsubscribeUser. Scoped per describe so the
+// rest of the suite is untouched. patchService is undone by the global afterEach in app.test.js.
 let twilioSpy;
 const stubTwilio = () => {
   beforeEach(() => {
-    twilioSpy = jest.spyOn(RequestClient.prototype, 'request')
-      .mockResolvedValue({ statusCode: 201, body: { sid: 'SMtest123', status: 'queued' } });
+    twilioSpy = patchService('api::sms.transport', 'create',
+      jest.fn().mockResolvedValue({ sid: 'SMtest123', numSegments: '1', numMedia: '0', simulated: false }));
   });
-  afterEach(() => { if (twilioSpy) twilioSpy.mockRestore(); });
 };
 
 afterAll(async () => {
