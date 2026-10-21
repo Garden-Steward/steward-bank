@@ -142,6 +142,9 @@ module.exports = {
       return next();
     });
 
+    // Every new garden gets an organization (SMS billing attribution). Logic in api::billing.coverage.
+    strapi.documents.use((context, next) => strapi.service('api::billing.coverage').provisionForGardenCreate(context, next));
+
     subscribeWelcomeEmailOnEmailSet(strapi);
 
     try {
@@ -169,6 +172,13 @@ module.exports = {
       if (created) strapi.log.info(`[bootstrap] created ${created} missing volunteer-day drafts`);
     } catch (err) {
       strapi.log.error('[bootstrap] volunteer-day draft backfill failed:', err);
+    }
+
+    // Ledger indexes (CREATE INDEX IF NOT EXISTS). Never blocks boot.
+    try {
+      await strapi.service('api::billing.usage').ensureIndexes();
+    } catch (err) {
+      strapi.log.error('[bootstrap] sms_usages index step failed:', err);
     }
 
     if (sentryEnabled) {

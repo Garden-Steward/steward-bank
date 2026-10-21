@@ -25,7 +25,7 @@ module.exports = {
      handler: 'message.fetchSms',
      config: {
        policies: [],
-       middlewares: [],
+       middlewares: ['api::message.twilio-signature'],
      },
     },
     {

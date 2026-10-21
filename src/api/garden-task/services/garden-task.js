@@ -362,7 +362,9 @@ module.exports = createCoreService('api::garden-task.garden-task', ({ strapi }) 
       strapi.service('api::sms.sms').handleSms({
         task: task, 
         body: `Hi ${task.volunteers[0].firstName}, your task ${task.title} is ready to be done today! Are you able to do it? You have some OPTIONS.`, 
-        type: 'question'
+        type: 'question',
+        category: 'reminder',
+        source: 'garden-task.send-task'
       }
       );
       return {success: true, message: 'Sent task reminder for ' + task.volunteers[0].username, task: task};

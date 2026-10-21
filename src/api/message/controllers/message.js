@@ -30,7 +30,9 @@ module.exports = {
       body: smsBody,
       type: 'followup',
       previous: null,
-      user
+      user,
+      category: 'transactional',
+      source: 'message.request-email'
   });
 
     return {message: smsBody, status: 'success'}
@@ -238,15 +240,28 @@ module.exports = {
     // ** END Volunteer Sign Up Flow ** /
     console.log("sending: ", smsBody);
     if (smsBody) {
+      let mediaCount = 0;
       if (smsInfo && smsInfo.task?.primary_image?.formats?.medium?.url) {
         const message = twiml.message();
         message.body(smsBody);
         message.media(smsInfo.task.primary_image.formats.medium.url);
+        mediaCount = 1;
       } else {
         twiml.message(smsBody);
       }
   
       await SmsHelper.saveMessage(user,smsType, garden, smsBody, smsTask, request.body.Body);
+      // Meter the TwiML reply (Twilio bills it as outbound). Never throws; output unchanged.
+      // Twilio blocks (and doesn't bill) replies to any opt-out keyword or to a number
+      // that is already opted out, so those aren't metered.
+      const twilioBlocksReply =
+        SmsOptOut.isOptOutKeyword(request.body.Body) || SmsOptOut.isOptedOut(user);
+      if (!twilioBlocksReply) {
+        await strapi.service('api::sms.sms').recordTwimlReply({
+          to: phoneNumber, body: smsBody, mediaCount,
+          garden: garden || smsTask?.garden || user?.activeGarden, task: smsTask, user,
+        });
+      }
     }
 
     return twiml.toString();

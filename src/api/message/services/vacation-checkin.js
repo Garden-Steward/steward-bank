@@ -48,7 +48,7 @@ module.exports = {
           }
 
           try {
-            await strapi.service('api::sms.sms').sendSms(user.phoneNumber, smsBody);
+            await strapi.service('api::sms.sms').sendSms(user.phoneNumber, smsBody, undefined, { category: 'system', source: 'vacation.checkin', user });
 
             // Update last_vacation_check_sent timestamp and reminder counter (only on send success)
             await strapi.db.query("plugin::users-permissions.user").update({

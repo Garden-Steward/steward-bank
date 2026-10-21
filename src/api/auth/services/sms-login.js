@@ -146,7 +146,7 @@ module.exports = ({ strapi }) => ({
 
     try {
       const smsService = strapi.service('api::sms.sms');
-      const p = smsService.sendSms(r.phoneNumber, smsBody(code));
+      const p = smsService.sendSms(r.phoneNumber, smsBody(code), undefined, { category: 'system', source: 'auth.sms-login', user: r.user });
       if (p && typeof p.then === 'function') {
         p.catch((e) => strapi.log.error(`sms-login: sendSms failed for user ${r.user.id}: ${e && e.name}`));
       }

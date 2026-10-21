@@ -1,9 +1,5 @@
 'use strict';
-const accountSid = process.env.TWILIO_ACCOUNT_SID ;
-const authToken = process.env.TWILIO_AUTH_TOKEN  ;
 const { format } = require('date-fns');
-const twilioNum =process.env.TWILIONUM;
-const client = require('twilio')(accountSid, authToken);
 const weeklyScheduleHelper = require('./helper');
 
 /**
@@ -124,14 +120,14 @@ module.exports = createCoreService('api::weekly-schedule.weekly-schedule', ({ st
     const copy = `You've been selected to '${recTask.title}' this week! \n${daysCopy}. \nYou'll receive a reminder morning of where you can transfer if necessary.`
 
     for (const volunteer of filled) {
-      if (['test','stg'].indexOf(process.env.ENVIRONMENT)>-1) {continue;}
-
-      await client.messages
-        .create({
-          body: copy,
-          from: twilioNum,
-          to: volunteer.assignee.phoneNumber
-        });
+      // Staging never texts weekly schedules (unchanged; Decision Q3). Test/dev dry-run is the transport's job.
+      if (process.env.ENVIRONMENT === 'stg') { continue; }
+      // throwOnError keeps today's abort-on-error: a Twilio failure stops the remaining sends.
+      const r = await strapi.service('api::sms.sms').send({
+        to: volunteer.assignee.phoneNumber, body: copy, garden: recTask.garden, user: volunteer.assignee,
+        category: 'reminder', source: 'weekly-schedule', throwOnError: true,
+      });
+      if (r.blocked) { continue; }
       sentInfo.push(volunteer.assignee.phoneNumber);
     }
     try {

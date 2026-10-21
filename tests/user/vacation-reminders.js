@@ -1,4 +1,5 @@
 const cronTasks = require('../../config/cron-tasks');
+const { patchService } = require('../helpers/patch');
 const { subDays } = require('date-fns');
 
 const userQuery = () => strapi.db.query('plugin::users-permissions.user');
@@ -43,7 +44,7 @@ describe('sendVacationCheckIns (service)', () => {
   };
 
   beforeEach(() => {
-    strapi.service('api::sms.sms').sendSms = jest.fn().mockResolvedValue(undefined);
+    patchService('api::sms.sms', 'sendSms', jest.fn().mockResolvedValue(undefined));
   });
 
   afterEach(async () => {
@@ -190,9 +191,7 @@ describe('sendVacationCheckIns (service)', () => {
     const userA = trackUser(await seedPausedUser({ pausedDaysAgo: 15, lastCheckDaysAgo: null, count: 0 }));
     const userB = trackUser(await seedPausedUser({ pausedDaysAgo: 15, lastCheckDaysAgo: null, count: 0 }));
 
-    strapi.service('api::sms.sms').sendSms = jest.fn()
-      .mockImplementationOnce(() => { throw new Error('twilio down'); })
-      .mockResolvedValue(undefined);
+    patchService('api::sms.sms', 'sendSms', jest.fn().mockImplementationOnce(() => { throw new Error('twilio down'); }).mockResolvedValue(undefined));
 
     await strapi.service('api::message.vacation-checkin').sendVacationCheckIns();
 
