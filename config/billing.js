@@ -3,6 +3,7 @@
 // Phase 1 reads only MMS_UNITS. The rest is inert until Phase 2/3.
 module.exports = ({ env }) => ({
   FREE_UNITS: env.int('BILLING_FREE_UNITS', 500),
+  METERING_STARTED_AT: '2026-10-21',
   WARN_PCT: 0.8,
   GRACE_PCT: 0,
   MMS_UNITS: env.int('BILLING_MMS_UNITS', 3),

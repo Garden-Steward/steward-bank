@@ -48,6 +48,8 @@ const MEMBER_ACTIONS = [
   'api::garden.garden.membership',
   'api::garden.garden.setMute',
   'api::garden.garden.leave',
+  'api::organization.organization.usageList',
+  'api::organization.organization.usageReport',
 ];
 
 async function grantMemberPermissions(strapi) {
