@@ -44,10 +44,14 @@ async function grantAdminProjectPermissions(strapi) {
 // Routes every signed-in member needs whatever role they have. Granted at boot
 // so a deploy doesn't wait on someone ticking boxes in the admin panel. Only
 // adds, never removes.
+// user.find isn't for the route (the users-permissions extension refuses
+// GET /users to non-admins): the REST sanitizer needs it to let populated or
+// filtered user relations (project managers, task volunteers) through.
 const MEMBER_ACTIONS = [
   'api::garden.garden.membership',
   'api::garden.garden.setMute',
   'api::garden.garden.leave',
+  'plugin::users-permissions.user.find',
 ];
 
 async function grantMemberPermissions(strapi) {
@@ -66,34 +70,52 @@ async function grantMemberPermissions(strapi) {
   }
 }
 
-// User routes a signed-out caller must never reach: they list every user's
-// email and phone, or edit any account. Signing up and logging in go through
-// the auth routes, not these. Permissions live in the DB, so this runs at boot
-// to close them in every environment, whatever the admin panel says.
-const PUBLIC_REVOKED_ACTIONS = [
-  'plugin::users-permissions.user.find',
-  'plugin::users-permissions.user.findOne',
-  'plugin::users-permissions.user.count',
+// Core user routes list every user's email and phone, and PUT /users/:id has
+// no ownership check, so whoever holds `update` can edit any account. Signing
+// up and logging in go through the auth routes, and the web app only reads
+// /users/me, which stays. Members keep user.find for the sanitizer (see
+// MEMBER_ACTIONS); the route itself is refused in the users-permissions
+// extension. Administrators keep the reads (seed scripts look users up) but
+// not the writes: account edits go through the admin panel. API tokens
+// (plant-bot) skip roles, so they're unaffected. Permissions live in the DB,
+// so this runs at boot to close them in every environment, whatever the admin
+// panel or scripts/seed-auth-permissions.js says.
+const USER_WRITE_ACTIONS = [
   'plugin::users-permissions.user.create',
   'plugin::users-permissions.user.update',
   'plugin::users-permissions.user.destroy',
 ];
+const REVOKED_USER_ACTIONS = {
+  public: [
+    'plugin::users-permissions.user.find',
+    'plugin::users-permissions.user.findOne',
+    'plugin::users-permissions.user.count',
+    ...USER_WRITE_ACTIONS,
+  ],
+  authenticated: [
+    'plugin::users-permissions.user.findOne',
+    'plugin::users-permissions.user.count',
+    ...USER_WRITE_ACTIONS,
+  ],
+  administrator: USER_WRITE_ACTIONS,
+};
 
-async function revokePublicUserPermissions(strapi) {
-  const role = await strapi.db.query('plugin::users-permissions.role').findOne({
-    where: { type: 'public' },
+async function revokeUserPermissions(strapi) {
+  const roles = await strapi.db.query('plugin::users-permissions.role').findMany({
+    where: { type: { $in: Object.keys(REVOKED_USER_ACTIONS) } },
     populate: ['permissions'],
   });
-  if (!role) return;
-
-  const granted = (role.permissions || []).filter((p) => PUBLIC_REVOKED_ACTIONS.includes(p.action));
-  if (!granted.length) return;
-  // delete (not deleteMany) so the role link rows go too.
   const perms = strapi.db.query('plugin::users-permissions.permission');
-  for (const p of granted) {
-    await perms.delete({ where: { id: p.id } });
+  for (const role of roles) {
+    const revoked = REVOKED_USER_ACTIONS[role.type];
+    const granted = (role.permissions || []).filter((p) => revoked.includes(p.action));
+    if (!granted.length) continue;
+    // delete (not deleteMany) so the role link rows go too.
+    for (const p of granted) {
+      await perms.delete({ where: { id: p.id } });
+    }
+    strapi.log.info(`[bootstrap] revoked ${role.type}: ${granted.map((p) => p.action).join(', ')}`);
   }
-  strapi.log.info(`[bootstrap] revoked Public: ${granted.map((p) => p.action).join(', ')}`);
 }
 
 // Send the garden welcome email the first time a user gets a real email,
@@ -157,9 +179,9 @@ module.exports = {
     }
 
     try {
-      await revokePublicUserPermissions(strapi);
+      await revokeUserPermissions(strapi);
     } catch (err) {
-      strapi.log.error('[bootstrap] could not revoke Public user permissions:', err);
+      strapi.log.error('[bootstrap] could not revoke user permissions:', err);
     }
 
     // Recurring-template events used to be inserted as a published row only;

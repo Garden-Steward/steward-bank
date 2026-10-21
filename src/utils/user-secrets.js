@@ -33,4 +33,22 @@ function stripUserSecrets(strapi, value) {
   return value;
 }
 
-module.exports = { stripUserSecrets };
+// Drops email and phoneNumber from every user (anything with a username)
+// except `keepId`, at any depth. Mutates and returns `value`.
+const CONTACT_FIELDS = ['email', 'phoneNumber'];
+function stripOtherUsersContact(value, keepId) {
+  const seen = new Set();
+  const walk = (v) => {
+    if (!v || typeof v !== 'object' || seen.has(v)) return;
+    seen.add(v);
+    if (Array.isArray(v)) return v.forEach(walk);
+    if ('username' in v && v.id !== keepId) {
+      for (const f of CONTACT_FIELDS) delete v[f];
+    }
+    Object.values(v).forEach(walk);
+  };
+  walk(value);
+  return value;
+}
+
+module.exports = { stripUserSecrets, stripOtherUsersContact };
