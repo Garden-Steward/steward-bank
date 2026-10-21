@@ -41,6 +41,61 @@ async function grantAdminProjectPermissions(strapi) {
   }
 }
 
+// Routes every signed-in member needs whatever role they have. Granted at boot
+// so a deploy doesn't wait on someone ticking boxes in the admin panel. Only
+// adds, never removes.
+const MEMBER_ACTIONS = [
+  'api::garden.garden.membership',
+  'api::garden.garden.setMute',
+  'api::garden.garden.leave',
+];
+
+async function grantMemberPermissions(strapi) {
+  const roles = await strapi.db.query('plugin::users-permissions.role').findMany({
+    where: { type: { $in: ['authenticated', 'administrator'] } },
+    populate: ['permissions'],
+  });
+  const perms = strapi.db.query('plugin::users-permissions.permission');
+  for (const role of roles) {
+    const has = new Set((role.permissions || []).map((p) => p.action));
+    const missing = MEMBER_ACTIONS.filter((action) => !has.has(action));
+    for (const action of missing) {
+      await perms.create({ data: { action, role: role.id } });
+    }
+    if (missing.length) strapi.log.info(`[bootstrap] granted ${role.type}: ${missing.join(', ')}`);
+  }
+}
+
+// User routes a signed-out caller must never reach: they list every user's
+// email and phone, or edit any account. Signing up and logging in go through
+// the auth routes, not these. Permissions live in the DB, so this runs at boot
+// to close them in every environment, whatever the admin panel says.
+const PUBLIC_REVOKED_ACTIONS = [
+  'plugin::users-permissions.user.find',
+  'plugin::users-permissions.user.findOne',
+  'plugin::users-permissions.user.count',
+  'plugin::users-permissions.user.create',
+  'plugin::users-permissions.user.update',
+  'plugin::users-permissions.user.destroy',
+];
+
+async function revokePublicUserPermissions(strapi) {
+  const role = await strapi.db.query('plugin::users-permissions.role').findOne({
+    where: { type: 'public' },
+    populate: ['permissions'],
+  });
+  if (!role) return;
+
+  const granted = (role.permissions || []).filter((p) => PUBLIC_REVOKED_ACTIONS.includes(p.action));
+  if (!granted.length) return;
+  // delete (not deleteMany) so the role link rows go too.
+  const perms = strapi.db.query('plugin::users-permissions.permission');
+  for (const p of granted) {
+    await perms.delete({ where: { id: p.id } });
+  }
+  strapi.log.info(`[bootstrap] revoked Public: ${granted.map((p) => p.action).join(', ')}`);
+}
+
 // Send the garden welcome email the first time a user gets a real email,
 // whichever path set it. Users created by SMS start with a placeholder email.
 function subscribeWelcomeEmailOnEmailSet(strapi) {
@@ -96,6 +151,18 @@ module.exports = {
       await grantAdminProjectPermissions(strapi);
     } catch (err) {
       strapi.log.error('[bootstrap] could not grant Administrator project permissions:', err);
+    }
+
+    try {
+      await grantMemberPermissions(strapi);
+    } catch (err) {
+      strapi.log.error('[bootstrap] could not grant garden membership permissions:', err);
+    }
+
+    try {
+      await revokePublicUserPermissions(strapi);
+    } catch (err) {
+      strapi.log.error('[bootstrap] could not revoke Public user permissions:', err);
     }
 
     // Recurring-template events used to be inserted as a published row only;

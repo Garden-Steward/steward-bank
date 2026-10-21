@@ -6,6 +6,7 @@ const SmsOptOut = require('../../../utils/sms-opt-out');
  * volunteer-day service
  */
 
+const { withoutMuted } = require('../../../utils/garden-mute');
 const { createCoreService } = require('@strapi/strapi').factories;
 
 module.exports = createCoreService('api::volunteer-day.volunteer-day', ({ strapi }) =>  ({
@@ -90,7 +91,7 @@ module.exports = createCoreService('api::volunteer-day.volunteer-day', ({ strapi
       volGroup = [...byId.values()];
     }
 
-    return volGroup
+    return withoutMuted(volGroup, vDay.garden);
   },
 
   /**

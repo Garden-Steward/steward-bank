@@ -6,8 +6,22 @@
 
 const { createCoreController } = require('@strapi/strapi').factories;
 const taskHelper = require('../services/helper');
+const { withPublicUserIds } = require('../../../utils/public-user-ids');
+
+// The public task pages count who's signed up; signed out, that's all they get.
+const PUBLIC_USER_RELATIONS = ['volunteers'];
 
 module.exports = createCoreController('api::garden-task.garden-task', ({ strapi }) => ({
+
+  async find(ctx) {
+    const response = await super.find(ctx);
+    return withPublicUserIds(strapi, 'api::garden-task.garden-task', ctx, response, PUBLIC_USER_RELATIONS);
+  },
+
+  async findOne(ctx) {
+    const response = await super.findOne(ctx);
+    return withPublicUserIds(strapi, 'api::garden-task.garden-task', ctx, response, PUBLIC_USER_RELATIONS);
+  },
 
   /**
    * Active tasks for the authenticated user across all gardens.

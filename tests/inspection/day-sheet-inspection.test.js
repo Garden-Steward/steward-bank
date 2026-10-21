@@ -152,7 +152,7 @@ describe('PROBE: contract shape, field by field', () => {
       ['canceled', 'documentId', 'garden', 'id', 'startDatetime', 'title'].sort());
     expect(Object.keys(d.event.garden).sort()).toEqual(['documentId', 'id', 'slug', 'title'].sort());
     expect(Object.keys(d.tasks[0]).sort()).toEqual(
-      ['documentId', 'id', 'max_volunteers', 'overview', 'priority', 'task_status', 'title', 'type', 'volunteer_count'].sort());
+      ['documentId', 'id', 'max_volunteers', 'overview', 'priority', 'sort_order', 'task_status', 'title', 'type', 'volunteer_count'].sort());
     expect(Object.keys(d.meta).sort()).toEqual(
       ['anchor', 'generatedAt', 'printPath', 'standingCount', 'standingSource', 'taskCount'].sort());
     expect(Object.keys(d.standing[0]).sort()).toEqual(['key', 'note', 'title'].sort());
