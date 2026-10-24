@@ -4,6 +4,14 @@ const { Resend } = require('resend');
 
 module.exports = {
   init(providerOptions, settings) {
+    if (process.env.EMAIL_DRY_RUN === 'true') {
+      return {
+        async send() {
+          console.info('[email] EMAIL_DRY_RUN enabled; delivery skipped.');
+          return { simulated: true };
+        },
+      };
+    }
     const resend = new Resend(providerOptions.apiKey);
 
     return {

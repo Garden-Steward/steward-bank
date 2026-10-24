@@ -8,8 +8,8 @@ module.exports = ({ env }) => ({
   },
   upload: {
     config: {
-      provider: '@strapi-community/strapi-provider-upload-google-cloud-storage',
-      providerOptions: {
+      provider: env('UPLOAD_PROVIDER', '@strapi-community/strapi-provider-upload-google-cloud-storage'),
+      providerOptions: env('UPLOAD_PROVIDER') === 'local' ? {} : {
           bucketName: 'steward_upload',
           publicFiles: true,
           uniform: false,
