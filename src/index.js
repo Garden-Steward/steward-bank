@@ -162,7 +162,10 @@ module.exports = {
     }
 
     try {
-      await revokePublicUserPermissions(strapi);
+      // Explicit local full-access mode preserves the permissions requested for development.
+      if (!(process.env.NODE_ENV === 'development' && process.env.LOCAL_FULL_ACCESS === 'true')) {
+        await revokePublicUserPermissions(strapi);
+      }
     } catch (err) {
       strapi.log.error('[bootstrap] could not revoke Public user permissions:', err);
     }
