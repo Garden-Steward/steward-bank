@@ -166,8 +166,8 @@ VdayHelper.getTomorrowVdays = async () => {
 }
 
 
-VdayHelper.sendMessage = (vDay, copy) => {
-  return strapi.service('api::volunteer-day.volunteer-day').sendGroupMsg(vDay,copy);
+VdayHelper.sendMessage = (vDay, copy, opts = {}) => {
+  return strapi.service('api::volunteer-day.volunteer-day').sendGroupMsg(vDay, copy, opts);
 }
 
 module.exports = VdayHelper;

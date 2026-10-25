@@ -64,7 +64,8 @@ describe('sms-login service', () => {
     }
 
     expect(sendSms).toHaveBeenCalledTimes(1);
-    expect(sendSms).toHaveBeenCalledWith(e164(digits), expect.stringMatching(/\d{6}/));
+    expect(sendSms).toHaveBeenCalledWith(e164(digits), expect.stringMatching(/\d{6}/), undefined,
+      expect.objectContaining({ category: 'system', source: 'auth.sms-login' }));
     expect(handleSms).not.toHaveBeenCalled();
   });
 
@@ -774,7 +775,8 @@ describe('sms-login HTTP', () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual(REQUEST_OK_BODY);
     expect(sendSms).toHaveBeenCalledTimes(1);
-    expect(sendSms).toHaveBeenCalledWith(e164(digits), expect.stringMatching(/\d{6}/));
+    expect(sendSms).toHaveBeenCalledWith(e164(digits), expect.stringMatching(/\d{6}/), undefined,
+      expect.objectContaining({ category: 'system', source: 'auth.sms-login' }));
     expect(handleSms).not.toHaveBeenCalled();
   });
 

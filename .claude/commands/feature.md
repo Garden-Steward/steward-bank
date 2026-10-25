@@ -55,5 +55,21 @@ feasible.
   tasks.md and loop back to Stage 3 for those tasks only, then re-run the
   inspector scoped to the affected ACs.
 
+## Stage 5 — Clean up before committing
+`tasks.md` and `inspection.md` are scratch: they hold handoff detail and
+session-specific instructions that go stale once the code lands. Before the
+final commit:
+- Delete `tasks.md` and `inspection.md`. Put anything still worth knowing
+  (post-deploy checks, known follow-ups) in the PR description.
+- Condense `design.md` to a one-page overview: what the feature does, the key
+  pieces and where they live, the decisions the user made, the non-obvious
+  "why it's built this way" constraints (traps a future change could walk back
+  into), rollout steps, and what's next. Drop line-number surveys, acceptance
+  criteria lists and test plans — the code and tests are the record of those.
+- Durable "why" that belongs next to specific code goes in a code comment
+  there, not only in the spec.
+
 Throughout: relay each agent's key findings to the user in plain language —
-agent reports are not shown to them directly.
+agent reports are not shown to them directly. Never write temporary
+environment details (worktree paths, which checkout is dirty) into specs as
+rules; pass those to agents in their prompts instead.

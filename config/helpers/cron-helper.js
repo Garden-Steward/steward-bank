@@ -113,7 +113,7 @@ Helper.handleInitialTasks = async() => {
  */
 Helper.sendVdayReminder = async(vDay, copy) => {
   try {
-    const sent = await strapi.service('api::volunteer-day.volunteer-day').sendGroupMsg(vDay, copy);
+    const sent = await strapi.service('api::volunteer-day.volunteer-day').sendGroupMsg(vDay, copy, { category: 'reminder', source: 'volunteer-day.reminder' });
 
     if (!sent?.length) {
       console.warn(
@@ -280,7 +280,9 @@ Helper.sendWaterSms = async(waterTask, skipWindow) => {
     await strapi.service('api::sms.sms').handleSms({
       task: waterTask, 
       body: Helper.buildWaterBody(waterTask), 
-      type: 'question'
+      type: 'question',
+      category: 'reminder',
+      source: 'cron.water'
     }
     );
     return {success: true, message: 'Sent water reminder for ' + waterTask.volunteers[0].username, task: waterTask};
@@ -293,7 +295,9 @@ Helper.sendWaterSms = async(waterTask, skipWindow) => {
     strapi.service('api::sms.sms').handleSms({
       task: waterTask, 
       body: `Hi ${waterTask.volunteers[0].firstName}, don't worry about watering today! Reason: ${weather.reason}`, 
-      type: 'notification'
+      type: 'notification',
+      category: 'reminder',
+      source: 'cron.water-skip'
     });
     return {success: true, message: 'Sent water skip for ' + waterTask.volunteers[0].username, task: waterTask};
   }
@@ -570,20 +574,26 @@ Helper.handleStartedTasks = async() => {
         strapi.service('api::sms.sms').handleSms({
           task,
           body: `Hi ${task.volunteers[0].firstName}, did you get "${task.title}" done? Reply DONE if so. If not, no worries - a morning watering is better for the plants anyway. Reply MORNING to take it tomorrow morning, or SKIP if you can't.`,
-          type: 'question'
+          type: 'question',
+          category: 'reminder',
+          source: 'cron.started-followup'
         });
       } else {
         strapi.service('api::sms.sms').handleSms({
           task,
           body: `Hey there ${task.volunteers[0].firstName}, once you're DONE with "${task.title}" let me know you're FINISHED :) ...you always have OPTIONS`,
-          type: 'followup'
+          type: 'followup',
+          category: 'reminder',
+          source: 'cron.started-followup'
         });
       }
     } else {
       strapi.service('api::sms.sms').handleSms({  
         task, 
         body: `Hey there ${task.volunteers[0].firstName}, have you managed to "${task.title}"? Let me know when you're DONE :) ...you always have OPTIONS`,
-        type: 'followup'
+        type: 'followup',
+        category: 'reminder',
+        source: 'cron.started-followup'
       });
     }
   }

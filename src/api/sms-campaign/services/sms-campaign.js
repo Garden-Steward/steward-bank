@@ -15,10 +15,6 @@ const pollOptionDesc = (o) => {
  */
 const formatPollOption = (o) => `${o.label?.toUpperCase()}: ${pollOptionDesc(o)}`;
 
-const accountSid = process.env.TWILIO_ACCOUNT_SID ;
-const authToken = process.env.TWILIO_AUTH_TOKEN  ;
-const twilioNum =process.env.TWILIONUM;
-const client = require('twilio')(accountSid, authToken);
 const SmsOptOut = require('../../../utils/sms-opt-out');
 
 const { addHours, differenceInDays } = require('date-fns');
@@ -48,7 +44,7 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
       },
       limit: 1,
       orderBy: {createdAt: 'desc'},
-      populate: {sent: true, confirmed: true, volunteer_day: true, sender: true, option_a: true, option_b: true, option_c: true, option_d: true},
+      populate: {sent: true, confirmed: true, volunteer_day: true, sender: true, garden: true, option_a: true, option_b: true, option_c: true, option_d: true},
     });
     return lastCampaigns[0];
 
@@ -201,7 +197,7 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
         closes_at: { $gte: windowStart, $lte: windowEnd },
         $or: [{ reminder_sent: { $eq: false } }, { reminder_sent: { $null: true } }],
       },
-      populate: { sent: true, option_a: true, option_b: true, option_c: true, option_d: true },
+      populate: { sent: true, garden: true, option_a: true, option_b: true, option_c: true, option_d: true },
     });
 
     for (const campaign of campaigns) {
@@ -228,6 +224,9 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
           type: 'followup',
           previous: null,
           user,
+          garden: campaign.garden,
+          category: 'reminder',
+          source: 'poll.reminder',
         });
       }
 
@@ -339,6 +338,9 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
         type: 'followup',
         previous: null,
         user: campaign.sender,
+        garden: campaign.garden,
+        category: 'transactional',
+        source: 'poll.close',
       });
     }
 
@@ -369,12 +371,11 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
     for (const volunteer of activeGroup) {
       if (!volunteer.phoneNumber) { continue; }
       try {
-        await client.messages
-          .create({
-            body: copy,
-            from: twilioNum,
-            to: volunteer.phoneNumber
-          });
+        const r = await strapi.service('api::sms.sms').send({
+          to: volunteer.phoneNumber, body: copy, garden: gardenObj, user: volunteer,
+          category: 'broadcast', source: 'sms-campaign.group', throwOnError: true,
+        });
+        if (r.blocked) { continue; }   // gate said no: not sent, not an opt-out, no handleSendError
         sentInfo.push(volunteer.phoneNumber);
         sentUsers.push(volunteer);
       } catch (err) {
@@ -421,40 +422,13 @@ module.exports = createCoreService('api::sms-campaign.sms-campaign', ({ strapi }
         body: `We just received an RSVP from ${user.firstName} ${user.lastName}! RSVP count: ${campaign.confirmed.length}.`,
         type: 'followup',
         previous: null,
-        user: campaign.sender
+        user: campaign.sender,
+        garden: campaign.garden,
+        category: 'transactional',
+        source: 'campaign.rsvp-alert',
       }
     );
 
   },
-
-  // async sendGardenInterestMsg(garden, copy, interest) {
-
-  //   console.log("sendGroupMsg", copy);
-
-  //   let volGroup = await strapi.service('api::user-garden-interest.user-garden-interest').getUsersOfInterest(garden, interest);
-
-  //   let sentInfo = [];
-    
-  //   for (const volunteer of volGroup) {
-  //     await client.messages
-  //       .create({
-  //         body: copy,
-  //         from: twilioNum,
-  //         to: volunteer.phoneNumber
-  //       });
-  //     sentInfo.push(volunteer.phoneNumber);
-  //   }
-  //   try {
-  //   await strapi.db.query('api::sms-campaign.sms-campaign').create({
-  //     data: {
-  //       publishedAt: null, sent: volGroup, volunteer_day: vDay.id, body: copy, garden: vDay.garden.id
-  //     }
-  //   });
-  //   } catch (err) {
-  //     console.warn('Could not save sms campaign: ', err);
-  //   }
-
-  //   return sentInfo
-  // },
 
 }));

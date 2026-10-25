@@ -13,7 +13,7 @@ module.exports = createCoreController('api::weekly-schedule.weekly-schedule', ({
     try {
       const schedule = await strapi.db.query('api::weekly-schedule.weekly-schedule').findOne({
         where: { documentId: id },
-        populate: ['assignees', 'assignees.assignee', 'recurring_task']
+        populate: ['assignees', 'assignees.assignee', 'recurring_task', 'recurring_task.garden']
       });
       if (!schedule) {
         ctx.status = 404;

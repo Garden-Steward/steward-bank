@@ -1426,6 +1426,60 @@ export interface ApiSmsCampaignSmsCampaign extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiSmsUsageSmsUsage extends Struct.CollectionTypeSchema {
+  collectionName: 'sms_usages';
+  info: {
+    description: 'Outbound SMS/MMS ledger, one row per message Twilio accepted (or simulated/blocked).';
+    displayName: 'SMS Usage';
+    pluralName: 'sms-usages';
+    singularName: 'sms-usage';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    billable: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    blocked: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    category: Schema.Attribute.Enumeration<
+      ['broadcast', 'reminder', 'transactional', 'system']
+    > &
+      Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    direction: Schema.Attribute.Enumeration<['api', 'twiml_reply']> &
+      Schema.Attribute.Required;
+    encoding: Schema.Attribute.Enumeration<['gsm7', 'ucs2']>;
+    garden_document_id: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sms-usage.sms-usage'
+    > &
+      Schema.Attribute.Private;
+    num_media: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    organization_document_id: Schema.Attribute.String;
+    period: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    segments: Schema.Attribute.Integer & Schema.Attribute.Required;
+    sent_at: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    simulated: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    source: Schema.Attribute.String;
+    stripe_batch_id: Schema.Attribute.String;
+    stripe_reported_at: Schema.Attribute.DateTime;
+    to_number: Schema.Attribute.String;
+    twilio_sid: Schema.Attribute.String;
+    units: Schema.Attribute.Integer & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+  };
+}
+
 export interface ApiTagTag extends Struct.CollectionTypeSchema {
   collectionName: 'tags';
   info: {
@@ -2234,6 +2288,7 @@ declare module '@strapi/strapi' {
       'api::recurring-task.recurring-task': ApiRecurringTaskRecurringTask;
       'api::scheduler.scheduler': ApiSchedulerScheduler;
       'api::sms-campaign.sms-campaign': ApiSmsCampaignSmsCampaign;
+      'api::sms-usage.sms-usage': ApiSmsUsageSmsUsage;
       'api::tag.tag': ApiTagTag;
       'api::user-garden-interest.user-garden-interest': ApiUserGardenInterestUserGardenInterest;
       'api::volunteer-day.volunteer-day': ApiVolunteerDayVolunteerDay;

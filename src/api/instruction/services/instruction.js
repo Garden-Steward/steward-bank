@@ -52,7 +52,9 @@ module.exports = createCoreService('api::instruction.instruction', ({ strapi }) 
     strapi.service('api::sms.sms').handleSms({
       task: task, 
       body: `Hi ${user.firstName}, before we can assign task ${task.title} please agree to the instruction: https://steward.garden/i/${instruction.slug}?u=${user.id}`, 
-      type: 'question'
+      type: 'question',
+      category: 'reminder',
+      source: 'instruction.pending'
     }
     );
     return {success: true, message: 'Sent instruction for ' + user.username, task: task};
