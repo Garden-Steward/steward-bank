@@ -14,9 +14,10 @@ module.exports = createCoreController('api::blog.blog', ({ strapi }) => ({
     const entity = await strapi.db.query('api::blog.blog').findOne({
       where: {slug: ctx.params.slug},
       populate: {
-        category: true,
-        hero: true,
-        createdBy: true,
+              category: true,
+              hero: true,
+              audio: true,
+              createdBy: true,
         author: {
           populate: ['profilePhoto'],
         },

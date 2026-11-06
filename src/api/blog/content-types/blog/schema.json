@@ -26,6 +26,14 @@
         "images"
       ]
     },
+    "audio": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "audios"
+      ]
+    },
     "slug": {
       "type": "string"
     },
