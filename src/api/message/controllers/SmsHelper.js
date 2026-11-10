@@ -565,7 +565,7 @@ SmsHelper.findBackupUsers = async(user) => {
       task = latestQuestion.garden_task;
     }
     if (!task) {
-      return {body: 'Looks like you don\'t have a task to manage. Tell Cameron if it\'s unexpected.', type: 'reply'};
+      return {body: 'Looks like you don\'t have a task to manage. Tell Cypress if it\'s unexpected.', type: 'reply'};
     }
     if (!task.recurring_task) {
       return {body: 'Sorry this isn\'t a task that can be transferred. Only Scheduled Tasks can transfer.', type: 'reply', task, success: false};

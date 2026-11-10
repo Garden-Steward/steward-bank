@@ -83,6 +83,9 @@ module.exports = ({ strapi }) => ({
     // Replies go to a real person: whoever sent it, else one of the garden's managers.
     const replyPerson = sender || (garden.managers || []).find((m) => m.email && m.id !== targetUser.id);
     const senderName = (replyPerson && (fullName(replyPerson) || replyPerson.email)) || DEFAULT_SENDER_NAME;
+    // Send from the real person (not the generic no-reply) so the signature name and
+    // the From address agree, and replies land with the sender.
+    const fromAddress = replyPerson?.email || FROM_ADDRESS;
 
     const vars = { firstName: targetUser.firstName, gardenName: garden.title, senderName };
     const subject = renderTemplate(customSubject || garden.welcome_email_subject || WELCOME_EMAIL.subject, vars);
@@ -92,7 +95,8 @@ module.exports = ({ strapi }) => ({
     try {
       const result = await strapi.plugins['email'].services.email.send({
         to: targetUser.email,
-        from: `${senderName} <${FROM_ADDRESS}>`,
+        from: `${senderName} <${fromAddress}>`,
+
         ...(replyPerson?.email ? { replyTo: replyPerson.email } : {}),
         subject,
         html,
