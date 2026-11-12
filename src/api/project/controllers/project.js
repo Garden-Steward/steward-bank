@@ -43,6 +43,14 @@ function isAdmin(user) {
   return user?.role?.type === 'administrator';
 }
 
+// API tokens authenticate (ctx.state.auth is set) but carry no user object, unlike a
+// users-permissions JWT which also sets ctx.state.user. Treat API-token requests as
+// trusted so scripts can see and manage every project regardless of review_status,
+// while public/anonymous requests stay filtered to APPROVED/COMPLETED.
+function isApiTokenRequest(ctx) {
+  return !!(ctx.state.auth && !ctx.state.user);
+}
+
 // Pull a numeric garden id out of whatever shape the write payload used
 // (104, "104", { id: 104 }, { connect: [{ id: 104 }] }, { connect: [104] }).
 function extractGardenId(garden) {
@@ -95,7 +103,7 @@ module.exports = createCoreController('api::project.project', ({ strapi }) => ({
 
   async find(ctx) {
     const user = ctx.state.user;
-    if (!isAdmin(user)) {
+    if (!isAdmin(user) && !isApiTokenRequest(ctx)) {
       const existing = ctx.query.filters;
       const visibility = visibilityFilter(user);
       ctx.query = {
@@ -121,7 +129,7 @@ module.exports = createCoreController('api::project.project', ({ strapi }) => ({
     }
 
     const user = ctx.state.user;
-    if (isAdmin(user)) {
+    if (isAdmin(user) || isApiTokenRequest(ctx)) {
       return response;
     }
     if (user) {
@@ -143,7 +151,7 @@ module.exports = createCoreController('api::project.project', ({ strapi }) => ({
     const user = ctx.state.user;
 
     const where = { garden: { slug } };
-    if (!isAdmin(user)) {
+    if (!isAdmin(user) && !isApiTokenRequest(ctx)) {
       where.$and = [visibilityFilter(user)];
     }
 
