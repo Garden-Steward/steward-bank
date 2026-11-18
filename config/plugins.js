@@ -10,12 +10,16 @@ module.exports = ({ env }) => ({
     config: {
       provider: '@strapi-community/strapi-provider-upload-google-cloud-storage',
       providerOptions: {
-          bucketName: 'steward_upload',
+          // GCS_BUCKET / GCS_UNIFORM switch buckets without a code change.
+          // Defaults are the legacy bucket (project wedding-315405, per-object ACLs).
+          // New bucket: GCS_BUCKET=steward-uploads, GCS_UNIFORM=true (garden-steward,
+          // uniform access with public read granted on the bucket).
+          bucketName: env('GCS_BUCKET', 'steward_upload'),
           publicFiles: true,
-          uniform: false,
+          uniform: env.bool('GCS_UNIFORM', false),
           basePath: 'uploads',
           serviceAccount: env('GOOGLE_CLOUD_CREDENTIALS'),
-          baseUrl: 'https://storage.googleapis.com/steward_upload',
+          baseUrl: `https://storage.googleapis.com/${env('GCS_BUCKET', 'steward_upload')}`,
       },
     },
   },
