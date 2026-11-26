@@ -72,6 +72,31 @@ async function grantMemberPermissions(strapi) {
   }
 }
 
+// Public plant read: the plant page is reachable anonymously at /plants/:slug
+// (the newsletter's Plant Highlight links there), so the Public role needs
+// find + findOne on plants. Only adds, never removes — mirrors the seeder's
+// intent but applies at boot so a deploy doesn't wait on a manual script run.
+const PUBLIC_PLANT_ACTIONS = [
+  'api::plant.plant.find',
+  'api::plant.plant.findOne',
+];
+
+async function grantPublicPlantPermissions(strapi) {
+  const roles = await strapi.db.query('plugin::users-permissions.role').findMany({
+    where: { type: 'public' },
+    populate: ['permissions'],
+  });
+  const perms = strapi.db.query('plugin::users-permissions.permission');
+  for (const role of roles) {
+    const has = new Set((role.permissions || []).map((p) => p.action));
+    const missing = PUBLIC_PLANT_ACTIONS.filter((action) => !has.has(action));
+    for (const action of missing) {
+      await perms.create({ data: { action, role: role.id } });
+    }
+    if (missing.length) strapi.log.info(`[bootstrap] granted ${role.type}: ${missing.join(', ')}`);
+  }
+}
+
 // Core user routes list every user's email and phone, and PUT /users/:id has
 // no ownership check, so whoever holds `update` can edit any account. Signing
 // up and logging in go through the auth routes, and the web app only reads
@@ -181,6 +206,12 @@ module.exports = {
       await grantMemberPermissions(strapi);
     } catch (err) {
       strapi.log.error('[bootstrap] could not grant garden membership permissions:', err);
+    }
+
+    try {
+      await grantPublicPlantPermissions(strapi);
+    } catch (err) {
+      strapi.log.error('[bootstrap] could not grant Public plant read permissions:', err);
     }
 
     try {
