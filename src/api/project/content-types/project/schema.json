@@ -60,6 +60,30 @@
       "type": "decimal",
       "min": 0
     },
+    "goal": {
+      "type": "text",
+      "description": "Freeform target for when the project should happen (e.g. 'by summer 2027')"
+    },
+    "volunteer_goal": {
+      "type": "integer",
+      "min": 0,
+      "description": "Start once roughly this many people have shown interest"
+    },
+    "time_commitment": {
+      "type": "text",
+      "description": "Estimated time asked of volunteers (e.g. '~2 weekend mornings')"
+    },
+    "physical_wellness": {
+      "type": "enumeration",
+      "enum": [
+        "none",
+        "light",
+        "moderate",
+        "heavy"
+      ],
+      "default": "none",
+      "description": "Physical demand level for volunteers"
+    },
     "category": {
       "type": "enumeration",
       "enum": [
